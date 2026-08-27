@@ -1,0 +1,192 @@
+<?= $this->extend('layouts/admin') ?>
+
+<?= $this->section('content') ?>
+<?php
+$errors = session('errors') ?? [];
+$selectedGroups = old('groups');
+$selectedPermissions = old('permissions');
+$userEmail = old('email');
+
+if (! is_array($selectedGroups)) {
+    $selectedGroups = $user->getGroups() ?? [];
+}
+
+if (! is_array($selectedPermissions)) {
+    $selectedPermissions = $user->getPermissions() ?? [];
+}
+
+$userEmail ??= $isNew ? '' : ($user->getEmail() ?? '');
+$isCurrentUser = (int) ($user->id ?? 0) === (int) (auth()->id() ?? 0);
+$currentActorIsSuperAdmin = (bool) ($currentActorIsSuperAdmin ?? false);
+$sites = $sites ?? [];
+$selectedSiteRoles = $selectedSiteRoles ?? [];
+$siteRoleOptions = $siteRoleOptions ?? ['site_admin' => 'Administrateur de faculté', 'editor' => 'Éditeur'];
+$postedSiteIds = old('site_ids');
+
+if (is_array($postedSiteIds)) {
+    $selectedSiteIds = $postedSiteIds;
+} elseif (! is_array($selectedSiteIds ?? null)) {
+    $selectedSiteIds = [];
+}
+
+$selectedSiteIds = array_map('intval', $selectedSiteIds);
+$postedSiteRoles = old('site_roles');
+if (is_array($postedSiteRoles)) {
+    $selectedSiteRoles = $postedSiteRoles;
+}
+?>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <span class="section-label"><?= $isNew ? 'Création' : 'Modification' ?></span>
+        <h1 class="h3 mb-1"><?= $isNew ? 'Créer un utilisateur' : esc($user->username ?? 'Utilisateur') ?></h1>
+        <p class="text-muted mb-0">Les comptes, groupes et permissions sont gérés via Shield.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <?php if (! $isNew && $passwordAction !== null): ?>
+            <a href="<?= esc($passwordAction, 'attr') ?>" class="btn btn-outline-green">Réinitialiser le mot de passe</a>
+        <?php endif ?>
+        <a href="<?= site_url('admin/users') ?>" class="btn btn-outline-secondary">Retour</a>
+    </div>
+</div>
+
+<form action="<?= esc($action, 'attr') ?>" method="post" class="card-faculte">
+    <?= csrf_field() ?>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <label for="username" class="form-label fw-semibold">Nom d’utilisateur</label>
+            <input type="text" class="form-control<?= isset($errors['username']) ? ' is-invalid' : '' ?>" id="username" name="username" value="<?= esc(old('username', $user->username ?? ''), 'attr') ?>" maxlength="30" required aria-describedby="username-error">
+            <?php if (isset($errors['username'])): ?>
+                <div class="invalid-feedback" id="username-error"><?= esc($errors['username']) ?></div>
+            <?php endif ?>
+        </div>
+        <div class="col-lg-6">
+            <label for="email" class="form-label fw-semibold">Adresse électronique</label>
+            <input type="email" class="form-control<?= isset($errors['email']) ? ' is-invalid' : '' ?>" id="email" name="email" value="<?= esc($userEmail, 'attr') ?>" maxlength="254" required aria-describedby="email-error">
+            <?php if (isset($errors['email'])): ?>
+                <div class="invalid-feedback" id="email-error"><?= esc($errors['email']) ?></div>
+            <?php endif ?>
+        </div>
+        <div class="col-lg-6">
+            <label for="password" class="form-label fw-semibold"><?= $isNew ? 'Mot de passe' : 'Nouveau mot de passe' ?></label>
+            <input type="password" class="form-control<?= isset($errors['password']) ? ' is-invalid' : '' ?>" id="password" name="password" maxlength="255" autocomplete="new-password" <?= $isNew ? 'required' : '' ?> aria-describedby="password-help password-error">
+            <div class="form-text" id="password-help">Le mot de passe n’est jamais affiché ni journalisé.</div>
+            <?php if (isset($errors['password'])): ?>
+                <div class="invalid-feedback" id="password-error"><?= esc($errors['password']) ?></div>
+            <?php endif ?>
+        </div>
+        <div class="col-lg-6">
+            <label for="confirm" class="form-label fw-semibold">Confirmation du mot de passe</label>
+            <input type="password" class="form-control<?= isset($errors['confirm']) ? ' is-invalid' : '' ?>" id="confirm" name="confirm" maxlength="255" autocomplete="new-password" <?= $isNew ? 'required' : '' ?> aria-describedby="confirm-error">
+            <?php if (isset($errors['confirm'])): ?>
+                <div class="invalid-feedback" id="confirm-error"><?= esc($errors['confirm']) ?></div>
+            <?php endif ?>
+        </div>
+        <div class="col-12">
+            <div class="form-check">
+                <input type="hidden" name="active" value="0">
+                <input class="form-check-input<?= isset($errors['active']) ? ' is-invalid' : '' ?>" type="checkbox" value="1" id="active" name="active" <?= old('active', ! empty($user->active) ? '1' : '0') === '1' ? 'checked' : '' ?>>
+                <label class="form-check-label fw-semibold" for="active">Compte actif</label>
+                <?php if (isset($errors['active'])): ?>
+                    <div class="invalid-feedback d-block" id="active-error"><?= esc($errors['active']) ?></div>
+                <?php endif ?>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <fieldset class="border rounded-3 p-3 h-100">
+                <legend class="float-none w-auto px-2 small fw-semibold">Groupes</legend>
+                <?php if (isset($errors['groups'])): ?>
+                    <div class="text-danger small mb-2" id="groups-error"><?= esc($errors['groups']) ?></div>
+                <?php endif ?>
+                <div class="d-grid gap-2">
+                    <?php foreach ($groups as $key => $group): ?>
+                        <?php if ($key === 'superadmin' && ! $currentActorIsSuperAdmin) {
+                            continue;
+                        } ?>
+                        <?php $checked = in_array($key, $selectedGroups, true); ?>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="<?= esc($key, 'attr') ?>" id="group_<?= esc($key, 'attr') ?>" name="groups[]" <?= $checked ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="group_<?= esc($key, 'attr') ?>">
+                                <span class="fw-semibold"><?= esc($group['title']) ?></span>
+                                <span class="text-muted small d-block"><?= esc($group['description']) ?></span>
+                            </label>
+                        </div>
+                    <?php endforeach ?>
+                </div>
+            </fieldset>
+        </div>
+        <div class="col-lg-6">
+            <fieldset class="border rounded-3 p-3 h-100">
+                <legend class="float-none w-auto px-2 small fw-semibold">Permissions directes</legend>
+                <?php if (isset($errors['permissions'])): ?>
+                    <div class="text-danger small mb-2" id="permissions-error"><?= esc($errors['permissions']) ?></div>
+                <?php endif ?>
+                <div class="d-grid gap-2">
+                    <?php if ($permissions === []): ?>
+                        <p class="text-muted small mb-0">Les permissions de ce compte sont déterminées par son groupe et son rôle facultaire.</p>
+                    <?php else: ?>
+                        <?php foreach ($permissions as $key => $label): ?>
+                            <?php if ($key === 'sites.manage' && ! $currentActorIsSuperAdmin) {
+                                continue;
+                            } ?>
+                            <?php $checked = in_array($key, $selectedPermissions, true); ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="<?= esc($key, 'attr') ?>" id="permission_<?= esc($key, 'attr') ?>" name="permissions[]" <?= $checked ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="permission_<?= esc($key, 'attr') ?>"><?= esc($label) ?></label>
+                            </div>
+                        <?php endforeach ?>
+                    <?php endif ?>
+                </div>
+            </fieldset>
+        </div>
+        <div class="col-12">
+            <fieldset class="border rounded-3 p-3">
+                <legend class="float-none w-auto px-2 small fw-semibold">Sites autorisés</legend>
+                <?php if (isset($errors['site_ids'])): ?>
+                    <div class="text-danger small mb-2" id="site-ids-error"><?= esc($errors['site_ids']) ?></div>
+                <?php endif ?>
+                <div class="row g-2">
+                    <?php foreach ($sites as $site): ?>
+                        <?php $checked = in_array((int) $site->id, $selectedSiteIds, true); ?>
+                        <div class="col-md-6 col-xl-4">
+                            <div class="form-check border rounded-3 p-3 h-100">
+                                <input class="form-check-input ms-0 me-2" type="checkbox" value="<?= esc((string) $site->id, 'attr') ?>" id="site_<?= esc((string) $site->id, 'attr') ?>" name="site_ids[]" <?= $checked ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="site_<?= esc((string) $site->id, 'attr') ?>">
+                                    <span class="fw-semibold"><?= esc($site->name) ?></span>
+                                    <span class="text-muted small d-block"><?= esc($site->slug) ?></span>
+                                </label>
+                                <label for="site_role_<?= esc((string) $site->id, 'attr') ?>" class="form-label small fw-semibold mt-3">Rôle sur ce site</label>
+                                <?php $selectedRole = (string) ($selectedSiteRoles[(int) $site->id] ?? ($currentActorIsSuperAdmin ? 'editor' : 'editor')); ?>
+                                <select class="form-select form-select-sm" id="site_role_<?= esc((string) $site->id, 'attr') ?>" name="site_roles[<?= esc((string) $site->id, 'attr') ?>]" <?= $currentActorIsSuperAdmin ? '' : 'disabled' ?>>
+                                    <?php foreach ($siteRoleOptions as $roleKey => $roleLabel): ?>
+                                        <?php if (! $currentActorIsSuperAdmin && $roleKey !== 'editor') {
+                                            continue;
+                                        } ?>
+                                        <option value="<?= esc($roleKey, 'attr') ?>" <?= $selectedRole === $roleKey ? 'selected' : '' ?>><?= esc($roleLabel) ?></option>
+                                    <?php endforeach ?>
+                                </select>
+                                <?php if (! $currentActorIsSuperAdmin): ?>
+                                    <input type="hidden" name="site_roles[<?= esc((string) $site->id, 'attr') ?>]" value="editor">
+                                <?php endif ?>
+                            </div>
+                        </div>
+                    <?php endforeach ?>
+                </div>
+                <p class="form-text mb-0 mt-2">Les contenus affichés et modifiés dans l’administration sont limités au site sélectionné.</p>
+            </fieldset>
+        </div>
+    </div>
+
+    <?php if ($isCurrentUser): ?>
+        <div class="alert alert-info mt-4 mb-0">
+            Vous modifiez votre propre compte. La désactivation et la perte d’accès administrateur sont protégées.
+        </div>
+    <?php endif ?>
+
+    <div class="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
+        <button type="submit" class="btn btn-primary-green">Enregistrer</button>
+        <a href="<?= site_url('admin/users') ?>" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+</form>
+<?= $this->endSection() ?>
