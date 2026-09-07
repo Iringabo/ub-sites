@@ -100,8 +100,8 @@ $siteRoles = $dashboard['siteRoles'] ?? [];
                         </td>
                         <td class="text-end">
                             <?php if ($firstHost !== null): ?>
-                                <a href="<?= esc('//' . $firstHost, 'attr') ?>" class="btn btn-outline-green btn-sm" target="_blank" rel="noopener">Voir le site</a>
-                                <a href="<?= esc('//' . $firstHost . '/admin', 'attr') ?>" class="btn btn-outline-green btn-sm" target="_blank" rel="noopener">Administrer</a>
+                                <a href="<?= esc('https://' . $firstHost, 'attr') ?>" class="btn btn-outline-green btn-sm" target="_blank" rel="noopener">Voir le site</a>
+                                <a href="<?= esc('https://' . $firstHost . '/admin', 'attr') ?>" class="btn btn-outline-green btn-sm" target="_blank" rel="noopener">Administrer</a>
                             <?php endif ?>
                             <a href="<?= site_url('admin/sites/' . $site['id'] . '/edit') ?>" class="btn btn-primary-green btn-sm">Configurer</a>
                         </td>

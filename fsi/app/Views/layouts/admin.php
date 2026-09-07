@@ -9,80 +9,101 @@
     <link href="<?= site_asset_url('assets/vendor/bootstrap-icons/bootstrap-icons.css') ?>" rel="stylesheet">
     <link href="<?= site_asset_url('assets/css/style.css') ?>" rel="stylesheet">
 </head>
-<body class="bg-light admin-body">
+<?php $isCentralAdmin = service('adminAccess')->isCentralAdminHost(); ?>
+<body class="bg-light admin-body<?= $isCentralAdmin ? ' admin-central' : '' ?>">
     <a class="skip-link" href="#contenu">Aller au contenu principal</a>
     <?php
     $adminUser = auth()->user();
     $adminAccess = service('adminAccess');
     $siteResolver = service('siteResolver');
-    $isCentralAdmin = $adminAccess->isCentralAdminHost();
     $activeSite = $siteResolver->activeSite();
     $availableSites = $adminUser !== null && ! $isCentralAdmin && $adminAccess->isSuperAdmin($adminUser) ? $siteResolver->availableSitesForUser($adminUser) : [];
     $siteShortName = strtoupper(trim((string) ($activeSite->identifier ?? ''))) ?: 'UB';
-    $brandTitle = $isCentralAdmin ? 'Administration UB' : 'Administration ' . $siteShortName;
-    $brandSubtitle = $isCentralAdmin ? 'Plateforme multi-facultés' : 'Université du Burundi';
-    $navGroups = [
-        'Accueil' => [
-            'icon'  => 'bi-house-door',
-            'links' => [
-                ['home-content', 'Contenu', 'home.manage', 'bi-layout-text-window'],
-                ['home-hero-slides', 'Carrousel', 'home.manage', 'bi-images'],
-                ['home-highlights', 'Atouts', 'home.manage', 'bi-stars'],
-                ['site-stats', 'Statistiques', 'home.manage', 'bi-bar-chart'],
+
+    if ($isCentralAdmin) {
+        // Superadministration : pilotage de la plateforme uniquement.
+        // Le contenu éditorial se modifie dans le dossier de chaque faculté.
+        $brandTitle    = 'Superadministration';
+        $brandSubtitle = 'Pilotage des facultés';
+        $navGroups     = [
+            'Plateforme' => [
+                'icon'  => 'bi-diagram-2',
+                'links' => [
+                    ['sites', 'Facultés', 'sites.manage', 'bi-bank'],
+                    ['users', 'Comptes & accès', 'users.manage', 'bi-people'],
+                ],
             ],
-        ],
-        'Contenus' => [
-            'icon'  => 'bi-files',
-            'links' => [
-                ['posts', 'Actualités et événements', ['news.manage', 'events.manage'], 'bi-newspaper'],
-                ['programmes', 'Formations', 'programmes.manage', 'bi-mortarboard'],
-                ['pages', 'Pages', 'pages.manage', 'bi-file-earmark-text'],
-                ['content-blocks', 'Blocs de contenu', 'pages.manage', 'bi-ui-checks-grid'],
-                ['timeline-items', 'Historique', 'pages.manage', 'bi-clock-history'],
+        ];
+    } else {
+        $brandTitle    = 'Administration ' . $siteShortName;
+        $brandSubtitle = 'Université du Burundi';
+        $navGroups     = [
+            'Page d’accueil' => [
+                'icon'  => 'bi-house-door',
+                'links' => [
+                    ['home-content', 'Textes de l’accueil', 'home.manage', 'bi-layout-text-window'],
+                    ['home-hero-slides', 'Carrousel d’images', 'home.manage', 'bi-images'],
+                    ['home-highlights', 'Points forts', 'home.manage', 'bi-stars'],
+                    ['site-stats', 'Chiffres clés', 'home.manage', 'bi-bar-chart'],
+                ],
             ],
-        ],
-        'Faculté' => [
-            'icon'  => 'bi-bank',
-            'links' => [
-                ['faculty/profile', 'Présentation / Mot du doyen', 'pages.manage', 'bi-person-vcard'],
+            'Actualités' => [
+                'icon'  => 'bi-newspaper',
+                'links' => [
+                    ['posts', 'Actualités & événements', ['news.manage', 'events.manage'], 'bi-megaphone'],
+                ],
             ],
-        ],
-        'Messagerie' => [
-            'icon'  => 'bi-inbox',
-            'links' => [
-                ['messages', 'Messages de contact', 'messages.manage', 'bi-envelope-paper'],
+            'Formations' => [
+                'icon'  => 'bi-mortarboard',
+                'links' => [
+                    ['programmes', 'Programmes', 'programmes.manage', 'bi-journal-bookmark'],
+                ],
             ],
-        ],
-        'Sécurité' => [
-            'icon'  => 'bi-shield-lock',
-            'links' => [
-                ['users', 'Utilisateurs', 'users.manage', 'bi-people'],
+            'Recherche' => [
+                'icon'  => 'bi-microscope',
+                'links' => [
+                    ['laboratories', 'Laboratoires', 'research.manage', 'bi-diagram-3'],
+                    ['publications', 'Publications', 'research.manage', 'bi-journal-text'],
+                    ['research-projects', 'Projets', 'research.manage', 'bi-briefcase'],
+                ],
             ],
-        ],
-        'Recherche' => [
-            'icon'  => 'bi-search',
-            'links' => [
-                ['laboratories', 'Laboratoires', 'research.manage', 'bi-diagram-3'],
-                ['publications', 'Publications', 'research.manage', 'bi-journal-text'],
-                ['research-projects', 'Projets', 'research.manage', 'bi-briefcase'],
+            'Personnel & alumni' => [
+                'icon'  => 'bi-people',
+                'links' => [
+                    ['staff', 'Personnel', 'staff.manage', 'bi-person-badge'],
+                    ['alumni-profiles', 'Alumni', 'alumni.manage', 'bi-award'],
+                    ['testimonials', 'Témoignages', 'alumni.manage', 'bi-chat-quote'],
+                ],
             ],
-        ],
-        'Communauté' => [
-            'icon'  => 'bi-person-hearts',
-            'links' => [
-                ['staff', 'Personnel', 'staff.manage', 'bi-person-badge'],
-                ['alumni-profiles', 'Alumni', 'alumni.manage', 'bi-award'],
-                ['testimonials', 'Témoignages', 'alumni.manage', 'bi-chat-quote'],
+            'Pages du site' => [
+                'icon'  => 'bi-file-earmark-text',
+                'links' => [
+                    ['faculty/profile', 'Présentation & mot du doyen', 'pages.manage', 'bi-person-vcard'],
+                    ['pages', 'Pages institutionnelles', 'pages.manage', 'bi-file-earmark-ruled'],
+                    ['content-blocks', 'Blocs de page', 'pages.manage', 'bi-ui-checks-grid'],
+                    ['timeline-items', 'Historique', 'pages.manage', 'bi-clock-history'],
+                ],
             ],
-        ],
-        'Configuration' => [
-            'icon'  => 'bi-sliders',
-            'links' => [
-                ['settings', 'Paramètres', 'settings.manage', 'bi-gear'],
-                ['sites', 'Sites facultaires', 'sites.manage', 'bi-diagram-2'],
+            'Communication' => [
+                'icon'  => 'bi-inbox',
+                'links' => [
+                    ['messages', 'Messages de contact', 'messages.manage', 'bi-envelope-paper'],
+                ],
             ],
-        ],
-    ];
+            'Réglages' => [
+                'icon'  => 'bi-sliders',
+                'links' => [
+                    ['settings/global', 'Coordonnées & identité', 'settings.manage', 'bi-gear'],
+                ],
+            ],
+            'Comptes' => [
+                'icon'  => 'bi-shield-lock',
+                'links' => [
+                    ['users', 'Utilisateurs', 'users.manage', 'bi-people'],
+                ],
+            ],
+        ];
+    }
 
     $canUseLink = static function (?object $user, string|array $permissions): bool {
         foreach ((array) $permissions as $permission) {
@@ -160,7 +181,7 @@
                     <strong><?= esc($title ?? 'Administration') ?></strong>
                     <span class="admin-current-site">
                         <i class="bi <?= $isCentralAdmin ? 'bi-diagram-2' : 'bi-building' ?>" aria-hidden="true"></i>
-                        <?= esc($isCentralAdmin ? 'Administration centrale' : ($activeSite->name ?? 'Site courant')) ?>
+                        <?= esc($isCentralAdmin ? 'Superadministration' : ($activeSite->name ?? 'Site courant')) ?>
                     </span>
                 </div>
                 <div class="admin-topbar-actions">
@@ -198,5 +219,6 @@
 
     <script src="<?= site_asset_url('assets/vendor/bootstrap/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= site_asset_url('assets/js/admin.js') ?>"></script>
+    <?= $this->renderSection('scripts') ?>
 </body>
 </html>

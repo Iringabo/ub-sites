@@ -34,7 +34,8 @@ class Filters extends BaseFilters
         'invalidchars'  => InvalidChars::class,
         'secureheaders' => SecureHeaders::class,
         'cors'          => Cors::class,
-        'locale'        => LocaleFilter::class,
+        'locale'          => LocaleFilter::class,
+        'adminExitGuard'  => \App\Filters\AdminExitGuardFilter::class,
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
@@ -84,6 +85,8 @@ class Filters extends BaseFilters
             // 'invalidchars',
             // No-op unless this instance's .env sets app.centralAdminMode = true.
             'centralAdminOnly',
+            // Quitter /admin (visiter le site public) déconnecte.
+            'adminExitGuard',
         ],
         'after' => [
             // 'honeypot',

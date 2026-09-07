@@ -1236,6 +1236,88 @@ footer.site-footer hr {
 }
 
 /* =========================================================
+   Administration — actions groupées, réordonnancement, aperçu
+   ========================================================= */
+
+.admin-bulk-col,
+.admin-drag-col {
+    width: 2.6rem;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.admin-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    color: var(--muted, #6c757d);
+    padding: 0.25rem;
+    border-radius: 0.35rem;
+}
+
+.admin-drag-handle:hover {
+    background: rgba(13, 155, 73, 0.08);
+    color: var(--primary, #0D9B49);
+}
+
+.admin-resource-row.admin-drag-ghost td {
+    opacity: 0.4;
+    background: rgba(13, 155, 73, 0.06);
+}
+
+.admin-resource-row.admin-drag-ghost {
+    opacity: 0.6;
+}
+
+.admin-bulk-bar {
+    border: 1px dashed var(--border, #dee2e6);
+}
+
+.admin-preview-content {
+    white-space: pre-wrap;
+    max-height: 14rem;
+    overflow-y: auto;
+    line-height: 1.6;
+}
+
+.admin-resource-row td {
+    vertical-align: middle;
+}
+
+/* Palette de commandes (Ctrl+K) */
+.admin-palette {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: min(18vh, 12rem);
+}
+
+.admin-palette-inner {
+    width: min(560px, calc(100vw - 2rem));
+    background: #fff;
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+}
+
+.admin-palette-results {
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+.admin-palette-results button:hover,
+.admin-palette-results button:focus {
+    background: rgba(13, 155, 73, 0.08);
+    outline: none;
+}
+
+
+/* =========================================================
    Responsive breakpoints
    ========================================================= */
 

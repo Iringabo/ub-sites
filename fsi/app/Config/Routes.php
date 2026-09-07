@@ -57,8 +57,14 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
         $routes->post('(:num)', 'UserController::update/$1', ['as' => 'admin.users.update']);
         $routes->post('(:num)/activate', 'UserController::activate/$1', ['as' => 'admin.users.activate']);
         $routes->post('(:num)/deactivate', 'UserController::deactivate/$1', ['as' => 'admin.users.deactivate']);
+        $routes->post('(:num)/delete', 'UserController::delete/$1', ['as' => 'admin.users.delete']);
         $routes->get('(:num)/password', 'UserController::password/$1', ['as' => 'admin.users.password']);
         $routes->post('(:num)/password', 'UserController::resetPassword/$1', ['as' => 'admin.users.password.update']);
+    });
+
+    $routes->group('settings', ['filter' => 'permission:settings.manage'], static function (RouteCollection $routes): void {
+        $routes->get('global', 'SettingsController::index', ['as' => 'admin.settings.overview']);
+        $routes->post('global', 'SettingsController::update', ['as' => 'admin.settings.overview.update']);
     });
 
     $routes->group('posts', ['filter' => 'permission:news.manage,events.manage'], static function (RouteCollection $routes): void {
@@ -98,8 +104,11 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
             $routes->get('/', 'ResourceController::index/' . $segment);
             $routes->get('new', 'ResourceController::new/' . $segment);
             $routes->post('/', 'ResourceController::create/' . $segment);
+            $routes->post('bulk', 'ResourceController::bulk/' . $segment);
+            $routes->post('reorder', 'ResourceController::reorder/' . $segment);
             $routes->get('(:num)/edit', 'ResourceController::edit/' . $segment . '/$1');
             $routes->post('(:num)', 'ResourceController::update/' . $segment . '/$1');
+            $routes->post('(:num)/duplicate', 'ResourceController::duplicate/' . $segment . '/$1');
             $routes->post('(:num)/delete', 'ResourceController::delete/' . $segment . '/$1');
             $routes->post('(:num)/restore', 'ResourceController::restore/' . $segment . '/$1');
             $routes->post('(:num)/purge', 'ResourceController::purge/' . $segment . '/$1');

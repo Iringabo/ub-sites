@@ -358,6 +358,65 @@ class UserController extends BaseController
     }
 
     /**
+     * Supprime un compte utilisateur. Réservé aux superadministrateurs :
+     * toutes les associations (groupes, permissions, identités, sessions,
+     * jetons et rattachements aux sites) sont retirées avant la suppression
+     * douce du compte.
+     */
+    public function delete(int $id): RedirectResponse|ResponseInterface
+    {
+        if (! $this->currentActorIsSuperAdmin()) {
+            return redirect()->to('/admin/users')->with('error', 'Seul un superadministrateur peut supprimer un compte.');
+        }
+
+        if ($redirect = $this->guardUserManagement()) {
+            return $redirect;
+        }
+
+        $user = $this->findUser($id);
+
+        if ($user === null) {
+            return $this->notFound('Utilisateur introuvable.');
+        }
+
+        if ((int) $user->id === (int) auth()->id()) {
+            return redirect()->to('/admin/users/' . $id . '/edit')->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+
+        if ($this->userHasGroup($id, 'superadmin') && $this->userAdmin->countActiveSuperAdmins($id) <= 0) {
+            return redirect()->to('/admin/users/' . $id . '/edit')->with('error', 'Vous ne pouvez pas supprimer le dernier superadministrateur.');
+        }
+
+        $authConfig = config('Auth');
+        $this->db->transStart();
+
+        try {
+            $this->db->table($authConfig->tables['groups_users'])->where('user_id', $id)->delete();
+            $this->db->table($authConfig->tables['permissions_users'])->where('user_id', $id)->delete();
+
+            foreach (['identities', 'logins', 'token_logins', 'remember_tokens'] as $tableKey) {
+                $table = $authConfig->tables[$tableKey] ?? null;
+                if ($table !== null && $this->db->tableExists($table)) {
+                    $this->db->table($table)->where('user_id', $id)->delete();
+                }
+            }
+
+            if ($this->db->tableExists('user_sites')) {
+                $this->db->table('user_sites')->where('user_id', $id)->delete();
+            }
+
+            $this->users->delete($id);
+            $this->db->transComplete();
+        } catch (Throwable) {
+            $this->db->transRollback();
+
+            return redirect()->to('/admin/users')->with('error', 'La suppression du compte a échoué.');
+        }
+
+        return redirect()->to('/admin/users')->with('message', 'Le compte a été supprimé définitivement.');
+    }
+
+    /**
      * @return array{data: array{username: string, email: string, password: string, confirm: string, active: int}, groups: list<string>, permissions: list<string>, siteIds: list<int>, siteRoles: array<int, string>}
      */
     private function sanitizedInput(bool $withPassword): array

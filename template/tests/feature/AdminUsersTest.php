@@ -241,6 +241,67 @@ final class AdminUsersTest extends CIUnitTestCase
         $page->assertSee('Les deux mots de passe doivent correspondre.');
     }
 
+    public function testSuperAdminCanDeleteUserAndCleansAssociations(): void
+    {
+        $this->superAdminUser('delete-backup@example.test', 'deletebackup');
+        $actor = $this->superAdminUser('delete-actor@example.test', 'deleteactor');
+        $target = $this->directPermissionUser('delete-target@example.test', 'deletetarget', ['admin.access']);
+
+        $this->assertSame(1, $this->db->table('auth_identities')->where('user_id', $target->id)->countAllResults());
+        $this->assertSame(1, $this->db->table('user_sites')->where('user_id', $target->id)->countAllResults());
+
+        $this->actingAs($actor);
+
+        $response = $this->post('/admin/users/' . $target->id . '/delete', $this->withCsrf());
+        $response->assertRedirect();
+        $response->assertSessionHas('message');
+
+        $this->assertNull($this->userByEmail('delete-target@example.test'));
+
+        $row = $this->db->table('users')->where('id', $target->id)->get()->getRowArray();
+        $this->assertIsArray($row);
+        $this->assertNotNull($row['deleted_at']);
+
+        $this->assertSame(0, $this->db->table('auth_groups_users')->where('user_id', $target->id)->countAllResults());
+        $this->assertSame(0, $this->db->table('auth_permissions_users')->where('user_id', $target->id)->countAllResults());
+        $this->assertSame(0, $this->db->table('auth_identities')->where('user_id', $target->id)->countAllResults());
+        $this->assertSame(0, $this->db->table('user_sites')->where('user_id', $target->id)->countAllResults());
+    }
+
+    public function testNonSuperAdminCannotDeleteUser(): void
+    {
+        $this->superAdminUser('delete-guard->super@example.test', 'deleteguardsuper');
+        $actor = $this->managerUser('delete-guard-manager@example.test', 'deleteguardmanager');
+        $target = $this->directPermissionUser('delete-guard-target@example.test', 'deleteguardtarget', ['admin.access']);
+
+        $this->actingAs($actor);
+
+        $response = $this->post('/admin/users/' . $target->id . '/delete', $this->withCsrf());
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+
+        $this->assertNotNull($this->userByEmail('delete-guard-target@example.test'));
+
+        $row = $this->db->table('users')->where('id', $target->id)->get()->getRowArray();
+        $this->assertIsArray($row);
+        $this->assertNull($row['deleted_at']);
+    }
+
+    public function testSuperAdminCannotDeleteOwnAccount(): void
+    {
+        $this->superAdminUser('delete-self-backup@example.test', 'deleteselfbackup');
+        $actor = $this->superAdminUser('delete-self-actor@example.test', 'deleteselfactor');
+        $this->actingAs($actor);
+
+        $response = $this->post('/admin/users/' . $actor->id . '/delete', $this->withCsrf());
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+
+        $row = $this->db->table('users')->where('id', $actor->id)->get()->getRowArray();
+        $this->assertIsArray($row);
+        $this->assertNull($row['deleted_at']);
+    }
+
     private function superAdminUser(string $email = 'users-super@example.test', string $username = 'userssuper'): User
     {
         /** @var UserModel $users */

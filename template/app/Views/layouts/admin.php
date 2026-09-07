@@ -9,13 +9,13 @@
     <link href="<?= site_asset_url('assets/vendor/bootstrap-icons/bootstrap-icons.css') ?>" rel="stylesheet">
     <link href="<?= site_asset_url('assets/css/style.css') ?>" rel="stylesheet">
 </head>
+<?php $isCentralAdmin = service('adminAccess')->isCentralAdminHost(); ?>
 <body class="bg-light admin-body<?= $isCentralAdmin ? ' admin-central' : '' ?>">
     <a class="skip-link" href="#contenu">Aller au contenu principal</a>
     <?php
     $adminUser = auth()->user();
     $adminAccess = service('adminAccess');
     $siteResolver = service('siteResolver');
-    $isCentralAdmin = $adminAccess->isCentralAdminHost();
     $activeSite = $siteResolver->activeSite();
     $availableSites = $adminUser !== null && ! $isCentralAdmin && $adminAccess->isSuperAdmin($adminUser) ? $siteResolver->availableSitesForUser($adminUser) : [];
     $siteShortName = strtoupper(trim((string) ($activeSite->identifier ?? ''))) ?: 'UB';
@@ -93,8 +93,7 @@
             'Réglages' => [
                 'icon'  => 'bi-sliders',
                 'links' => [
-                    ['settings', 'Coordonnées & identité', 'settings.manage', 'bi-gear'],
-                    ['sites', 'Sites facultaires', 'sites.manage', 'bi-diagram-2'],
+                    ['settings/global', 'Coordonnées & identité', 'settings.manage', 'bi-gear'],
                 ],
             ],
             'Comptes' => [
@@ -220,5 +219,6 @@
 
     <script src="<?= site_asset_url('assets/vendor/bootstrap/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= site_asset_url('assets/js/admin.js') ?>"></script>
+    <?= $this->renderSection('scripts') ?>
 </body>
 </html>

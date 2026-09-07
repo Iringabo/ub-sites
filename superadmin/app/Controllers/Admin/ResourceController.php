@@ -23,6 +23,7 @@ use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\Model;
 use ReflectionClass;
+use RuntimeException;
 use Throwable;
 
 class ResourceController extends BaseController
@@ -32,6 +33,10 @@ class ResourceController extends BaseController
         $config = $this->resource($resource);
         if ($config === null) {
             return $this->notFound('Module d’administration introuvable.');
+        }
+
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
         }
 
         $model = $this->model($config);
@@ -85,6 +90,11 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
+
         if (($config['creationDisabled'] ?? false)) {
             return redirect()->to('/admin/' . $resource)->with('error', 'Ce module contient des pages prédéfinies. Modifiez les contenus existants.');
         }
@@ -114,6 +124,11 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
+
         if (($config['creationDisabled'] ?? false)) {
             return redirect()->to('/admin/' . $resource)->with('error', 'Ce module contient des pages prédéfinies. Modifiez les contenus existants.');
         }
@@ -131,6 +146,11 @@ class ResourceController extends BaseController
         if ($config === null) {
             return $this->notFound('Module d’administration introuvable.');
         }
+
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
 
         $item = $this->model($config)->find($id);
         if ($item === null) {
@@ -158,6 +178,11 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
+
         if ($this->model($config)->find($id) === null) {
             return $this->notFound('Contenu introuvable.');
         }
@@ -171,6 +196,11 @@ class ResourceController extends BaseController
         if ($config === null) {
             return $this->notFound('Module d’administration introuvable.');
         }
+
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
 
         if (($config['singleton'] ?? false) || ($config['deletionDisabled'] ?? false)) {
             return redirect()->to('/admin/' . $resource)->with('error', 'Ce contenu unique ne peut pas être supprimé.');
@@ -205,6 +235,11 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
+
         $model = $this->model($config);
         if (! $this->modelUsesSoftDeletes($model)) {
             return redirect()->to('/admin/' . $resource)->with('error', 'Ce module ne prend pas en charge la restauration.');
@@ -232,6 +267,11 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
+
         $model = $this->model($config);
         if (! $this->modelUsesSoftDeletes($model)) {
             return redirect()->to('/admin/' . $resource)->with('error', 'Ce module ne prend pas en charge la suppression définitive.');
@@ -256,6 +296,215 @@ class ResourceController extends BaseController
     }
 
     /**
+     * Actions groupées : archiver, supprimer ou publier/masquer plusieurs
+     * contenus d'un module en une seule opération.
+     */
+    public function bulk(string $resource): RedirectResponse|ResponseInterface
+    {
+        $config = $this->resource($resource);
+        if ($config === null) {
+            return $this->notFound('Module d’administration introuvable.');
+        }
+
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
+        $action = (string) $this->request->getPost('bulk_action');
+        $ids = $this->request->getPost('ids');
+        $ids = is_array($ids) ? array_values(array_map('intval', $ids)) : [];
+        $ids = array_filter($ids, static fn (int $id): bool => $id > 0);
+
+        if ($ids === []) {
+            return redirect()->to('/admin/' . $resource)->with('error', 'Aucun contenu n’a été sélectionné.');
+        }
+
+        $model = $this->model($config);
+        $supportsTrash = $this->modelUsesSoftDeletes($model);
+        $count = count($ids);
+
+        if ($action === 'publish' || $action === 'unpublish') {
+            if (($config['publishedField'] ?? null) === null) {
+                return redirect()->to('/admin/' . $resource)->with('error', 'Ce module ne prend pas en charge la publication groupée.');
+            }
+
+            $model->builder()->whereIn('id', $ids)->update([
+                (string) $config['publishedField'] => $action === 'publish' ? 1 : 0,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            $label = $action === 'publish' ? 'contenus publiés' : 'contenus masqués';
+
+            return redirect()->to('/admin/' . $resource)->with('message', $count . ' ' . $label . '.');
+        }
+
+        if ($action === 'delete') {
+            if (($config['singleton'] ?? false) || ($config['deletionDisabled'] ?? false)) {
+                return redirect()->to('/admin/' . $resource)->with('error', 'Ce module ne permet pas la suppression groupée.');
+            }
+
+            $model->skipValidation(true)->whereIn('id', $ids)->delete();
+            $model->skipValidation(false);
+
+            if (! $supportsTrash) {
+                foreach ($ids as $id) {
+                    $item = $model->withDeleted()->find($id);
+                    if ($item === null) {
+                        continue;
+                    }
+                    foreach ($config['fields'] as $field) {
+                        if (($field['type'] ?? null) === 'image') {
+                            service('mediaService')->deletePublicPath($this->itemData($item)[$field['name']] ?? null);
+                        }
+                    }
+                }
+            }
+
+            return redirect()->to('/admin/' . $resource)->with('message', $count . ' contenus ' . ($supportsTrash ? 'archivés' : 'supprimés') . '.');
+        }
+
+        return redirect()->to('/admin/' . $resource)->with('error', 'Action groupée inconnue.');
+    }
+
+    /**
+     * Duplique un contenu en copiant ses valeurs et en garantissant l’unicité
+     * des slug. Les traductions anglaises sont également recopiées.
+     */
+    public function duplicate(string $resource, int $id): RedirectResponse|ResponseInterface
+    {
+        $config = $this->resource($resource);
+        if ($config === null) {
+            return $this->notFound('Module d’administration introuvable.');
+        }
+
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
+        if (($config['singleton'] ?? false) || ($config['creationDisabled'] ?? false)) {
+            return redirect()->to('/admin/' . $resource)->with('error', 'Ce contenu ne peut pas être dupliqué.');
+        }
+
+        $model = $this->model($config);
+        $source = $model->find($id);
+        if ($source === null) {
+            return $this->notFound('Contenu introuvable.');
+        }
+
+        $data = $this->itemData($source);
+
+        foreach (['id', 'created_at', 'updated_at'] as $drop) {
+            unset($data[$drop]);
+        }
+        if (isset($data['deleted_at'])) {
+            $data['deleted_at'] = null;
+        }
+
+        if (($config['publishedField'] ?? null) !== null) {
+            $data[(string) $config['publishedField']] = 0;
+        }
+
+        foreach (($config['unique'] ?? []) as $field) {
+            if ($field === 'id' || ! isset($data[$field])) {
+                continue;
+            }
+            if ($field !== 'slug') {
+                $data[$field] = $data[$field] . '-copie';
+                continue;
+            }
+            $data[$field] = service('slugService')->unique($model, (string) $data[$field], null);
+        }
+
+        try {
+            $model->skipValidation(true);
+            $newId = $model->insert($data, true);
+            $model->skipValidation(false);
+        } catch (Throwable) {
+            $model->skipValidation(false);
+
+            return redirect()->to('/admin/' . $resource)->with('error', 'La duplication a échoué.');
+        }
+
+        if ($newId === false) {
+            $model->skipValidation(false);
+
+            return redirect()->to('/admin/' . $resource)->with('error', 'La duplication a échoué.');
+        }
+
+        $newId = (int) $newId;
+
+        $translationName = $this->translationResourceType($resource, $config);
+        $translations = service('contentTranslationService')->values($translationName, $id, 'en');
+
+        if ($translations !== []) {
+            service('contentTranslationService')->save($translationName, $newId, 'en', $translations);
+        }
+        service('contentTranslationService')->reset();
+
+        return redirect()
+            ->to('/admin/' . $resource . '/' . $newId . '/edit')
+            ->with('message', 'Le contenu a été dupliqué. Vérifiez et publiez la copie.');
+    }
+
+    /**
+     * Réordonne les contenus d'un module (drag & drop). Endpoint AJAX qui met
+     * à jour display_order d'après la séquence reçue.
+     */
+    public function reorder(string $resource): ResponseInterface
+    {
+        $config = $this->resource($resource);
+        if ($config === null) {
+            return $this->response->setStatusCode(404);
+        }
+
+        if ($redirect = $this->centralContentGuard($resource)) {
+            return $redirect;
+        }
+
+        $ordered = $this->request->getPost('ids');
+        if (is_string($ordered)) {
+            $ordered = array_filter(array_map('intval', explode(',', $ordered)));
+        }
+        if (! is_array($ordered)) {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false]);
+        }
+
+        $ordered = array_values(array_map('intval', $ordered));
+
+        if (($config['orderBy'] ?? null) !== null) {
+            $firstOrderField = array_key_first($config['orderBy']);
+            $orderField = $firstOrderField === 'display_order' ? 'display_order' : $this->reorderSortField($config);
+        } else {
+            $orderField = $this->reorderSortField($config);
+        }
+
+        if ($orderField === null) {
+            return $this->response->setStatusCode(400)->setJSON(['ok' => false]);
+        }
+
+        $model = $this->model($config);
+
+        foreach ($ordered as $index => $id) {
+            if ($id <= 0) {
+                continue;
+            }
+            $model->builder()->where('id', $id)->update([
+                $orderField => $index + 1,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    private function reorderSortField(array $config): ?string
+    {
+        return in_array('display_order', array_map(
+            static fn (array $f): string => (string) ($f['name'] ?? ''),
+            $config['fields'] ?? [],
+        ), true) ? 'display_order' : null;
+    }
+
+    /**
      * @param array<string, mixed> $config
      */
     private function save(string $resource, array $config, ?int $id = null): RedirectResponse|ResponseInterface
@@ -270,6 +519,13 @@ class ResourceController extends BaseController
         $translations = $this->translationsFromRequest($resource, $config, $translationFields, $data);
         $errors = $this->validateResourceData($config, $model, $data, $raw, $id);
         $errors = array_merge($errors, $this->validateTranslations($translationFields, $translations));
+
+        // Création d'une faculté : compte administrateur initial facultatif.
+        $firstAdmin = null;
+        if ($resource === 'sites' && $id === null) {
+            [$firstAdmin, $firstAdminErrors] = $this->firstAdminFromRequest();
+            $errors = array_merge($errors, $firstAdminErrors);
+        }
         if ($resource === 'pages') {
             $errors = array_merge($errors, $this->validatePageContentRequest((string) ($data['key'] ?? ''), 'translation_en_page_content', false));
         }
@@ -386,13 +642,116 @@ class ResourceController extends BaseController
             service('settingsService')->reset();
         }
 
+        // Faculté créée avec un administrateur initial : création du compte
+        // et affectation en une seule étape pour le superadministrateur.
+        $successMessage = $id === null ? 'Le contenu a été créé.' : 'Le contenu a été mis à jour.';
+
+        if ($firstAdmin !== null && $resource === 'sites') {
+            try {
+                $this->createFirstFacultyAdmin((int) $saved, $firstAdmin);
+                $successMessage = 'La faculté a été créée avec son administrateur.';
+            } catch (Throwable) {
+                return redirect()
+                    ->to('/admin/sites/' . (int) $saved . '/edit')
+                    ->with('warning', 'La faculté a été créée, mais la création de son administrateur a échoué. Créez son compte depuis « Comptes & accès ».');
+            }
+        }
+
         $targetId = $id ?? (int) $saved;
         service('contentTranslationService')->save($this->translationResourceType($resource, $config), $targetId, 'en', $translations);
         service('contentTranslationService')->reset();
 
         return redirect()
             ->to('/admin/' . $resource . '/' . $targetId . '/edit')
-            ->with('message', $id === null ? 'Le contenu a été créé.' : 'Le contenu a été mis à jour.');
+            ->with('message', $successMessage);
+    }
+
+    /**
+     * Compte administrateur initial facultatif, saisi dans le formulaire de
+     * création d'une faculté.
+     *
+     * @return array{0: array{email: string, username: string, password: string}|null, 1: array<string, string>}
+     */
+    private function firstAdminFromRequest(): array
+    {
+        $email    = trim((string) $this->request->getPost('first_admin_email'));
+        $username = trim((string) $this->request->getPost('first_admin_username'));
+        $password = (string) $this->request->getPost('first_admin_password');
+        $confirm  = (string) $this->request->getPost('first_admin_confirm');
+
+        if ($email === '' && $username === '' && $password === '' && $confirm === '') {
+            return [null, []];
+        }
+
+        $errors = [];
+
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors['first_admin_email'] = 'Adresse électronique de l’administrateur invalide.';
+        } elseif ($this->emailExists($email)) {
+            $errors['first_admin_email'] = 'Cette adresse électronique est déjà utilisée.';
+        }
+
+        if (preg_match('/^[a-zA-Z0-9.]{3,30}$/', $username) !== 1) {
+            $errors['first_admin_username'] = 'Identifiant invalide (3 à 30 caractères : lettres, chiffres, points).';
+        } elseif ($this->usernameExists($username)) {
+            $errors['first_admin_username'] = 'Cet identifiant est déjà utilisé.';
+        }
+
+        if (strlen($password) < 12) {
+            $errors['first_admin_password'] = 'Le mot de passe doit contenir au moins 12 caractères.';
+        } elseif ($password !== $confirm) {
+            $errors['first_admin_confirm'] = 'Les deux mots de passe ne correspondent pas.';
+        }
+
+        if ($errors !== []) {
+            return [null, $errors];
+        }
+
+        return [['email' => $email, 'username' => $username, 'password' => $password], []];
+    }
+
+    private function emailExists(string $email): bool
+    {
+        $tables = config('Auth')->tables;
+
+        return db_connect()->table($tables['identities'])
+            ->where('type', 'email_password')
+            ->where('LOWER(secret)', strtolower($email))
+            ->countAllResults() > 0;
+    }
+
+    private function usernameExists(string $username): bool
+    {
+        return db_connect()->table(config('Auth')->tables['users'])
+            ->where('username', $username)
+            ->countAllResults() > 0;
+    }
+
+    /**
+     * @param array{email: string, username: string, password: string} $payload
+     */
+    private function createFirstFacultyAdmin(int $siteId, array $payload): int
+    {
+        $users = model(\CodeIgniter\Shield\Models\UserModel::class);
+
+        $users->save(new \CodeIgniter\Shield\Entities\User([
+            'username' => $payload['username'],
+            'email'    => $payload['email'],
+            'password' => $payload['password'],
+            'active'   => 1,
+        ]));
+
+        $userId = (int) $users->getInsertID();
+        $user   = $users->findById($userId);
+
+        if (! $user instanceof \CodeIgniter\Shield\Entities\User) {
+            throw new RuntimeException('Compte administrateur introuvable après création.');
+        }
+
+        $user->activate();
+        service('facultySiteProvisioning')->assignFacultyAdmin($siteId, $userId);
+
+        return $userId;
     }
 
     /**
@@ -821,6 +1180,23 @@ class ResourceController extends BaseController
         }
 
         return (array) $item;
+    }
+
+    /**
+     * La superadministration pilote la plateforme (facultés, comptes) mais
+     * ne modifie pas le contenu éditorial : celui-ci appartient au dossier
+     * de chaque faculté. Seul le module « sites » est accessible ici.
+     */
+    private function centralContentGuard(string $resource): ?RedirectResponse
+    {
+        if ($resource === 'sites' || ! service('adminAccess')->isCentralAdminHost($this->request)) {
+            return null;
+        }
+
+        return redirect()->to('/admin')->with(
+            'error',
+            'Le contenu éditorial se modifie depuis l’administration de la faculté concernée, pas depuis la superadministration.',
+        );
     }
 
     /**
@@ -1300,6 +1676,7 @@ class ResourceController extends BaseController
                 'defaults'       => ['singleton_key' => 1],
                 'search'         => ['hero_title', 'hero_text', 'about_title', 'research_title', 'programmes_title', 'programmes_text', 'posts_title', 'posts_text'],
                 'orderBy'        => ['id' => 'ASC'],
+                'previewField'   => ['name' => 'hero_text', 'label' => 'Texte du héros'],
                 'sections'       => [
                     ['title' => 'Héros', 'fields' => ['hero_badge', 'hero_title', 'hero_text', 'hero_primary_label', 'hero_primary_url', 'hero_secondary_label', 'hero_secondary_url']],
                     ['title' => 'Présentation', 'fields' => ['about_label', 'about_title', 'about_body', 'about_button_label', 'about_button_url']],
@@ -1361,6 +1738,7 @@ class ResourceController extends BaseController
                 'publishedField' => 'is_published',
                 'search'         => ['title', 'description'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'description', 'label' => 'Description'],
                 'fields'         => $this->orderedPublishedFields([
                     ['name' => 'icon', 'label' => 'Icône', 'type' => 'icon', 'required' => true, 'options' => $this->iconOptions(), 'list' => true],
                     ['name' => 'title', 'label' => 'Titre', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
@@ -1376,6 +1754,7 @@ class ResourceController extends BaseController
                 'unique'         => ['slug'],
                 'search'         => ['title', 'summary', 'description'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'summary', 'label' => 'Résumé'],
                 'fields'         => [
                     ['name' => 'level', 'label' => 'Niveau', 'type' => 'select', 'required' => true, 'options' => ['licence' => 'Licence', 'master' => 'Master', 'doctorat' => 'Doctorat'], 'list' => true],
                     ['name' => 'title', 'label' => 'Titre', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
@@ -1397,6 +1776,7 @@ class ResourceController extends BaseController
                 'unique'         => ['slug'],
                 'search'         => ['name', 'grade', 'specialty', 'role', 'email'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'biography', 'label' => 'Biographie'],
                 'fields'         => [
                     ['name' => 'category', 'label' => 'Catégorie', 'type' => 'select', 'required' => true, 'options' => ['enseignant' => 'Enseignant-chercheur', 'administratif' => 'Personnel administratif'], 'list' => true],
                     ['name' => 'name', 'label' => 'Nom', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
@@ -1419,6 +1799,7 @@ class ResourceController extends BaseController
                 'unique'         => ['abbreviation', 'slug'],
                 'search'         => ['abbreviation', 'name', 'description'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'description', 'label' => 'Description'],
                 'fields'         => [
                     ['name' => 'abbreviation', 'label' => 'Sigle', 'type' => 'text', 'required' => true, 'max' => 40, 'list' => true],
                     ['name' => 'name', 'label' => 'Nom', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
@@ -1456,6 +1837,7 @@ class ResourceController extends BaseController
                 'unique'         => ['code'],
                 'search'         => ['code', 'title', 'description', 'funder'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'description', 'label' => 'Description'],
                 'fields'         => [
                     ['name' => 'code', 'label' => 'Code', 'type' => 'text', 'required' => true, 'max' => 80, 'list' => true],
                     ['name' => 'title', 'label' => 'Titre', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
@@ -1475,6 +1857,7 @@ class ResourceController extends BaseController
                 'publishedField' => 'is_published',
                 'search'         => ['title', 'description'],
                 'orderBy'        => ['display_order' => 'ASC', 'year' => 'ASC'],
+                'previewField'   => ['name' => 'description', 'label' => 'Description'],
                 'fields'         => [
                     ['name' => 'year', 'label' => 'Année', 'type' => 'integer', 'required' => true, 'list' => true],
                     ['name' => 'title', 'label' => 'Titre', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
@@ -1491,6 +1874,7 @@ class ResourceController extends BaseController
                 'unique'         => ['slug'],
                 'search'         => ['name', 'role', 'organization', 'biography'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'biography', 'label' => 'Biographie'],
                 'fields'         => [
                     ['name' => 'name', 'label' => 'Nom', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
                     ['name' => 'slug', 'label' => 'Slug', 'type' => 'slug', 'source' => 'name', 'required' => true, 'max' => 180, 'list' => true],
@@ -1510,6 +1894,7 @@ class ResourceController extends BaseController
                 'publishedField' => 'is_published',
                 'search'         => ['person_name', 'promotion', 'quote'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'quote', 'label' => 'Témoignage'],
                 'fields'         => [
                     ['name' => 'alumni_profile_id', 'label' => 'Profil alumni lié', 'type' => 'relation', 'model' => AlumniProfileModel::class, 'labelField' => 'name', 'nullable' => true],
                     ['name' => 'person_name', 'label' => 'Nom affiché', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
@@ -1632,6 +2017,7 @@ class ResourceController extends BaseController
                 'publishedField' => 'is_published',
                 'search'         => ['page_key', 'type', 'title', 'content'],
                 'orderBy'        => ['page_key' => 'ASC', 'display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'content', 'label' => 'Contenu'],
                 'sections'       => [
                     ['title' => 'Placement', 'fields' => ['page_key', 'type', 'display_order', 'is_published']],
                     ['title' => 'Contenu', 'fields' => ['title', 'content', 'settings']],

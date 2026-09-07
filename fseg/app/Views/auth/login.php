@@ -31,7 +31,7 @@
 
                 <div class="mb-3">
                     <label for="email" class="form-label fw-semibold small">Adresse électronique</label>
-                    <input type="email" class="form-control" id="email" name="email" autocomplete="email" value="<?= old('email') ?>" required>
+                    <input type="email" class="form-control" id="email" name="email" autocomplete="email" value="<?= esc(old('email') ?? '', 'attr') ?>" required>
                 </div>
 
                 <div class="mb-3">

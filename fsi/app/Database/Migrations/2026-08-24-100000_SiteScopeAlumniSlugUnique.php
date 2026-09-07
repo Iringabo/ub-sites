@@ -45,13 +45,31 @@ class SiteScopeAlumniSlugUnique extends Migration
 
         $this->dropIndexByName('alumni_profiles', 'alumni_profiles_site_slug_unique');
 
-        if (! $this->indexExists('alumni_profiles', 'alumni_profiles_slug_unique')) {
-            $this->db->query(
-                'ALTER TABLE ' . $this->tableSql('alumni_profiles')
-                . ' ADD UNIQUE KEY ' . $this->db->escapeIdentifiers('alumni_profiles_slug_unique')
-                . ' (' . $this->db->escapeIdentifiers('slug') . ')',
-            );
+        if ($this->indexExists('alumni_profiles', 'alumni_profiles_slug_unique')) {
+            return;
         }
+
+        // Ne restaurer l'unicité globale que si elle est satisfiable : en
+        // situation de rollback, la table peut contenir des slugs identiques
+        // répartis sur plusieurs sites (état légal du schéma courant), ce qui
+        // ferait échouer la recréation de l'ancien index unique.
+        $duplicates = $this->db->query(
+            'SELECT ' . $this->db->escapeIdentifiers('slug')
+            . ' FROM ' . $this->tableSql('alumni_profiles')
+            . ' GROUP BY ' . $this->db->escapeIdentifiers('slug')
+            . ' HAVING COUNT(*) > 1'
+            . ' LIMIT 1',
+        )->getNumRows();
+
+        if ($duplicates > 0) {
+            return;
+        }
+
+        $this->db->query(
+            'ALTER TABLE ' . $this->tableSql('alumni_profiles')
+            . ' ADD UNIQUE KEY ' . $this->db->escapeIdentifiers('alumni_profiles_slug_unique')
+            . ' (' . $this->db->escapeIdentifiers('slug') . ')',
+        );
     }
 
     private function dropIndexByName(string $table, string $indexName): void

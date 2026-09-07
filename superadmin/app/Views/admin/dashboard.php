@@ -6,8 +6,31 @@ $newsCounts = $dashboard['newsStatusCounts'] ?? [];
 $events = $dashboard['upcomingEvents'] ?? [];
 $recentChanges = $dashboard['recentChanges'] ?? [];
 $messageCounts = $dashboard['messageStatusCounts'] ?? [];
+$onboarding = $onboarding ?? null;
 $currentUser = auth()->user();
 ?>
+
+<?php if (is_array($onboarding) && ($onboarding['done'] ?? 0) < ($onboarding['total'] ?? 0) && ($onboarding['total'] ?? 0) > 0): ?>
+    <div class="card-faculte mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h2 class="h5 mb-0"><i class="bi bi-list-check me-2"></i>Mettre votre site en ligne</h2>
+            <span class="badge text-bg-success"><?= (int) $onboarding['done'] ?> / <?= (int) $onboarding['total'] ?> étapes</span>
+        </div>
+        <div class="progress mb-3" style="height: 6px;" role="progressbar" aria-label="Progression de configuration">
+            <div class="progress-bar bg-success" style="width: <?= (int) round(100 * $onboarding['done'] / max(1, $onboarding['total'])) ?>%"></div>
+        </div>
+        <div class="row g-2">
+            <?php foreach ($onboarding['items'] as $item): ?>
+                <div class="col-md-6">
+                    <a href="<?= esc($item['url'], 'attr') ?>" class="d-flex align-items-center gap-2 text-decoration-none link-dark">
+                        <i class="bi bi-<?= $item['done'] ? 'check-circle-fill text-success' : 'circle text-secondary' ?>"></i>
+                        <span class="<?= $item['done'] ? 'text-decoration-line-through text-muted' : '' ?>"><?= esc($item['label']) ?></span>
+                    </a>
+                </div>
+            <?php endforeach ?>
+        </div>
+    </div>
+<?php endif ?>
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>

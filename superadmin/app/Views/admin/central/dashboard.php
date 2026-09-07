@@ -8,7 +8,7 @@ $siteRoles = $dashboard['siteRoles'] ?? [];
 
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
-        <span class="section-label">Administration centrale</span>
+        <span class="section-label">Superadministration</span>
         <h1 class="h3 mb-1">Université du Burundi</h1>
         <p class="text-muted mb-0">Pilotage des sites facultaires, des domaines et des accès.</p>
     </div>
@@ -100,8 +100,8 @@ $siteRoles = $dashboard['siteRoles'] ?? [];
                         </td>
                         <td class="text-end">
                             <?php if ($firstHost !== null): ?>
-                                <a href="<?= esc('//' . $firstHost, 'attr') ?>" class="btn btn-outline-green btn-sm" target="_blank" rel="noopener">Voir le site</a>
-                                <a href="<?= esc('//' . $firstHost . '/admin', 'attr') ?>" class="btn btn-outline-green btn-sm" target="_blank" rel="noopener">Administrer</a>
+                                <a href="<?= esc('https://' . $firstHost, 'attr') ?>" class="btn btn-outline-green btn-sm" target="_blank" rel="noopener">Voir le site</a>
+                                <a href="<?= esc('https://' . $firstHost . '/admin', 'attr') ?>" class="btn btn-outline-green btn-sm" target="_blank" rel="noopener">Administrer</a>
                             <?php endif ?>
                             <a href="<?= site_url('admin/sites/' . $site['id'] . '/edit') ?>" class="btn btn-primary-green btn-sm">Configurer</a>
                         </td>

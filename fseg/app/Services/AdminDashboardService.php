@@ -17,6 +17,68 @@ use Throwable;
 class AdminDashboardService
 {
     /**
+     * Liste de mise en route d'un site fraîchement provisionné : détecte les
+     * contenus de départ (« à remplacer / exemple ») restants et propose les
+     * écrans à compléter, pour une prise en main intuitive.
+     *
+     * @return array{items: list<array{label: string, url: string, done: bool}>, done: int, total: int}
+     */
+    public function onboarding(): array
+    {
+        $items   = [];
+        $home    = model(HomeContentModel::class, false)->forSite()->first();
+        $homeRaw = $home === null ? '' : strtolower(($home->hero_title ?? '') . ' ' . ($home->about_body ?? '') . ' ' . ($home->about_title ?? ''));
+        $items[] = [
+            'label' => 'Personnaliser les textes de l’accueil',
+            'url'   => site_url('admin/home-content'),
+            'done'  => $home !== null && ! str_contains($homeRaw, 'bienvenue sur le site de') && ! str_contains($homeRaw, 'à remplacer'),
+        ];
+
+        $slidesLeft = model(HomeHeroSlideModel::class, false)->forSite()->like('alt_text', 'remplacer')->countAllResults();
+        $items[] = [
+            'label' => 'Remplacer les images du carrousel',
+            'url'   => site_url('admin/home-hero-slides'),
+            'done'  => $slidesLeft === 0,
+        ];
+
+        $settings = service('settingsService')->all();
+        $contactDone = isset($settings['contact.email'])
+            && $settings['contact.email'] !== 'contact@example.test'
+            && ! str_contains(strtolower((string) ($settings['contact.address'] ?? '')), 'compléter');
+        $items[] = [
+            'label' => 'Renseigner les coordonnées de la faculté',
+            'url'   => site_url('admin/settings'),
+            'done'  => $contactDone,
+        ];
+
+        $programmesLeft = model(ProgrammeModel::class, false)->forSite()->like('title', 'exemple à modifier')->countAllResults();
+        $items[] = [
+            'label' => 'Créer vos programmes de formation',
+            'url'   => site_url('admin/programmes'),
+            'done'  => $programmesLeft === 0,
+        ];
+
+        $staffLeft = model(StaffModel::class, false)->forSite()->like('name', 'exemple')->countAllResults();
+        $items[] = [
+            'label' => 'Présenter votre personnel',
+            'url'   => site_url('admin/staff'),
+            'done'  => $staffLeft === 0,
+        ];
+
+        $realPosts = model(PostModel::class, false)->forSite()->where('status', 'published')->notLike('title', 'exemple')->countAllResults();
+        $items[] = [
+            'label' => 'Publier une première actualité',
+            'url'   => site_url('admin/posts'),
+            'done'  => $realPosts > 0,
+        ];
+
+        $done  = count(array_filter($items, static fn (array $item): bool => $item['done']));
+        $total = count($items);
+
+        return ['items' => $items, 'done' => $done, 'total' => $total];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function data(): array

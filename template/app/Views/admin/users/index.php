@@ -134,6 +134,12 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
                                         </form>
                                     <?php endif ?>
                                 <?php endif ?>
+                                <?php if ($currentActorIsSuperAdmin && (int) $user->id !== (int) ($currentUser?->id ?? 0)): ?>
+                                    <form method="post" action="<?= site_url('admin/users/' . $user->id . '/delete') ?>" data-confirm="Voulez-vous vraiment supprimer définitivement ce compte ? Cette action est irréversible.">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">Supprimer</button>
+                                    </form>
+                                <?php endif ?>
                             </div>
                         </td>
                     </tr>

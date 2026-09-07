@@ -10,7 +10,7 @@ class DashboardController extends BaseController
     {
         if (service('adminAccess')->isCentralAdminHost($this->request)) {
             return view('admin/central/dashboard', [
-                'title'       => 'Administration centrale | Université du Burundi',
+                'title'       => 'Superadministration | Université du Burundi',
                 'activeAdmin' => 'dashboard',
                 'dashboard'   => service('adminDashboardService')->centralData(),
             ]);
@@ -20,6 +20,7 @@ class DashboardController extends BaseController
             'title'      => 'Tableau de bord | Administration',
             'activeAdmin'=> 'dashboard',
             'dashboard'  => service('adminDashboardService')->data(),
+            'onboarding' => service('adminDashboardService')->onboarding(),
         ]);
     }
 }
