@@ -36,14 +36,57 @@ class App extends BaseConfig
         parent::__construct();
 
         $hostnames = (string) env('app.allowedHostnames', '');
-        if ($hostnames === '') {
+        if ($hostnames !== '') {
+            $this->allowedHostnames = array_values(array_unique(array_filter(
+                array_map('trim', explode(',', $hostnames)),
+                static fn (string $hostname): bool => $hostname !== '',
+            )));
+        }
+
+        $this->loadProxyIPsFromEnv();
+    }
+
+    /**
+     * `app.proxyIPs` : liste d’IP séparée par des virgules (associées à
+     * X-Forwarded-For), ou objet JSON `{"10.0.0.1":"X-Forwarded-For"}`.
+     */
+    private function loadProxyIPsFromEnv(): void
+    {
+        $raw = trim((string) env('app.proxyIPs', ''));
+        if ($raw === '') {
             return;
         }
 
-        $this->allowedHostnames = array_values(array_unique(array_filter(
-            array_map('trim', explode(',', $hostnames)),
-            static fn (string $hostname): bool => $hostname !== '',
-        )));
+        if (str_starts_with($raw, '{')) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded) && $decoded !== []) {
+                $mapped = [];
+                foreach ($decoded as $ip => $header) {
+                    $ip = trim((string) $ip);
+                    $header = trim((string) $header);
+                    if ($ip !== '' && $header !== '') {
+                        $mapped[$ip] = $header;
+                    }
+                }
+                if ($mapped !== []) {
+                    $this->proxyIPs = $mapped;
+                }
+            }
+
+            return;
+        }
+
+        $mapped = [];
+        foreach (explode(',', $raw) as $ip) {
+            $ip = trim($ip);
+            if ($ip !== '') {
+                $mapped[$ip] = 'X-Forwarded-For';
+            }
+        }
+
+        if ($mapped !== []) {
+            $this->proxyIPs = $mapped;
+        }
     }
 
     /**

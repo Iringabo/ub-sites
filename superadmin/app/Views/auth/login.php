@@ -3,13 +3,22 @@
 <?= $this->section('title') ?>Connexion | Administration<?= $this->endSection() ?>
 
 <?= $this->section('main') ?>
+<?php
+$isCentral = service('adminAccess')->isCentralAdminInstance();
+$instanceLabel = $isCentral
+    ? 'Superadministration'
+    : trim((string) (service('siteResolver')->activeSite()->name ?? ''));
+if ($instanceLabel === '') {
+    $instanceLabel = 'Administration facultaire';
+}
+?>
 <div class="row justify-content-center">
     <div class="col-md-7 col-lg-5">
         <div class="card-faculte bg-white">
             <div class="text-center mb-4">
                 <img src="<?= base_url('assets/images/logo-placeholder.png') ?>" alt="Logo Université du Burundi" width="72" height="72" class="mb-3">
                 <h1 class="h4 mb-1">Connexion à l’administration</h1>
-                <p class="text-muted small mb-0">Plateforme des facultés de l’Université du Burundi</p>
+                <p class="text-muted small mb-0"><?= esc($instanceLabel) ?></p>
             </div>
 
             <?php if (session('error') !== null): ?>

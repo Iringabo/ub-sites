@@ -85,7 +85,7 @@ class Filters extends BaseFilters
             // 'invalidchars',
             // No-op unless this instance's .env sets app.centralAdminMode = true.
             'centralAdminOnly',
-            // Quitter /admin (visiter le site public) déconnecte.
+            // Quitter /admin (visiter le site public) ne déconnecte plus.
             'adminExitGuard',
         ],
         'after' => [

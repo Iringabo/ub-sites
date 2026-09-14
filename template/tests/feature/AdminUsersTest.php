@@ -1,6 +1,7 @@
 <?php
 
 use App\Database\Seeds\TemplateStarterSeeder;
+use App\Models\SiteModel;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
@@ -111,6 +112,79 @@ final class AdminUsersTest extends CIUnitTestCase
         $reloaded = $this->userByEmail('last-super@example.test');
         $this->assertInstanceOf(User::class, $reloaded);
         $this->assertTrue((bool) $reloaded->active);
+    }
+
+    public function testFacultyAdminCanCreateAdminOnOwnSite(): void
+    {
+        $actor = $this->facultyAdminUser('faculty-admin-actor@example.test', 'facultyadminactor');
+        $this->actingAs($actor);
+
+        $form = $this->get('/admin/users/new');
+        $form->assertOK();
+        $form->assertSee('Administrateur');
+        $form->assertSee('Éditeur');
+        $form->assertDontSee('Superadministrateur');
+
+        $create = $this->post('/admin/users', $this->withCsrf([
+            'username'   => 'nouveauadminfac',
+            'email'      => 'nouveau-admin-fac@example.test',
+            'password'   => 'MotDePassePhase5!2026',
+            'confirm'    => 'MotDePassePhase5!2026',
+            'active'     => '1',
+            'groups'     => ['admin'],
+            'site_roles' => [1 => 'site_admin'],
+        ]));
+
+        $create->assertRedirect();
+        $created = $this->userByEmail('nouveau-admin-fac@example.test');
+        $this->assertInstanceOf(User::class, $created);
+        $this->assertSame(['admin'], $created->getGroups());
+        $this->assertSame(1, $this->db->table('user_sites')
+            ->where('user_id', $created->id)
+            ->where('site_id', 1)
+            ->where('role', 'site_admin')
+            ->countAllResults());
+        $this->assertSame(0, $this->db->table('auth_groups_users')
+            ->where('user_id', $created->id)
+            ->where('group', 'superadmin')
+            ->countAllResults());
+    }
+
+    public function testFacultyAdminSaveKeepsAssignmentsOnOtherSites(): void
+    {
+        $secondSiteId = $this->insertSecondarySite();
+        $actor = $this->facultyAdminUser('faculty-merge-actor@example.test', 'facultymergeactor');
+        $target = $this->facultyAdminUser('two-site-editor@example.test', 'twositeeditor', 'editor', 'editor');
+        service('siteResolver')->upsertUserSiteRole((int) $target->id, $secondSiteId, 'editor');
+
+        $this->assertSame(2, $this->db->table('user_sites')->where('user_id', $target->id)->countAllResults());
+
+        $this->actingAs($actor);
+        $this->post('/admin/users/' . $target->id, $this->withCsrf([
+            'username'   => 'twositeeditor',
+            'email'      => 'two-site-editor@example.test',
+            'active'     => '1',
+            'groups'     => ['editor'],
+            'site_roles' => [1 => 'editor'],
+        ]))->assertRedirect();
+
+        $this->assertSame(1, $this->db->table('user_sites')
+            ->where('user_id', $target->id)
+            ->where('site_id', 1)
+            ->where('role', 'editor')
+            ->countAllResults());
+        $this->assertSame(1, $this->db->table('user_sites')
+            ->where('user_id', $target->id)
+            ->where('site_id', $secondSiteId)
+            ->where('role', 'editor')
+            ->countAllResults());
+    }
+
+    public function testEditorCannotOpenUsersModule(): void
+    {
+        $this->actingAs($this->facultyAdminUser('editor-users-guard@example.test', 'editorusersguard', 'editor', 'editor'));
+
+        $this->get('/admin/users')->assertRedirectTo(rtrim(base_url(), '/'));
     }
 
     public function testUserManagerCannotAssignSuperAdminGroup(): void
@@ -328,6 +402,38 @@ final class AdminUsersTest extends CIUnitTestCase
         return $created;
     }
 
+    private function facultyAdminUser(
+        string $email,
+        string $username,
+        string $group = 'admin',
+        string $siteRole = 'site_admin',
+    ): User {
+        /** @var UserModel $users */
+        $users = model(UserModel::class);
+
+        $existing = $users->findByCredentials(['email' => $email]);
+        if ($existing instanceof User) {
+            return $existing;
+        }
+
+        $user = new User([
+            'username' => $username,
+            'email'    => $email,
+            'password' => 'MotDePassePhase5!2026',
+            'active'   => 1,
+        ]);
+
+        $users->save($user);
+        /** @var User $created */
+        $created = $users->findById($users->getInsertID());
+        $created->removeGroup('editor', 'admin', 'superadmin');
+        $created->addGroup($group);
+        $created->activate();
+        service('siteResolver')->syncUserSites((int) $created->id, [1], $siteRole);
+
+        return $created;
+    }
+
     private function managerUser(string $email = 'users-manager@example.test', string $username = 'usersmanager'): User
     {
         /** @var UserModel $users */
@@ -409,6 +515,33 @@ final class AdminUsersTest extends CIUnitTestCase
         }
 
         $this->db->enableForeignKeyChecks();
+    }
+
+    private function insertSecondarySite(): int
+    {
+        $existing = $this->db->table('sites')->where('slug', 'droit-users')->get()->getRowArray();
+        if (is_array($existing)) {
+            return (int) $existing['id'];
+        }
+
+        $siteId = model(SiteModel::class, false)->insert([
+            'identifier'      => 'droit_users',
+            'name'            => 'Faculté de Droit (users)',
+            'slug'            => 'droit-users',
+            'hostnames'       => ['droit-users.test'],
+            'status'          => 'active',
+            'default_locale'  => 'fr',
+            'logo'            => 'assets/images/logo-placeholder.png',
+            'primary_color'   => '#0D9B49',
+            'secondary_color' => '#0B6F38',
+            'contact_email'   => 'droit-users@example.test',
+            'phone'           => '+257 22 22 00 00',
+            'address'         => 'Bujumbura',
+        ], true);
+
+        $this->assertNotFalse($siteId);
+
+        return (int) $siteId;
     }
 
     private function withCsrf(array $data = []): array

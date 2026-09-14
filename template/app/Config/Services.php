@@ -6,6 +6,7 @@ use App\Services\HomePageService;
 use App\Services\ContactNotificationService;
 use App\Services\AdminAccessService;
 use App\Services\AdminDashboardService;
+use App\Services\AdminNavigationService;
 use App\Services\ContentTranslationService;
 use App\Services\FacultySiteProvisioningService;
 use App\Services\MediaService;
@@ -101,6 +102,15 @@ class Services extends BaseService
         }
 
         return new AdminDashboardService();
+    }
+
+    public static function adminNavigation(bool $getShared = true): AdminNavigationService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('adminNavigation');
+        }
+
+        return new AdminNavigationService();
     }
 
     public static function userAdministrationService(bool $getShared = true): UserAdministrationService

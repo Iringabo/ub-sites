@@ -22,9 +22,16 @@ class CreateSuperAdmin extends BaseCommand
 
     public function run(array $params): int
     {
-        $email    = $this->optionString('email') ?? CLI::prompt('Adresse email', null, 'required|valid_email|max_length[254]');
-        $username = $this->optionString('username') ?? CLI::prompt('Nom utilisateur', null, 'required|min_length[3]|max_length[30]|regex_match[/\A[a-zA-Z0-9\.]+\z/]');
-        $password = $this->resolvePassword();
+        if (! $this->isCentralAdminInstance()) {
+            CLI::error('admin:create-superadmin est réservé à l’instance superadministration (app.centralAdminMode=true).');
+            CLI::write('Pour créer un administrateur de faculté, utilisez : php spark admin:create-faculty-admin', 'yellow');
+
+            return EXIT_ERROR;
+        }
+
+        $email    = $this->optionString('email', $params) ?? CLI::prompt('Adresse email', null, 'required|valid_email|max_length[254]');
+        $username = $this->optionString('username', $params) ?? CLI::prompt('Nom utilisateur', null, 'required|min_length[3]|max_length[30]|regex_match[/\A[a-zA-Z0-9\.]+\z/]');
+        $password = $this->resolvePassword($params);
 
         $validation = service('validation');
         $validation->setRules([
@@ -145,5 +152,12 @@ class CreateSuperAdmin extends BaseCommand
             ->where('type', Session::ID_TYPE_EMAIL_PASSWORD)
             ->where('secret', $email)
             ->countAllResults() > 0;
+    }
+
+    private function isCentralAdminInstance(): bool
+    {
+        $raw = strtolower(trim((string) env('app.centralAdminMode', 'false')));
+
+        return in_array($raw, ['1', 'true', 'yes', 'on'], true);
     }
 }

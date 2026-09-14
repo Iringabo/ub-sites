@@ -75,7 +75,7 @@ class UserController extends BaseController
         }
 
         return view('admin/users/index', [
-            'title'       => 'Utilisateurs | Administration',
+            'title'       => 'Comptes & accès | Administration',
             'activeAdmin' => 'users',
             'users'       => $users = $model
                 ->groupBy($usersTable . '.id')
@@ -161,7 +161,7 @@ class UserController extends BaseController
 
             $created->syncGroups(...$input['groups']);
             $created->syncPermissions(...$input['permissions']);
-            service('siteResolver')->syncUserSiteRoles((int) $created->id, $input['siteRoles']);
+            $this->persistSiteRoles((int) $created->id, $input['siteRoles']);
             $this->db->transComplete();
 
             if ($this->db->transStatus() === false) {
@@ -256,7 +256,7 @@ class UserController extends BaseController
 
             $user->syncGroups(...$input['groups']);
             $user->syncPermissions(...$input['permissions']);
-            service('siteResolver')->syncUserSiteRoles((int) $user->id, $input['siteRoles']);
+            $this->persistSiteRoles((int) $user->id, $input['siteRoles']);
             $this->db->transComplete();
 
             if ($this->db->transStatus() === false) {
@@ -426,10 +426,19 @@ class UserController extends BaseController
 
         if (! $this->currentActorIsSuperAdmin()) {
             $siteId = service('siteResolver')->activeSiteId();
-            $groups = ['editor'];
+            $groups = array_values(array_intersect($groups, ['admin', 'editor']));
+            $postedRoles = $this->siteRolesFromRequest([$siteId], in_array('admin', $groups, true) ? 'site_admin' : 'editor');
+            $role = $postedRoles[$siteId] ?? 'editor';
+            if ($role === 'site_admin' || in_array('admin', $groups, true)) {
+                $groups = ['admin'];
+                $role = 'site_admin';
+            } else {
+                $groups = ['editor'];
+                $role = 'editor';
+            }
             $permissions = [];
             $siteIds = [$siteId];
-            $siteRoles = [$siteId => 'editor'];
+            $siteRoles = [$siteId => $role];
         } else {
             $siteIds = service('siteResolver')->siteIdsFromRequest($this->request->getPost('site_ids'));
             if ($siteIds === [] && ! in_array('superadmin', $groups, true)) {
@@ -442,7 +451,7 @@ class UserController extends BaseController
         return [
             'data' => [
                 'username' => trim((string) $this->request->getPost('username')),
-                'email'    => trim((string) $this->request->getPost('email')),
+                'email'    => strtolower(trim((string) $this->request->getPost('email'))),
                 'password' => $withPassword ? (string) $this->request->getPost('password') : '',
                 'confirm'  => $withPassword ? trim((string) $this->request->getPost('confirm')) : '',
                 'active'   => $this->request->getPost('active') === '1' ? 1 : 0,
@@ -452,6 +461,22 @@ class UserController extends BaseController
             'siteIds'     => $siteIds,
             'siteRoles'   => $siteRoles,
         ];
+    }
+
+    /**
+     * @param array<int, string> $siteRoles
+     */
+    private function persistSiteRoles(int $userId, array $siteRoles): void
+    {
+        if ($this->currentActorIsSuperAdmin()) {
+            service('siteResolver')->syncUserSiteRoles($userId, $siteRoles);
+
+            return;
+        }
+
+        foreach ($siteRoles as $siteId => $role) {
+            service('siteResolver')->upsertUserSiteRole($userId, (int) $siteId, (string) $role);
+        }
     }
 
     /**
@@ -522,8 +547,8 @@ class UserController extends BaseController
                 return ['site_ids' => 'Un rôle facultaire sélectionné est invalide.'];
             }
 
-            if (! $this->currentActorIsSuperAdmin() && $role !== 'editor') {
-                return ['site_ids' => 'Un administrateur de faculté peut uniquement attribuer le rôle Éditeur.'];
+            if (! $this->currentActorIsSuperAdmin() && ! in_array($role, ['editor', 'site_admin'], true)) {
+                return ['site_ids' => 'Un administrateur de faculté peut uniquement attribuer les rôles Administrateur ou Éditeur.'];
             }
         }
 
@@ -659,8 +684,8 @@ class UserController extends BaseController
         $errors = [];
 
         foreach ($postedGroups as $group) {
-            if ($group !== 'editor') {
-                $errors['groups'] = 'Un administrateur de faculté peut uniquement attribuer le groupe Éditeur.';
+            if (! in_array($group, ['admin', 'editor'], true)) {
+                $errors['groups'] = 'Un administrateur de faculté peut uniquement attribuer les groupes Administrateur ou Éditeur.';
                 break;
             }
         }
@@ -761,7 +786,10 @@ class UserController extends BaseController
 
         $groups = $this->userAdmin->groups();
 
-        return ['editor' => $groups['editor']];
+        return [
+            'admin'  => $groups['admin'],
+            'editor' => $groups['editor'],
+        ];
     }
 
     /**
@@ -891,6 +919,9 @@ class UserController extends BaseController
         $usersTable     = config('Auth')->tables['users'];
         $identitiesTable = config('Auth')->tables['identities'];
 
+        $normalized = strtolower(trim($email));
+        $original   = trim($email);
+
         $builder = $this->db->table($usersTable . ' users')
             ->select('users.id')
             ->join(
@@ -898,7 +929,10 @@ class UserController extends BaseController
                 'identities.user_id = users.id AND identities.type = ' . $this->db->escape(Session::ID_TYPE_EMAIL_PASSWORD),
                 'inner',
             )
-            ->where('LOWER(identities.secret)', strtolower($email));
+            ->groupStart()
+                ->where('identities.secret', $normalized)
+                ->orWhere('identities.secret', $original)
+            ->groupEnd();
 
         if ($ignoreId !== null) {
             $builder->where('users.id !=', $ignoreId);

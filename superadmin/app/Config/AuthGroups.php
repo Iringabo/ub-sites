@@ -115,6 +115,7 @@ class AuthGroups extends ShieldAuthGroups
             'pages.manage',
             'messages.manage',
             'users.manage',
+            'settings.manage',
         ],
         'editor' => [
             'admin.access',

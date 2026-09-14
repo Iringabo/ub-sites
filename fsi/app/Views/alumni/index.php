@@ -10,14 +10,14 @@
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="section-label"><?= esc($content['intro_label'] ?? 'Réseau Alumni') ?></span>
+                <span class="section-label"><?= esc($content['intro_label'] ?? lang('Site.alumni.networkLabel')) ?></span>
                 <h2 class="section-title"><?= esc($content['intro_title'] ?? '') ?></h2>
                 <div class="divider-green"></div>
                 <?php foreach (($content['intro_paragraphs'] ?? []) as $paragraph): ?>
                     <p><?= esc($paragraph) ?></p>
                 <?php endforeach ?>
                 <a href="<?= esc(site_public_url($content['intro_button_url'] ?? '/contact'), 'attr') ?>" class="btn btn-primary-green">
-                    <?= esc($content['intro_button_label'] ?? 'Rejoindre le réseau') ?>
+                    <?= esc($content['intro_button_label'] ?? lang('Site.alumni.joinNetwork')) ?>
                 </a>
             </div>
             <div class="col-lg-6">
@@ -39,8 +39,8 @@
 <section class="section-pad section-alt">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px;">
-            <span class="section-label"><?= esc($content['profiles_label'] ?? 'Parcours inspirants') ?></span>
-            <h2 class="section-title"><?= esc($content['profiles_title'] ?? "Alumni à l'honneur") ?></h2>
+            <span class="section-label"><?= esc($content['profiles_label'] ?? lang('Site.alumni.profilesLabel')) ?></span>
+            <h2 class="section-title"><?= esc($content['profiles_title'] ?? lang('Site.alumni.profilesTitle')) ?></h2>
             <p class="section-subtitle mx-auto"><?= esc($content['profiles_text'] ?? '') ?></p>
         </div>
         <div class="row g-4">
@@ -64,8 +64,8 @@
 <section class="section-pad bg-white">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px;">
-            <span class="section-label"><?= esc($content['testimonials_label'] ?? 'Ils témoignent') ?></span>
-            <h2 class="section-title"><?= esc($content['testimonials_title'] ?? 'Ce que la faculté leur a apporté') ?></h2>
+            <span class="section-label"><?= esc($content['testimonials_label'] ?? lang('Site.alumni.testimonialsLabel')) ?></span>
+            <h2 class="section-title"><?= esc($content['testimonials_title'] ?? lang('Site.alumni.testimonialsTitle')) ?></h2>
         </div>
         <div class="row g-4">
             <?php foreach ($testimonials as $testimonial): ?>
@@ -91,10 +91,10 @@
 
 <section class="section-pad-sm section-alt">
     <div class="container text-center">
-        <h2 class="h4 fw-bold"><?= esc($content['cta_title'] ?? 'Vous êtes diplômé de la faculté ?') ?></h2>
+        <h2 class="h4 fw-bold"><?= esc($content['cta_title'] ?? lang('Site.alumni.ctaTitle')) ?></h2>
         <p class="section-subtitle mx-auto mb-4"><?= esc($content['cta_text'] ?? '') ?></p>
         <a href="<?= esc(site_public_url($content['cta_url'] ?? '/contact'), 'attr') ?>" class="btn btn-primary-green">
-            <?= esc($content['cta_label'] ?? 'Nous rejoindre') ?>
+            <?= esc($content['cta_label'] ?? lang('Site.alumni.ctaLabel')) ?>
         </a>
     </div>
 </section>

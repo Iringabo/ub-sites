@@ -10,7 +10,7 @@ return [
     'showHeroSlide'        => 'Show image {0}',
     'previousHeroSlide'    => 'Previous image',
     'nextHeroSlide'        => 'Next image',
-    'heroImageFallbackAlt' => 'Image illustrating the Faculty of Economics and Management',
+    'heroImageFallbackAlt' => 'Image illustrating the faculty',
     'defaultHeroAlt'       => 'View of university campus',
     'programmeOrientation' => [
         'licence'  => 'Core degree',

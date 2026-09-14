@@ -39,6 +39,8 @@ final class AccessibilityResponsiveTest extends CIUnitTestCase
         $this->assertStringContainsString('prefers-reduced-motion', $js);
         $this->assertStringContainsString('scrollIntoView({ behavior: prefersReducedMotion ? \'auto\' : \'smooth\'', $js);
         $this->assertStringContainsString('data-site-hero-carousel', $js);
+        $this->assertStringContainsString('window.FacultySite', $js);
+        $this->assertStringNotContainsString('window.FSEG', $js);
         $this->assertStringNotContainsString('heroVideo.pause()', $js);
         $this->assertStringNotContainsString('querySelector(\'.hero-video\')', $js);
     }

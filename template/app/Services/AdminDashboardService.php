@@ -4,11 +4,13 @@ namespace App\Services;
 
 use App\Models\ContactMessageModel;
 use App\Models\HomeContentModel;
+use App\Models\HomeHeroSlideModel;
 use App\Models\HomeHighlightModel;
 use App\Models\PageModel;
 use App\Models\PostModel;
 use App\Models\ProgrammeModel;
 use App\Models\SettingModel;
+use App\Models\SiteModel;
 use App\Models\SiteStatModel;
 use App\Models\StaffModel;
 use CodeIgniter\I18n\Time;
@@ -29,16 +31,18 @@ class AdminDashboardService
         $home    = model(HomeContentModel::class, false)->forSite()->first();
         $homeRaw = $home === null ? '' : strtolower(($home->hero_title ?? '') . ' ' . ($home->about_body ?? '') . ' ' . ($home->about_title ?? ''));
         $items[] = [
-            'label' => 'Personnaliser les textes de l’accueil',
-            'url'   => site_url('admin/home-content'),
-            'done'  => $home !== null && ! str_contains($homeRaw, 'bienvenue sur le site de') && ! str_contains($homeRaw, 'à remplacer'),
+            'label'      => 'Personnaliser les textes de l’accueil',
+            'url'        => site_url('admin/home-content'),
+            'permission' => 'home.manage',
+            'done'       => $home !== null && ! str_contains($homeRaw, 'bienvenue sur le site de') && ! str_contains($homeRaw, 'à remplacer'),
         ];
 
         $slidesLeft = model(HomeHeroSlideModel::class, false)->forSite()->like('alt_text', 'remplacer')->countAllResults();
         $items[] = [
-            'label' => 'Remplacer les images du carrousel',
-            'url'   => site_url('admin/home-hero-slides'),
-            'done'  => $slidesLeft === 0,
+            'label'      => 'Remplacer les images du carrousel',
+            'url'        => site_url('admin/home-hero-slides'),
+            'permission' => 'home.manage',
+            'done'       => $slidesLeft === 0,
         ];
 
         $settings = service('settingsService')->all();
@@ -46,31 +50,41 @@ class AdminDashboardService
             && $settings['contact.email'] !== 'contact@example.test'
             && ! str_contains(strtolower((string) ($settings['contact.address'] ?? '')), 'compléter');
         $items[] = [
-            'label' => 'Renseigner les coordonnées de la faculté',
-            'url'   => site_url('admin/settings'),
-            'done'  => $contactDone,
+            'label'      => 'Renseigner les coordonnées de la faculté',
+            'url'        => site_url('admin/settings/global'),
+            'permission' => 'settings.manage',
+            'done'       => $contactDone,
         ];
 
         $programmesLeft = model(ProgrammeModel::class, false)->forSite()->like('title', 'exemple à modifier')->countAllResults();
         $items[] = [
-            'label' => 'Créer vos programmes de formation',
-            'url'   => site_url('admin/programmes'),
-            'done'  => $programmesLeft === 0,
+            'label'      => 'Créer vos programmes de formation',
+            'url'        => site_url('admin/programmes'),
+            'permission' => 'programmes.manage',
+            'done'       => $programmesLeft === 0,
         ];
 
         $staffLeft = model(StaffModel::class, false)->forSite()->like('name', 'exemple')->countAllResults();
         $items[] = [
-            'label' => 'Présenter votre personnel',
-            'url'   => site_url('admin/staff'),
-            'done'  => $staffLeft === 0,
+            'label'      => 'Présenter votre personnel',
+            'url'        => site_url('admin/staff'),
+            'permission' => 'staff.manage',
+            'done'       => $staffLeft === 0,
         ];
 
         $realPosts = model(PostModel::class, false)->forSite()->where('status', 'published')->notLike('title', 'exemple')->countAllResults();
         $items[] = [
-            'label' => 'Publier une première actualité',
-            'url'   => site_url('admin/posts'),
-            'done'  => $realPosts > 0,
+            'label'      => 'Publier une première actualité',
+            'url'        => site_url('admin/posts'),
+            'permission' => 'news.manage',
+            'done'       => $realPosts > 0,
         ];
+
+        $user = auth()->user();
+        $items = array_values(array_filter(
+            $items,
+            static fn (array $item): bool => ($user?->can($item['permission'] ?? 'admin.access') ?? false) === true,
+        ));
 
         $done  = count(array_filter($items, static fn (array $item): bool => $item['done']));
         $total = count($items);
@@ -91,7 +105,6 @@ class AdminDashboardService
             'newMessages'           => $this->countNewMessages(),
             'messageStatusCounts'   => $this->messageStatusCounts(),
             'recentChanges'         => $this->recentChanges(),
-            'pendingMessagesLabel'  => $this->messagesLabel(),
         ];
     }
 
@@ -106,10 +119,13 @@ class AdminDashboardService
 
         try {
             if ($db->tableExists('sites')) {
-                $sites = $db->table('sites')
-                    ->orderBy('name', 'ASC')
-                    ->get()
-                    ->getResultArray();
+                $sites = array_values(array_filter(
+                    $db->table('sites')
+                        ->orderBy('name', 'ASC')
+                        ->get()
+                        ->getResultArray(),
+                    static fn (array $site): bool => ! service('siteResolver')->isSkeletonSite($site),
+                ));
             }
 
             if ($db->tableExists('user_sites')) {
@@ -136,6 +152,8 @@ class AdminDashboardService
             'totalUsers'        => $this->tableCount('users'),
             'newMessages'       => $this->tableCount('contact_messages', ['status' => 'new']),
             'siteContentCounts' => $this->siteContentCounts(),
+            'themeKeys'         => SiteModel::THEMES,
+            'themeCount'        => count(SiteModel::THEMES),
         ];
     }
 
@@ -394,11 +412,6 @@ class AdminDashboardService
         }
 
         return $items;
-    }
-
-    private function messagesLabel(): string
-    {
-        return 'Messages de contact';
     }
 
     /**

@@ -1,8 +1,11 @@
 # Guide De Deploiement cPanel
 
-Derniere actualisation documentaire : 16 aout 2026.
+Derniere actualisation documentaire : 10 septembre 2026.
 
-Ce guide explique comment publier la plateforme FSEG sur un hebergement mutualise Apache/cPanel avec PHP 8.2+ et MySQL/MariaDB. Il complete le guide general de deploiement.
+Ce guide publie **l'instance superadministration** sur un hebergement
+mutualise Apache/cPanel. La base est **la meme** que les facultes.
+`app.centralAdminMode = true`, `session.cookieName = ci_session_central`.
+Le document root pointe vers `public/` ; l'accueil redirige vers `/admin`.
 
 ## 1. Prerequis cPanel
 

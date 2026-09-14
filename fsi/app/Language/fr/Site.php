@@ -68,6 +68,7 @@ return [
         'duration'             => 'Durée',
         'applyQuestion'        => 'Vous souhaitez postuler?',
         'contactUs'            => 'Nous contacter',
+        'offerLabel'           => 'Offre académique',
         'notFound'             => 'Formation introuvable.',
         'levelLabels'          => [
             'licence'  => 'Licence',
@@ -77,11 +78,32 @@ return [
         ],
     ],
     'research' => [
-        'researchers' => 'chercheurs',
+        'researchers'     => 'chercheurs',
+        'labsLabel'       => 'Structures de recherche',
+        'labsTitle'       => 'Nos Laboratoires',
+        'publicationsLabel' => 'Production scientifique',
+        'publicationsTitle' => 'Publications récentes',
+        'projectsLabel'   => 'Financements et partenariats',
+        'projectsTitle'   => 'Projets & Financements',
+    ],
+    'alumni' => [
+        'networkLabel'        => 'Réseau Alumni',
+        'joinNetwork'         => 'Rejoindre le réseau',
+        'profilesLabel'       => 'Parcours inspirants',
+        'profilesTitle'       => "Alumni à l'honneur",
+        'testimonialsLabel'   => 'Ils témoignent',
+        'testimonialsTitle'   => 'Ce que la faculté leur a apporté',
+        'ctaTitle'            => 'Vous êtes diplômé de la faculté ?',
+        'ctaLabel'            => 'Nous rejoindre',
     ],
     'faculty' => [
         'deanPhotoAlt'      => 'Photo du doyen',
         'deanLabelFallback' => 'Mot du Doyen',
+    ],
+    'home' => [
+        'contactCtaTitle' => 'Contacter la faculté',
+        'contactCtaText'  => 'Envoyez-nous vos questions et demandes d’information.',
+        'gallery'         => 'Galerie',
     ],
     'staff' => [
         'all'               => 'Tous',

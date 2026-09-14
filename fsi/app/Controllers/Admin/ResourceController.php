@@ -23,7 +23,6 @@ use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\Model;
 use ReflectionClass;
-use RuntimeException;
 use Throwable;
 
 class ResourceController extends BaseController
@@ -96,7 +95,7 @@ class ResourceController extends BaseController
 
 
         if (($config['creationDisabled'] ?? false)) {
-            return redirect()->to('/admin/' . $resource)->with('error', 'Ce module contient des pages prédéfinies. Modifiez les contenus existants.');
+            return redirect()->to('/admin/' . $resource)->with('error', (string) ($config['creationDisabledMessage'] ?? 'Ce module contient des pages prédéfinies. Modifiez les contenus existants.'));
         }
 
         if (($config['singleton'] ?? false) && $this->model($config)->countAllResults() > 0) {
@@ -130,7 +129,7 @@ class ResourceController extends BaseController
 
 
         if (($config['creationDisabled'] ?? false)) {
-            return redirect()->to('/admin/' . $resource)->with('error', 'Ce module contient des pages prédéfinies. Modifiez les contenus existants.');
+            return redirect()->to('/admin/' . $resource)->with('error', (string) ($config['creationDisabledMessage'] ?? 'Ce module contient des pages prédéfinies. Modifiez les contenus existants.'));
         }
 
         if (($config['singleton'] ?? false) && $this->model($config)->countAllResults() > 0) {
@@ -250,12 +249,10 @@ class ResourceController extends BaseController
             return $this->notFound('Contenu introuvable.');
         }
 
-        $model->builder()
-            ->where('id', $id)
-            ->update([
-                'deleted_at' => null,
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
+        $this->siteScopedBuilder($model, $config)->where('id', $id)->update([
+            'deleted_at' => null,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
 
         return redirect()->to('/admin/' . $resource . '?trash=1')->with('message', 'Le contenu a été restauré.');
     }
@@ -321,14 +318,21 @@ class ResourceController extends BaseController
 
         $model = $this->model($config);
         $supportsTrash = $this->modelUsesSoftDeletes($model);
-        $count = count($ids);
+        $owned = $this->ownedItemsByIds($model, $config, $ids);
+        $ownedIds = array_map(static fn (array $row): int => $row['id'], $owned);
+
+        if ($ownedIds === []) {
+            return redirect()->to('/admin/' . $resource)->with('error', 'Aucun contenu n’a été sélectionné.');
+        }
+
+        $count = count($ownedIds);
 
         if ($action === 'publish' || $action === 'unpublish') {
             if (($config['publishedField'] ?? null) === null) {
                 return redirect()->to('/admin/' . $resource)->with('error', 'Ce module ne prend pas en charge la publication groupée.');
             }
 
-            $model->builder()->whereIn('id', $ids)->update([
+            $this->siteScopedBuilder($model, $config)->whereIn('id', $ownedIds)->update([
                 (string) $config['publishedField'] => $action === 'publish' ? 1 : 0,
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
@@ -342,21 +346,25 @@ class ResourceController extends BaseController
                 return redirect()->to('/admin/' . $resource)->with('error', 'Ce module ne permet pas la suppression groupée.');
             }
 
-            $model->skipValidation(true)->whereIn('id', $ids)->delete();
-            $model->skipValidation(false);
-
             if (! $supportsTrash) {
-                foreach ($ids as $id) {
-                    $item = $model->withDeleted()->find($id);
-                    if ($item === null) {
-                        continue;
-                    }
+                foreach ($owned as $row) {
                     foreach ($config['fields'] as $field) {
                         if (($field['type'] ?? null) === 'image') {
-                            service('mediaService')->deletePublicPath($this->itemData($item)[$field['name']] ?? null);
+                            service('mediaService')->deletePublicPath($this->itemData($row['item'])[$field['name']] ?? null);
                         }
                     }
                 }
+            }
+
+            $deleter = $this->model($config);
+            try {
+                $deleter->skipValidation(true);
+                if ($this->isSiteScopedResource($config)) {
+                    $deleter->where('site_id', service('siteResolver')->activeSiteId());
+                }
+                $deleter->whereIn('id', $ownedIds)->delete();
+            } finally {
+                $deleter->skipValidation(false);
             }
 
             return redirect()->to('/admin/' . $resource)->with('message', $count . ' contenus ' . ($supportsTrash ? 'archivés' : 'supprimés') . '.');
@@ -487,13 +495,51 @@ class ResourceController extends BaseController
             if ($id <= 0) {
                 continue;
             }
-            $model->builder()->where('id', $id)->update([
-                $orderField => $index + 1,
+
+            $this->siteScopedBuilder($model, $config)->where('id', $id)->update([
+                $orderField  => $index + 1,
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
         }
 
         return $this->response->setJSON(['ok' => true]);
+    }
+
+    /**
+     * Fresh query builder so CI4 update() resetWrite() cannot drop site_id
+     * between loop iterations.
+     *
+     * @param array<string, mixed> $config
+     */
+    private function siteScopedBuilder(Model $model, array $config): \CodeIgniter\Database\BaseBuilder
+    {
+        $builder = db_connect()->table($model->getTable());
+        if ($this->isSiteScopedResource($config)) {
+            $builder->where('site_id', service('siteResolver')->activeSiteId());
+        }
+
+        return $builder;
+    }
+
+    /**
+     * @param list<int> $ids
+     * @param array<string, mixed> $config
+     *
+     * @return list<array{id: int, item: object|array}>
+     */
+    private function ownedItemsByIds(Model $model, array $config, array $ids): array
+    {
+        $owned = [];
+        foreach ($ids as $id) {
+            $item = $this->model($config)->find($id);
+            if ($item === null) {
+                continue;
+            }
+
+            $owned[] = ['id' => $id, 'item' => $item];
+        }
+
+        return $owned;
     }
 
     private function reorderSortField(array $config): ?string
@@ -520,12 +566,6 @@ class ResourceController extends BaseController
         $errors = $this->validateResourceData($config, $model, $data, $raw, $id);
         $errors = array_merge($errors, $this->validateTranslations($translationFields, $translations));
 
-        // Création d'une faculté : compte administrateur initial facultatif.
-        $firstAdmin = null;
-        if ($resource === 'sites' && $id === null) {
-            [$firstAdmin, $firstAdminErrors] = $this->firstAdminFromRequest();
-            $errors = array_merge($errors, $firstAdminErrors);
-        }
         if ($resource === 'pages') {
             $errors = array_merge($errors, $this->validatePageContentRequest((string) ($data['key'] ?? ''), 'translation_en_page_content', false));
         }
@@ -642,20 +682,7 @@ class ResourceController extends BaseController
             service('settingsService')->reset();
         }
 
-        // Faculté créée avec un administrateur initial : création du compte
-        // et affectation en une seule étape pour le superadministrateur.
         $successMessage = $id === null ? 'Le contenu a été créé.' : 'Le contenu a été mis à jour.';
-
-        if ($firstAdmin !== null && $resource === 'sites') {
-            try {
-                $this->createFirstFacultyAdmin((int) $saved, $firstAdmin);
-                $successMessage = 'La faculté a été créée avec son administrateur.';
-            } catch (Throwable) {
-                return redirect()
-                    ->to('/admin/sites/' . (int) $saved . '/edit')
-                    ->with('warning', 'La faculté a été créée, mais la création de son administrateur a échoué. Créez son compte depuis « Comptes & accès ».');
-            }
-        }
 
         $targetId = $id ?? (int) $saved;
         service('contentTranslationService')->save($this->translationResourceType($resource, $config), $targetId, 'en', $translations);
@@ -664,94 +691,6 @@ class ResourceController extends BaseController
         return redirect()
             ->to('/admin/' . $resource . '/' . $targetId . '/edit')
             ->with('message', $successMessage);
-    }
-
-    /**
-     * Compte administrateur initial facultatif, saisi dans le formulaire de
-     * création d'une faculté.
-     *
-     * @return array{0: array{email: string, username: string, password: string}|null, 1: array<string, string>}
-     */
-    private function firstAdminFromRequest(): array
-    {
-        $email    = trim((string) $this->request->getPost('first_admin_email'));
-        $username = trim((string) $this->request->getPost('first_admin_username'));
-        $password = (string) $this->request->getPost('first_admin_password');
-        $confirm  = (string) $this->request->getPost('first_admin_confirm');
-
-        if ($email === '' && $username === '' && $password === '' && $confirm === '') {
-            return [null, []];
-        }
-
-        $errors = [];
-
-        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors['first_admin_email'] = 'Adresse électronique de l’administrateur invalide.';
-        } elseif ($this->emailExists($email)) {
-            $errors['first_admin_email'] = 'Cette adresse électronique est déjà utilisée.';
-        }
-
-        if (preg_match('/^[a-zA-Z0-9.]{3,30}$/', $username) !== 1) {
-            $errors['first_admin_username'] = 'Identifiant invalide (3 à 30 caractères : lettres, chiffres, points).';
-        } elseif ($this->usernameExists($username)) {
-            $errors['first_admin_username'] = 'Cet identifiant est déjà utilisé.';
-        }
-
-        if (strlen($password) < 12) {
-            $errors['first_admin_password'] = 'Le mot de passe doit contenir au moins 12 caractères.';
-        } elseif ($password !== $confirm) {
-            $errors['first_admin_confirm'] = 'Les deux mots de passe ne correspondent pas.';
-        }
-
-        if ($errors !== []) {
-            return [null, $errors];
-        }
-
-        return [['email' => $email, 'username' => $username, 'password' => $password], []];
-    }
-
-    private function emailExists(string $email): bool
-    {
-        $tables = config('Auth')->tables;
-
-        return db_connect()->table($tables['identities'])
-            ->where('type', 'email_password')
-            ->where('LOWER(secret)', strtolower($email))
-            ->countAllResults() > 0;
-    }
-
-    private function usernameExists(string $username): bool
-    {
-        return db_connect()->table(config('Auth')->tables['users'])
-            ->where('username', $username)
-            ->countAllResults() > 0;
-    }
-
-    /**
-     * @param array{email: string, username: string, password: string} $payload
-     */
-    private function createFirstFacultyAdmin(int $siteId, array $payload): int
-    {
-        $users = model(\CodeIgniter\Shield\Models\UserModel::class);
-
-        $users->save(new \CodeIgniter\Shield\Entities\User([
-            'username' => $payload['username'],
-            'email'    => $payload['email'],
-            'password' => $payload['password'],
-            'active'   => 1,
-        ]));
-
-        $userId = (int) $users->getInsertID();
-        $user   = $users->findById($userId);
-
-        if (! $user instanceof \CodeIgniter\Shield\Entities\User) {
-            throw new RuntimeException('Compte administrateur introuvable après création.');
-        }
-
-        $user->activate();
-        service('facultySiteProvisioning')->assignFacultyAdmin($siteId, $userId);
-
-        return $userId;
     }
 
     /**
@@ -1183,20 +1122,17 @@ class ResourceController extends BaseController
     }
 
     /**
-     * La superadministration pilote la plateforme (facultés, comptes) mais
-     * ne modifie pas le contenu éditorial : celui-ci appartient au dossier
-     * de chaque faculté. Seul le module « sites » est accessible ici.
+     * La superadministration édite le contenu de la faculté sélectionnée
+     * dans la même application (site_id actif). Les facultés elles-mêmes
+     * ne se listent et ne se configurent que depuis l’instance centrale.
      */
     private function centralContentGuard(string $resource): ?RedirectResponse
     {
-        if ($resource === 'sites' || ! service('adminAccess')->isCentralAdminHost($this->request)) {
-            return null;
+        if ($resource === 'sites' && ! service('adminAccess')->isCentralAdminHost()) {
+            return redirect()->to('/admin')->with('error', 'La liste des facultés se gère depuis la superadministration.');
         }
 
-        return redirect()->to('/admin')->with(
-            'error',
-            'Le contenu éditorial se modifie depuis l’administration de la faculté concernée, pas depuis la superadministration.',
-        );
+        return null;
     }
 
     /**
@@ -1953,6 +1889,8 @@ class ResourceController extends BaseController
                 'model'            => SiteModel::class,
                 'permission'       => 'sites.manage',
                 'siteScoped'       => false,
+                'creationDisabled' => true,
+                'creationDisabledMessage' => 'Les nouveaux sites facultaires se créent à partir du dossier modèle, pas depuis cette administration.',
                 'deletionDisabled' => true,
                 'unique'           => ['identifier', 'slug'],
                 'search'           => ['identifier', 'name', 'slug', 'hostnames'],

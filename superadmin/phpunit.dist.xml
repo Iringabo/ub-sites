@@ -47,5 +47,7 @@
         <env name="database.tests.database" value="platform_test"/>
         <env name="database.tests.DBDriver" value="MySQLi"/>
         <env name="database.tests.DBPrefix" value="test_"/>
+        <env name="app.siteSlug" value="fseg" force="true"/>
+        <env name="app.centralAdminMode" value="false" force="true"/>
     </php>
 </phpunit>

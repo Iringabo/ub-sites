@@ -11,7 +11,7 @@ document.querySelectorAll('form[data-confirm]').forEach((form) => {
     });
 });
 
-document.querySelectorAll('form').forEach((form) => {
+document.querySelectorAll('form[data-unsaved-guard]').forEach((form) => {
     let changed = false;
 
     form.addEventListener('input', () => {
@@ -42,6 +42,16 @@ document.querySelectorAll('form').forEach((form) => {
 
         event.preventDefault();
         event.returnValue = '';
+    });
+});
+
+window.addEventListener('pageshow', () => {
+    formIsSubmitting = false;
+    document.querySelectorAll('form button[type="submit"]').forEach((button) => {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+        }
     });
 });
 
@@ -143,7 +153,7 @@ if (bulkBar && bulkChecks.length) {
     });
 }
 
-document.querySelectorAll('table[data-sortable]').forEach((table) => {
+document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach((table) => {
     if (!window.Sortable) {
         return;
     }
@@ -197,7 +207,10 @@ document.querySelectorAll('table[data-sortable]').forEach((table) => {
         const input = document.getElementById('adminPaletteInput');
         if (input) {
             input.value = '';
-            document.getElementById('adminPaletteResults').innerHTML = '';
+            const results = document.getElementById('adminPaletteResults');
+            if (results) {
+                results.replaceChildren();
+            }
             input.focus();
         }
     };
@@ -227,12 +240,21 @@ document.querySelectorAll('table[data-sortable]').forEach((table) => {
         const q = query.trim().toLowerCase();
         const matches = q ? items.filter((item) => (item.title + ' ' + item.group).toLowerCase().includes(q)) : items;
 
-        list.innerHTML = '';
+        list.replaceChildren();
         matches.slice(0, 12).forEach((item) => {
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'd-flex w-100 align-items-center justify-content-between gap-2 px-3 py-2 text-start';
-            button.innerHTML = `<span class="text-truncate">${item.title}</span><span class="small text-muted text-nowrap ms-auto">${item.group}</span>`;
+
+            const title = document.createElement('span');
+            title.className = 'text-truncate';
+            title.textContent = item.title;
+
+            const group = document.createElement('span');
+            group.className = 'small text-muted text-nowrap ms-auto';
+            group.textContent = item.group;
+
+            button.append(title, group);
             button.addEventListener('click', () => {
                 window.location.href = item.href;
             });
@@ -245,7 +267,10 @@ document.querySelectorAll('table[data-sortable]').forEach((table) => {
         });
 
         if (matches.length === 0) {
-            list.innerHTML = '<div class="px-3 py-2 text-muted small">Aucun résultat.</div>';
+            const empty = document.createElement('div');
+            empty.className = 'px-3 py-2 text-muted small';
+            empty.textContent = 'Aucun résultat.';
+            list.appendChild(empty);
         }
     };
 
@@ -335,5 +360,12 @@ document.querySelectorAll('table[data-sortable]').forEach((table) => {
         if (event.key === 'Escape') {
             closePalette();
         }
+    });
+
+    document.querySelectorAll('[data-admin-palette-open]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            openPaletteFull();
+        });
     });
 })();

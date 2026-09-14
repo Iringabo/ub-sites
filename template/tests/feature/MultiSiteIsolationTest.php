@@ -2,6 +2,7 @@
 
 use App\Database\Seeds\TemplateStarterSeeder;
 use App\Models\SiteModel;
+use App\Services\FacultySiteProvisioningService;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
@@ -71,15 +72,13 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
             ]);
 
             service('siteResolver')->reset();
-            try {
-                $this
-                    ->withHeaders(['Host' => '127.0.0.1:8080'])
-                    ->get('/');
+            $unknown = $this
+                ->withHeaders(['Host' => '127.0.0.1:8080'])
+                ->get('/');
 
-                $this->fail('Un hôte public inconnu doit être rejeté en mode strict.');
-            } catch (\CodeIgniter\Exceptions\PageNotFoundException) {
-                $this->addToAssertionCount(1);
-            }
+            $unknown->assertStatus(404);
+            $unknown->assertSee('Aucun site actif ne correspond à cet hôte.');
+            $this->assertStringContainsString('text/html', $unknown->response()->getHeaderLine('Content-Type'));
 
             service('siteResolver')->reset();
             $knownHost = $this
@@ -215,15 +214,13 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
             service('siteResolver')->reset();
             service('settingsService')->reset();
 
-            try {
-                $this
-                    ->withHeaders(['Host' => '127.0.0.1:8080'])
-                    ->get('/');
+            $result = $this
+                ->withHeaders(['Host' => '127.0.0.1:8080'])
+                ->get('/');
 
-                $this->fail('Un dossier facultaire lié à un site inexistant doit échouer explicitement.');
-            } catch (\CodeIgniter\Exceptions\PageNotFoundException $exception) {
-                $this->assertStringContainsString('site facultaire introuvable', $exception->getMessage());
-            }
+            $result->assertStatus(404);
+            $result->assertSee('site facultaire introuvable');
+            $this->assertStringContainsString('text/html', $result->response()->getHeaderLine('Content-Type'));
         } finally {
             $this->clearEnvironment('app.siteSlug');
             putenv('app.siteSlug=fseg');
@@ -379,7 +376,7 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
                 'groups'      => ['editor'],
                 'permissions' => [],
                 'site_ids'    => ['1'],
-                'site_roles'  => ['1' => 'site_admin'],
+                'site_roles'  => ['1' => 'editor'],
             ]));
 
         $create->assertRedirect();
@@ -401,39 +398,31 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
 
     public function testNewFacultyCreationProvisionsStarterContentForOnlyThatSite(): void
     {
-        $this->actingAs($this->superAdminUser('provision-super@example.test', 'provisionsuper'));
+        $siteId = (new FacultySiteProvisioningService())->createFaculty([
+            'identifier'       => 'fsi_platform',
+            'name'             => 'Faculté des Sciences de l’Ingénieur',
+            'slug'             => 'fsi-platform',
+            'hostnames'        => ['fsi-platform.test', 'fsi.ub.local'],
+            'status'           => 'active',
+            'default_locale'   => 'fr',
+            'primary_color'    => '#14532D',
+            'secondary_color'  => '#0F766E',
+            'theme'            => 'research',
+            'theme_config'     => '{"layout":"research","hero_image":"assets/images/hero/research-team.jpg"}',
+            'menu_config'      => '{"items":["faculte","formations","recherche","contact"]}',
+            'enabled_sections' => ['hero', 'programmes_preview', 'research_labs', 'contact_cta'],
+            'contact_email'    => 'fsi-platform@example.test',
+            'phone'            => '+257 22 22 11 11',
+            'address'          => 'Campus Kiriri',
+        ]);
 
-        $response = $this
-            ->withHeaders(['Host' => 'admin.ub.local'])
-            ->post('/admin/sites', $this->withCsrf([
-                'identifier'       => 'fsi_platform',
-                'name'             => 'Faculté des Sciences de l’Ingénieur',
-                'slug'             => 'fsi-platform',
-                'hostnames'        => "fsi-platform.test\nfsi.ub.local",
-                'status'           => 'active',
-                'default_locale'   => 'fr',
-                'primary_color'    => '#14532D',
-                'secondary_color'  => '#0F766E',
-                'theme'            => 'research',
-                'theme_config'     => '{"layout":"research","hero_image":"assets/images/hero/research-team.jpg"}',
-                'menu_config'      => '{"items":["faculte","formations","recherche","contact"]}',
-                'enabled_sections' => "hero\nprogrammes_preview\nresearch_labs\ncontact_cta",
-                'contact_email'    => 'fsi-platform@example.test',
-                'phone'            => '+257 22 22 11 11',
-                'address'          => 'Campus Kiriri',
-            ]));
-
-        $response->assertRedirect();
-
-        $site = $this->db->table('sites')->where('slug', 'fsi-platform')->get()->getRowArray();
+        $site = $this->db->table('sites')->where('id', $siteId)->get()->getRowArray();
         $this->assertIsArray($site);
-        $siteId = (int) $site['id'];
 
         $this->assertSame('research', $site['theme']);
         $this->assertSame(1, $this->db->table('home_content')->where('site_id', $siteId)->countAllResults());
         $this->assertGreaterThanOrEqual(7, $this->db->table('pages')->where('site_id', $siteId)->countAllResults());
         $this->assertGreaterThanOrEqual(5, $this->db->table('content_blocks')->where('site_id', $siteId)->countAllResults());
-        // Le provisionnement du nouveau site ne doit rien ajouter au site 1.
         $this->assertSame(5, $this->db->table('content_blocks')->where('site_id', 1)->countAllResults());
 
         service('siteResolver')->reset();
@@ -448,6 +437,24 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $publicBody = (string) $public->response()->getBody();
         $this->assertStringContainsString('theme-research', $publicBody);
         $this->assertStringContainsString('--green: #14532D', $publicBody);
+    }
+
+    public function testUiCannotCreateANewFacultySite(): void
+    {
+        $this->actingAs($this->superAdminUser('nosite-super@example.test', 'nositesuper'));
+        $before = (int) $this->db->table('sites')->countAllResults();
+
+        $response = $this
+            ->withHeaders(['Host' => 'admin.ub.local'])
+            ->post('/admin/sites', $this->withCsrf([
+                'identifier' => 'should-not-exist',
+                'name'       => 'Ne doit pas exister',
+                'slug'       => 'should-not-exist',
+                'status'     => 'active',
+            ]));
+
+        $response->assertRedirect();
+        $this->assertSame($before, (int) $this->db->table('sites')->countAllResults());
     }
 
     public function testThemeAndContentBlocksRemainIsolatedPerFaculty(): void
@@ -499,6 +506,97 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $fseg->assertOK();
         $fseg->assertDontSee('Bloc droit isolé');
         $fseg->assertDontSee('Contenu visible uniquement sur le site droit.');
+    }
+
+    public function testReorderIgnoresForeignSiteIds(): void
+    {
+        $foreignSiteId = $this->createSecondSite();
+        $now = date('Y-m-d H:i:s');
+        $this->db->table('home_highlights')->insert([
+            'site_id'       => $foreignSiteId,
+            'icon'          => 'bi-shield',
+            'title'         => 'Atout isolé réordre',
+            'description'   => 'Ne doit pas changer.',
+            'display_order' => 77,
+            'is_published'  => 1,
+            'created_at'    => $now,
+            'updated_at'    => $now,
+        ]);
+        $foreignId = (int) $this->db->insertID();
+        $this->assertGreaterThan(0, $foreignId);
+
+        $own = $this->db->table('home_highlights')
+            ->select('id')
+            ->where('site_id', 1)
+            ->orderBy('display_order', 'ASC')
+            ->limit(2)
+            ->get()
+            ->getResultArray();
+        $ownIds = array_map('intval', array_column($own, 'id'));
+        $this->assertCount(2, $ownIds);
+
+        $this->actingAs($this->superAdminUser());
+        $this->post('/admin/home-highlights/reorder', $this->withCsrf([
+            'ids' => array_merge([$ownIds[1], $foreignId, $ownIds[0]]),
+        ]))->assertJSONExact(['ok' => true]);
+
+        $foreign = $this->db->table('home_highlights')->where('id', $foreignId)->get()->getRowArray();
+        $this->assertSame('77', (string) $foreign['display_order']);
+    }
+
+    public function testBulkDeleteIgnoresForeignIdsAndFiles(): void
+    {
+        $foreignSiteId = $this->createSecondSite();
+        $relative = 'uploads/sites/droit/testimonials/keep-foreign.png';
+        $fullPath = FCPATH . $relative;
+        $directory = dirname($fullPath);
+        if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+            $this->fail('Impossible de créer le dossier de test média.');
+        }
+        file_put_contents($fullPath, 'foreign-photo');
+
+        $now = date('Y-m-d H:i:s');
+        $this->db->table('testimonials')->insert([
+            'site_id'           => $foreignSiteId,
+            'alumni_profile_id' => null,
+            'person_name'       => 'Voix isolée',
+            'photo'             => $relative,
+            'promotion'         => '2010',
+            'quote'             => 'Ne pas supprimer.',
+            'display_order'     => 9,
+            'is_published'      => 1,
+            'created_at'        => $now,
+            'updated_at'        => $now,
+        ]);
+        $foreignId = (int) $this->db->insertID();
+
+        $this->db->table('testimonials')->insert([
+            'site_id'           => 1,
+            'alumni_profile_id' => null,
+            'person_name'       => 'Voix locale',
+            'photo'             => null,
+            'promotion'         => '2011',
+            'quote'             => 'Peut être supprimée.',
+            'display_order'     => 8,
+            'is_published'      => 1,
+            'created_at'        => $now,
+            'updated_at'        => $now,
+        ]);
+        $ownId = (int) $this->db->insertID();
+
+        $this->actingAs($this->superAdminUser());
+        $this->post('/admin/testimonials/bulk', $this->withCsrf([
+            'bulk_action' => 'delete',
+            'ids'         => [$ownId, $foreignId],
+        ]))->assertRedirect();
+
+        $this->assertNull($this->db->table('testimonials')->where('id', $ownId)->get()->getRowArray());
+        $foreign = $this->db->table('testimonials')->where('id', $foreignId)->get()->getRowArray();
+        $this->assertIsArray($foreign);
+        $this->assertSame($relative, $foreign['photo']);
+        $this->assertFileExists($fullPath);
+
+        @unlink($fullPath);
     }
 
     private function createSecondSite(): int

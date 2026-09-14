@@ -7,12 +7,8 @@ use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
 
 /**
- * Sécurité de session : quitter la zone d'administration déconnecte.
- *
- * Tant qu'un utilisateur travaille dans /admin, la session est marquée
- * « admin_session_active ». Dès qu'il consulte une page publique du site,
- * la session est détruite : tout retour dans l'administration exige une
- * nouvelle connexion. La sonde /healthz reste neutre.
+ * Marque la session comme active dans /admin. Consulter le site public
+ * (aperçu) ne déconnecte plus : la déconnexion reste explicite.
  */
 class AdminExitGuardFilter implements FilterInterface
 {
@@ -25,25 +21,9 @@ class AdminExitGuardFilter implements FilterInterface
         }
 
         $isAdminArea = $path === 'admin' || str_starts_with($path, 'admin');
-        $isAuthArea  = in_array($path, ['login', 'logout'], true)
-            || str_starts_with($path, 'auth/');
 
-        if ($isAdminArea) {
-            if (auth()->user() !== null) {
-                service('session')->set('admin_session_active', true);
-            }
-
-            return null;
-        }
-
-        if ($isAuthArea) {
-            return null;
-        }
-
-        // Zone publique : quitter l'administration déconnecte.
-        if ((bool) service('session')->get('admin_session_active') && auth()->user() !== null) {
-            auth()->logout();
-            service('session')->destroy();
+        if ($isAdminArea && auth()->user() !== null) {
+            service('session')->set('admin_session_active', true);
         }
 
         return null;

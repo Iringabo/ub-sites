@@ -55,3 +55,18 @@ Events::on('pre_system', static function (): void {
         }
     }
 });
+
+Events::on('logout', static function (): void {
+    $config = setting('Auth.sessionConfig');
+    $name   = (string) ($config['rememberCookieName'] ?? '');
+    if ($name === '') {
+        return;
+    }
+
+    service('response')->deleteCookie(
+        $name,
+        setting('Cookie.domain'),
+        setting('Cookie.path'),
+        setting('Cookie.prefix'),
+    );
+});

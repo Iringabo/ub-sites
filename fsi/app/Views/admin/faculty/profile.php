@@ -40,7 +40,7 @@ $photo = (string) ($dean['photo'] ?? '');
     </a>
 </div>
 
-<form action="<?= esc($action, 'attr') ?>" method="post" enctype="multipart/form-data" class="card-faculte">
+<form action="<?= esc($action, 'attr') ?>" method="post" enctype="multipart/form-data" class="card-faculte" data-unsaved-guard>
     <?= csrf_field() ?>
 
     <?php if (isset($errors['form'])): ?>

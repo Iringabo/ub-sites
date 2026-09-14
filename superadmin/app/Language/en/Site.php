@@ -68,6 +68,7 @@ return [
         'duration'             => 'Duration',
         'applyQuestion'        => 'Would you like to apply?',
         'contactUs'            => 'Contact us',
+        'offerLabel'           => 'Academic offering',
         'notFound'             => 'Programme not found.',
         'levelLabels'          => [
             'licence'  => 'Bachelor',
@@ -77,11 +78,32 @@ return [
         ],
     ],
     'research' => [
-        'researchers' => 'researchers',
+        'researchers'       => 'researchers',
+        'labsLabel'         => 'Research units',
+        'labsTitle'         => 'Our laboratories',
+        'publicationsLabel' => 'Scientific output',
+        'publicationsTitle' => 'Recent publications',
+        'projectsLabel'     => 'Funding and partnerships',
+        'projectsTitle'     => 'Projects and funding',
+    ],
+    'alumni' => [
+        'networkLabel'      => 'Alumni network',
+        'joinNetwork'       => 'Join the network',
+        'profilesLabel'     => 'Inspiring paths',
+        'profilesTitle'     => 'Alumni in the spotlight',
+        'testimonialsLabel' => 'They speak',
+        'testimonialsTitle' => 'What the faculty gave them',
+        'ctaTitle'          => 'Did you graduate from the faculty?',
+        'ctaLabel'          => 'Join us',
     ],
     'faculty' => [
         'deanPhotoAlt'      => 'Dean photo',
         'deanLabelFallback' => 'Dean’s message',
+    ],
+    'home' => [
+        'contactCtaTitle' => 'Contact the faculty',
+        'contactCtaText'  => 'Send us your questions and information requests.',
+        'gallery'         => 'Gallery',
     ],
     'staff' => [
         'all'            => 'All',

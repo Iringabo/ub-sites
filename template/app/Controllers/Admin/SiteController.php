@@ -22,6 +22,10 @@ class SiteController extends BaseController
         service('settingsService')->reset();
         service('contentTranslationService')->reset();
 
-        return redirect()->to('/admin')->with('message', 'Le site d’administration a été changé.');
+        $target = service('adminAccess')->isCentralAdminHost($this->request)
+            ? site_url('admin/site')
+            : site_url('admin');
+
+        return redirect()->to($target)->with('message', 'Le site d’administration a été changé.');
     }
 }

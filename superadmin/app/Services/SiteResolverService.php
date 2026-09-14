@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Entities\Site;
 use App\Models\SiteModel;
+use App\Support\TrustedProxies;
 use CodeIgniter\Exceptions\PageNotFoundException;
 use CodeIgniter\HTTP\CLIRequest;
 use CodeIgniter\HTTP\RequestInterface;
@@ -59,7 +60,7 @@ class SiteResolverService
         }
 
         if ($this->isSuperAdmin($user)) {
-            $sites = $this->activeSites();
+            $sites = $this->withoutSkeletonSites($this->activeSites());
 
             return $sites !== [] ? $sites : [$this->defaultSite()];
         }
@@ -70,6 +71,36 @@ class SiteResolverService
         }
 
         return [];
+    }
+
+    /**
+     * @param Site|array<string, mixed>|null $site
+     */
+    public function isSkeletonSite(Site|array|null $site): bool
+    {
+        if ($site === null) {
+            return false;
+        }
+
+        $identifier = strtolower(trim(is_array($site) ? (string) ($site['identifier'] ?? '') : (string) ($site->identifier ?? '')));
+        $slug = strtolower(trim(is_array($site) ? (string) ($site['slug'] ?? '') : (string) ($site->slug ?? '')));
+
+        $reserved = ['template', 'demo'];
+
+        return in_array($identifier, $reserved, true) || in_array($slug, $reserved, true);
+    }
+
+    /**
+     * @param list<Site> $sites
+     *
+     * @return list<Site>
+     */
+    public function withoutSkeletonSites(array $sites): array
+    {
+        return array_values(array_filter(
+            $sites,
+            fn (Site $site): bool => ! $this->isSkeletonSite($site),
+        ));
     }
 
     public function canUserAccessSite(int $siteId, ?User $user = null): bool
@@ -99,6 +130,15 @@ class SiteResolverService
 
     public function selectAdminSite(int $siteId, ?User $user = null): bool
     {
+        $site = $this->siteById($siteId);
+        if (
+            $site === null
+            || $this->isSkeletonSite($site)
+            || strtolower((string) ($site->status ?? 'active')) !== 'active'
+        ) {
+            return false;
+        }
+
         if (! $this->canUserAccessSite($siteId, $user)) {
             return false;
         }
@@ -157,19 +197,36 @@ class SiteResolverService
         }
 
         foreach ($siteIds as $siteId) {
-            if (isset($existingBySite[$siteId])) {
-                $model->update($existingBySite[$siteId], [
-                    'role' => $normalizedRoles[$siteId],
-                ]);
-                continue;
-            }
-
-            $model->insert([
-                'user_id' => $userId,
-                'site_id' => $siteId,
-                'role'    => $normalizedRoles[$siteId],
-            ]);
+            $this->upsertUserSiteRole($userId, $siteId, $normalizedRoles[$siteId], $existingBySite[$siteId] ?? null);
         }
+    }
+
+    public function upsertUserSiteRole(int $userId, int $siteId, string $role, ?int $existingRowId = null): void
+    {
+        $siteId = (int) $siteId;
+        if ($userId <= 0 || $siteId <= 0) {
+            return;
+        }
+
+        $role = $this->normalizeUserSiteRole($role);
+        $model = model(\App\Models\UserSiteModel::class, false);
+
+        if ($existingRowId === null) {
+            $existing = $model->where('user_id', $userId)->where('site_id', $siteId)->first();
+            $existingRowId = $existing !== null ? (int) $existing->id : null;
+        }
+
+        if ($existingRowId !== null) {
+            $model->update($existingRowId, ['role' => $role]);
+
+            return;
+        }
+
+        $model->insert([
+            'user_id' => $userId,
+            'site_id' => $siteId,
+            'role'    => $role,
+        ]);
     }
 
     /**
@@ -222,7 +279,14 @@ class SiteResolverService
         $selected = (int) (service('session')->get('active_admin_site_id') ?? 0);
 
         if ($selected > 0 && $this->canUserAccessSite($selected, $user)) {
-            return $this->siteById($selected) ?? $this->defaultSite();
+            $site = $this->siteById($selected);
+            if (
+                $site instanceof Site
+                && ! $this->isSkeletonSite($site)
+                && strtolower((string) ($site->status ?? 'active')) === 'active'
+            ) {
+                return $site;
+            }
         }
 
         $hostSite = $this->siteForRequestHost($request);
@@ -358,18 +422,7 @@ class SiteResolverService
 
     private function hasExplicitHttpHost(RequestInterface $request): bool
     {
-        foreach ([
-            $request->getHeaderLine('Host'),
-            $request->getHeaderLine('HTTP_HOST'),
-            (string) ($request->getServer('HTTP_HOST') ?? ''),
-            $request->getHeaderLine('X-Forwarded-Host'),
-        ] as $candidate) {
-            if ($this->normalizedHost((string) $candidate) !== '') {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->hostCandidates($request) !== [];
     }
 
     /**
@@ -377,27 +430,7 @@ class SiteResolverService
      */
     private function hostCandidates(RequestInterface $request): array
     {
-        $candidates = [
-            $request->getHeaderLine('Host'),
-            $request->getHeaderLine('HTTP_HOST'),
-            (string) ($request->getServer('HTTP_HOST') ?? ''),
-            (string) ($request->getServer('SERVER_NAME') ?? ''),
-        ];
-
-        $forwardedHost = trim($request->getHeaderLine('X-Forwarded-Host'));
-        if ($forwardedHost !== '') {
-            $candidates[] = explode(',', $forwardedHost)[0];
-        }
-
-        $normalized = [];
-        foreach ($candidates as $candidate) {
-            $host = $this->normalizedHost((string) $candidate);
-            if ($host !== '' && ! in_array($host, $normalized, true)) {
-                $normalized[] = $host;
-            }
-        }
-
-        return $normalized;
+        return TrustedProxies::hostCandidates($request);
     }
 
     /**
@@ -410,7 +443,13 @@ class SiteResolverService
                 ->where('status', 'active')
                 ->orderBy('name', 'ASC')
                 ->findAll();
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            log_message('error', 'Unable to load sites: {0}', [$exception->getMessage()]);
+
+            if (trim((string) env('app.siteSlug', '')) !== '') {
+                throw PageNotFoundException::forPageNotFound('Le site est temporairement indisponible.');
+            }
+
             return [$this->fallbackSite()];
         }
     }
@@ -541,10 +580,7 @@ class SiteResolverService
 
     private function normalizedHost(string $host): string
     {
-        $host = strtolower(trim($host));
-        $host = preg_replace('/:\d+$/', '', $host) ?? $host;
-
-        return trim($host, '.');
+        return TrustedProxies::normalizedHost($host);
     }
 
     private function isAdminRequest(RequestInterface $request): bool

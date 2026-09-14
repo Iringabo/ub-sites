@@ -2,9 +2,11 @@
 
 namespace Config;
 
+use App\Exceptions\HtmlPageNotFoundHandler;
 use CodeIgniter\Config\BaseConfig;
 use CodeIgniter\Debug\ExceptionHandler;
 use CodeIgniter\Debug\ExceptionHandlerInterface;
+use CodeIgniter\Exceptions\PageNotFoundException;
 use Psr\Log\LogLevel;
 use Throwable;
 
@@ -101,6 +103,10 @@ class Exceptions extends BaseConfig
      */
     public function handler(int $statusCode, Throwable $exception): ExceptionHandlerInterface
     {
+        if ($exception instanceof PageNotFoundException || $statusCode === 404) {
+            return new HtmlPageNotFoundHandler($this);
+        }
+
         return new ExceptionHandler($this);
     }
 }

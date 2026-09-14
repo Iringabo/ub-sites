@@ -104,7 +104,7 @@ $orderable = ! $trash
                     <?php endif ?>
                     <?php if ($canBulk): ?>
                         <th class="admin-bulk-col">
-                            <input class="form-check-input" type="checkbox" id="adminBulkToggle" aria-label="Tout sélectionner">
+                            <input class="form-check-input" type="checkbox" id="adminBulkToggle" form="adminBulkForm" aria-label="Tout sélectionner">
                         </th>
                     <?php endif ?>
                     <?php foreach ($listFields as $field): ?>
@@ -126,7 +126,7 @@ $orderable = ! $trash
                         <?php endif ?>
                         <?php if ($canBulk): ?>
                             <td class="admin-bulk-col">
-                                <input class="form-check-input admin-bulk-check" type="checkbox" name="ids[]" value="<?= esc((string) $itemId, 'attr') ?>" aria-label="Sélectionner <?= esc((string) $index + 1, 'attr') ?>">
+                                <input class="form-check-input admin-bulk-check" type="checkbox" form="adminBulkForm" name="ids[]" value="<?= esc((string) $itemId, 'attr') ?>" aria-label="Sélectionner <?= esc((string) ($index + 1), 'attr') ?>">
                             </td>
                         <?php endif ?>
                         <?php foreach ($listFields as $field): ?>
@@ -185,7 +185,7 @@ $orderable = ! $trash
                             <td colspan="<?= count($listFields) + ($canBulk ? 1 : 0) + ($orderable ? 1 : 0) + 1 ?>">
                                 <div class="p-3">
                                     <span class="small fw-semibold text-muted d-block mb-1"><?= esc($previewField['label']) ?></span>
-                                    <div class="admin-preview-content"><?= esc(nl2br((string) $itemValue($item, $previewField['name']))) ?></div>
+                                    <div class="admin-preview-content"><?= nl2br(esc((string) $itemValue($item, $previewField['name']))) ?></div>
                                 </div>
                             </td>
                         </tr>
@@ -202,7 +202,7 @@ $orderable = ! $trash
 </div>
 
 <?php if ($canBulk): ?>
-    <form class="card-faculte mt-3 admin-bulk-bar" method="post" action="<?= site_url('admin/' . $resource . '/bulk') ?>" data-confirm-inline>
+    <form id="adminBulkForm" class="card-faculte mt-3 admin-bulk-bar" method="post" action="<?= site_url('admin/' . $resource . '/bulk') ?>" data-confirm-inline>
         <?= csrf_field() ?>
         <div class="d-flex flex-wrap align-items-center gap-2">
             <span class="small text-muted me-1"><span class="admin-bulk-count">0</span> sélectionné(s)</span>

@@ -5,13 +5,13 @@ Ce fichier est un guide opérationnel court pour les futurs agents. Il ne rempla
 ## Source De Vérité
 
 - Pour l'état actuel, lire le code, les migrations, les routes, les modèles, les services, les vues, la configuration et les tests.
-- Les documents historiques ne décrivent pas forcément l'état courant. Ils portent un bandeau explicite lorsqu'ils sont conservés pour mémoire.
-- Lire d'abord [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/MULTI_FOLDER_DEPLOYMENT.md](docs/MULTI_FOLDER_DEPLOYMENT.md) et [docs/README.md](docs/README.md).
+- Lire d'abord [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/CREER_UN_SITE.md](docs/CREER_UN_SITE.md), [docs/MULTI_FOLDER_DEPLOYMENT.md](docs/MULTI_FOLDER_DEPLOYMENT.md) et [docs/README.md](docs/README.md).
 
 ## Mission Du Dépôt
 
 - Ce dépôt est le **modèle (template)** de la plateforme, pas un site en production.
-- On en copie manuellement deux types d'instances : un **dossier par faculté** (site public + administration de cette seule faculté) et un **dossier superadministration** (connexion + tableau de bord superadmin sur toutes les facultés).
+- On en copie manuellement deux types d'instances : un **dossier par faculté** (site public + administration de cette seule faculté) et un **dossier superadministration** (le superadmin choisit une faculté et en édite le contenu ici).
+- Menu `/admin` : trois zones métier. L’admin facultaire a `settings.manage` et peut créer admin/éditeur de *sa* faculté. Pas de création de site depuis l’UI.
 - Une seule base de données est partagée par toutes les instances ; l'isolation des contenus repose sur `site_id`.
 - Aucune identité ou contenu FSEG réel ne doit être figé dans le modèle : contenu de démarrage neutre uniquement, généré par provisionnement (`FacultySiteProvisioningService`, `php spark site:create`).
 
@@ -33,6 +33,8 @@ Ce fichier est un guide opérationnel court pour les futurs agents. Il ne rempla
 - Après modification d'un service/filtre, vérifier avec
   `php -r "require 'vendor/autoload.php'; echo (new ReflectionClass(App\Services\SiteResolverService::class))->getFileName();"`
   que la classe chargée est bien celle de ce dépôt.
+- Recopier `app/`, `tests/` et `public/assets/` vers les instances :
+  `./scripts/sync-instances.sh` depuis `template/`.
 
 ## Architecture
 
@@ -71,8 +73,12 @@ Ce fichier est un guide opérationnel court pour les futurs agents. Il ne rempla
 composer validate
 php spark routes
 php spark migrate:status
+# Uniquement dans ce dossier modèle (voir docs/CREER_UN_SITE.md) :
 php spark site:create --identifier fsi --slug fsi --name="Faculté des Sciences et Ingénierie"
+# Superadmin : uniquement si app.centralAdminMode=true (dossier superadmin)
 php spark admin:create-superadmin
+# Admin de faculté : uniquement si app.centralAdminMode=false et app.siteSlug renseigné
+php spark admin:create-faculty-admin
 php spark app:production-check
 php spark test
 ```

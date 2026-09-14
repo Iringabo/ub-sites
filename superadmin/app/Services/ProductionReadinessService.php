@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Config\App;
 use Config\ContentSecurityPolicy;
+use Throwable;
 
 final class ProductionReadinessService
 {
@@ -115,6 +116,41 @@ final class ProductionReadinessService
                 ? 'DBDebug est désactivé.'
                 : 'DBDebug doit être désactivé en production.',
         );
+
+        $expectedDatabase = (string) ($database['database'] ?? '');
+        try {
+            $db = db_connect();
+            $connectedDatabase = (string) $db->getDatabase();
+            if ($expectedDatabase === '' || $connectedDatabase === $expectedDatabase) {
+                if (! $db->tableExists('settings')) {
+                    $this->add(
+                        $checks,
+                        'prod.settings_site_id',
+                        'warning',
+                        'Paramètres par faculté',
+                        'Table settings introuvable. Exécutez php spark migrate --all.',
+                    );
+                } elseif ($db->fieldExists('site_id', 'settings')) {
+                    $this->add(
+                        $checks,
+                        'prod.settings_site_id',
+                        'ok',
+                        'Paramètres par faculté',
+                        'La table settings porte site_id (isolation par faculté).',
+                    );
+                } else {
+                    $this->add(
+                        $checks,
+                        'prod.settings_site_id',
+                        'error',
+                        'Paramètres par faculté',
+                        'La table settings n’a pas de colonne site_id. Appliquez les migrations de périmètre de site.',
+                    );
+                }
+            }
+        } catch (Throwable) {
+            // La base cible n’est pas joignable depuis ce processus de contrôle.
+        }
 
         $apacheUploads = $this->fileContains(FCPATH . 'uploads/.htaccess', ['Require all denied', 'RemoveHandler', 'php_flag engine off']);
         $this->add(

@@ -16,11 +16,21 @@ class DashboardController extends BaseController
             ]);
         }
 
+        return $this->facultyWorkspace();
+    }
+
+    public function site(): string
+    {
+        return $this->facultyWorkspace('site');
+    }
+
+    private function facultyWorkspace(string $activeAdmin = 'dashboard'): string
+    {
         return view('admin/dashboard', [
-            'title'      => 'Tableau de bord | Administration',
-            'activeAdmin'=> 'dashboard',
-            'dashboard'  => service('adminDashboardService')->data(),
-            'onboarding' => service('adminDashboardService')->onboarding(),
+            'title'       => 'Tableau de bord | Administration',
+            'activeAdmin' => $activeAdmin,
+            'dashboard'   => service('adminDashboardService')->data(),
+            'onboarding'  => service('adminDashboardService')->onboarding(),
         ]);
     }
 }

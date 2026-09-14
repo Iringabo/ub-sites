@@ -84,6 +84,7 @@ $currentUser = auth()->user();
         </article>
     </div>
     <div class="col-lg-4">
+        <?php if ($currentUser?->can('messages.manage')): ?>
         <article class="card-faculte h-100">
             <div class="card-icon"><i class="bi bi-bell"></i></div>
             <h2 class="h5">Messages de contact</h2>
@@ -97,9 +98,20 @@ $currentUser = auth()->user();
                 <?php endforeach ?>
             </div>
             <div class="mt-3">
-                <a href="<?= site_url('admin/messages') ?>" class="small text-decoration-none">Ouvrir la boîte de réception</a>
+                <?php if ((int) ($dashboard['newMessages'] ?? 0) === 0): ?>
+                    <p class="text-muted small mb-0">La boîte de réception est à jour.</p>
+                <?php else: ?>
+                    <a href="<?= site_url('admin/messages') ?>" class="small text-decoration-none">Ouvrir la boîte de réception</a>
+                <?php endif ?>
             </div>
         </article>
+        <?php else: ?>
+        <article class="card-faculte h-100">
+            <div class="card-icon"><i class="bi bi-pencil-square"></i></div>
+            <h2 class="h5">Par où commencer</h2>
+            <p class="text-muted small mb-0">Ouvrez « Contenu et communication » dans le menu pour modifier l’accueil, une actualité ou une formation.</p>
+        </article>
+        <?php endif ?>
     </div>
     <div class="col-md-6 col-lg-3">
         <article class="card-faculte h-100">
@@ -152,9 +164,18 @@ $currentUser = auth()->user();
         <article class="card-faculte h-100">
             <h2 class="h5">Raccourcis utiles</h2>
             <div class="d-grid gap-2">
-                <a href="<?= site_url('admin/posts/new?type=news') ?>" class="btn btn-outline-green">Créer une actualité</a>
-                <a href="<?= site_url('admin/posts/new?type=event') ?>" class="btn btn-outline-green">Créer un événement</a>
-                <a href="<?= site_url('admin/users') ?>" class="btn btn-outline-secondary">Gérer les utilisateurs</a>
+                <?php if ($currentUser?->can('news.manage')): ?>
+                    <a href="<?= site_url('admin/posts/new?type=news') ?>" class="btn btn-outline-green">Créer une actualité</a>
+                <?php endif ?>
+                <?php if ($currentUser?->can('events.manage')): ?>
+                    <a href="<?= site_url('admin/posts/new?type=event') ?>" class="btn btn-outline-green">Créer un événement</a>
+                <?php endif ?>
+                <?php if ($currentUser?->can('users.manage')): ?>
+                    <a href="<?= site_url('admin/users') ?>" class="btn btn-outline-secondary">Gérer les utilisateurs</a>
+                <?php endif ?>
+                <?php if ($currentUser?->can('settings.manage')): ?>
+                    <a href="<?= site_url('admin/settings/global') ?>" class="btn btn-outline-secondary">Coordonnées & identité</a>
+                <?php endif ?>
             </div>
         </article>
     </div>

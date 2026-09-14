@@ -8,6 +8,7 @@ $routes->setDefaultController('Home');
 $routes->setDefaultMethod('index');
 $routes->setTranslateURIDashes(false);
 $routes->setAutoRoute(false);
+$routes->set404Override('App\Controllers\Errors::show404');
 
 service('auth')->routes($routes, ['except' => ['register', 'login', 'magic-link']]);
 
@@ -33,6 +34,7 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
     $routes->get('', 'DashboardController::index');
     $routes->head('', 'DashboardController::index');
     $routes->match(['get', 'head'], '/', 'DashboardController::index', ['as' => 'admin.dashboard']);
+    $routes->match(['get', 'head'], 'site', 'DashboardController::site', ['as' => 'admin.site']);
     $routes->post('site-selection', 'SiteController::select', ['as' => 'admin.sites.select']);
 
     $routes->group('faculty', ['filter' => 'permission:pages.manage'], static function (RouteCollection $routes): void {

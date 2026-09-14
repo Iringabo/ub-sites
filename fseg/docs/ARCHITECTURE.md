@@ -1,139 +1,77 @@
-# Architecture Actuelle
+# Architecture actuelle
 
-Dernière actualisation : 25 août 2026. Ce document décrit l'état présent du
-dépôt et de la plateforme déployée ; les documents historiques éventuels
-portent un bandeau explicite.
+Dernière actualisation : 10 septembre 2026.
 
-## Vue D'Ensemble
-
-Le dépôt est le **modèle (template)** d'une plateforme multi-facultés :
-une application CodeIgniter 4 que l'on copie pour créer chaque instance.
+Ce dossier est **une instance facultaire**, pas le modèle. On n’y crée pas
+de nouveau site. Le modèle et la procédure sont dans `template/`.
 
 ```
 <racine plateforme>/
-├── template/      ← ce dépôt (jamais exposé au web)
-├── fseg/          ← copie : app.siteSlug=fseg   → site public + /admin FSEG
-├── fsi/           ← copie : app.siteSlug=fsi    → site public + /admin FSI
-└── superadmin/    ← copie : app.centralAdminMode=true → pilotage global
+├── template/      ← modèle (jamais exposé)
+├── fseg/          ← ce type d’instance : public + /admin d’une faculté
+├── fsi/           ← autre faculté
+└── superadmin/    ← pilotage (édition in situ du site choisi)
 ```
 
-- **Une seule base MySQL/MariaDB** partagée par toutes les instances ;
-  l'isolation des contenus repose sur `site_id` (jamais sur le dossier).
-- Les migrations se jouent **une fois**, depuis n'importe quelle instance.
-- Chaque instance possède son propre `vendor/` (autoload régénéré) et son
-  propre `.env` (jamais recopié d'une instance à l'autre).
+- **Une seule base** partagée ; isolation par `site_id`.
+- Migrations **une fois** pour toute la plateforme.
+- Cookie de session propre à ce dossier (ex. `ci_session_fseg`).
 
-## Instances Et Développement Local
+## Local
 
-| Instance | URL locale | `.env` clé |
+| Instance | URL | Clé |
 |---|---|---|
-| fseg | http://localhost:**8101** | `app.siteSlug=fseg` |
-| fsi | http://localhost:**8102** | `app.siteSlug=fsi` |
+| cette faculté | voir `app.baseURL` dans `.env` | `app.siteSlug` |
 | superadmin | http://localhost:**8103** | `app.centralAdminMode=true` |
 
 ```bash
-cd fseg && ./scripts/dev-serve.sh start    # démarre les trois instances
-./scripts/dev-serve.sh status              # healthz par instance
-./scripts/dev-serve.sh stop                # arrêt
-# logs : /tmp/platform-dev-<instance>.log
+./scripts/dev-serve.sh start    # démarre les instances listées
+./scripts/dev-serve.sh status
+./scripts/dev-serve.sh stop
 ```
 
-Les ports sont lus dans le `app.baseURL` de chaque `.env`
-(`PLATFORM_INSTANCES` permet de surcharger la liste des instances).
+## Résolution du site
 
-## Résolution Du Site Actif
+1. `/admin/*` : site du dossier (le sélecteur n’existe pas pour le personnel
+   facultaire) ;
+2. hôte déclaré dans `hostnames` ;
+3. `app.siteId` / `app.siteSlug` ;
+4. site introuvable ou inactif → **404** (jamais de repli).
 
-Ordre appliqué par `App\Services\SiteResolverService` :
+## Accès
 
-1. Requête `/admin/*` : site sélectionné en session (superadmin uniquement),
-   sinon site lié au dossier ;
-2. Hôte de la requête listé dans les domaines (`hostnames`) d'un site actif ;
-3. `app.siteId` puis `app.siteSlug` ;
-4. **Dossier facultaire (HTTP)** : si le site configuré est introuvable ou
-   inactif → **404 française explicite** (jamais de repli vers une autre
-   faculté) ;
-5. Instance superadmin / CLI : premier site actif, sinon entité neutre
-   « Site à configurer ».
+| Qui | Peut faire ici |
+|---|---|
+| Éditeur | Contenu et communauté |
+| Administrateur de faculté | Trois zones ; crée admin/éditeur **de cette faculté** ; identité |
+| Superadministrateur | Se connecte de préférence sur `superadmin/` ; conserve l’accès à ce `/admin` |
 
-## Modèle D'Accès
+Menu : trois zones (`AdminNavigationService`). Pas de liste des facultés.
 
-Groupes Shield : `superadmin`, `admin`, `editor`
-(matrice complète dans `app/Config/AuthGroups.php`).
+## Isolation
 
-| Qui | Où | Peut faire |
-|---|---|---|
-| Superadministrateur | dossier `superadmin/` (connexion dédiée) | tout : sites, utilisateurs, mots de passe, contenu de chaque faculté |
-| Administrateur de faculté (`admin` + `user_sites.role=site_admin`) | **uniquement** `/admin` de son dossier | contenu de sa faculté, messages, création d'éditeurs |
-| Éditeur | `/admin` de son dossier | contenu selon permissions ; pas d'utilisateurs |
+`SiteScopedModel::forSite()`, médias sous `public/uploads/sites/{slug}/`.
 
-Séparation stricte garantie par `AdminAccessFilter` (site « lié » au dossier
-via `instanceBoundSite()`) : le personnel d'une autre faculté est renvoyé à
-l'accueil avec erreur, même sur un hôte non déclaré. Le sélecteur de site est
-réservé au superadmin (masqué côté UI, refusé côté serveur). Un dossier
-facultaire mal configuré ne peut donc **jamais** servir le contenu d'un autre
-site.
+## Front, langues, sécurité
 
-## Isolation Multi-Sites
-
-- Tables `sites` et `user_sites` ; `site_id` sur tous les contenus,
-  paramètres, messages et traductions.
-- Lectures/écritures via `SiteScopedModel::forSite()` ; index uniques
-  **par site** (slugs, clés, codes…).
-- Médias publics rangés sous `public/uploads/sites/{slug}/…`.
-- Création d'une faculté = provisionnement complet d'un contenu de départ
-  neutre (« Texte à remplacer ») : bouton « Nouveau site » du superadmin ou
-  `php spark site:create --identifier <id> --slug <slug> --name "…"`.
-  Procédure complète : [TEMPLATE_SETUP.md](TEMPLATE_SETUP.md).
-
-## Front-End Auto-Hébergé
-
-Bootstrap 5.3.3, Bootstrap Icons 1.11.3 et la police Inter vivent dans
-`public/assets/vendor/` : **aucune dépendance CDN** ; la plateforme fonctionne
-hors ligne. La CSP n'autorise que `'self'` (scripts/styles/polices), avec
-seule exception fonctionnelle `frame-src https://www.google.com` pour la carte
-optionnelle de la page contact.
-
-## Bilinguisme
-
-Français langue source et défaut ; anglais public optionnel via
-`content_translations` (fallback français). Cookie de langue :
-`site_locale`. Administration, authentification et erreurs back-office :
-français exclusivement.
-
-## Sécurité (synthèse)
-
-Shield (groupes/permissions), CSRF global, secure headers, CSP stricte,
-validation serveur systématique, uploads contrôlés (extension + MIME réels +
-`getimagesize`, noms aléatoires, garde anti-traversée), limitations de débit
-du formulaire de contact par e-mail (120 s) **et** par IP (20/h),
-verrous anti-auto-lockout et dernier-superadmin. Détails :
-[SECURITY_REVIEW.md](SECURITY_REVIEW.md) et
-[AUDIT_2026-08-25.md](AUDIT_2026-08-25.md).
+Bootstrap / Icons / Inter auto-hébergés. Public FR/EN ; admin en français.
+Détails : [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
 
 ## Qualité
 
-- Suite PHPUnit : **21 fichiers, verts** (unitaires, base de données,
-  feature, session) ; base dédiée `platform_test` supprimée/recréée à
-  chaque exécution (`php spark test`, lancer les classes séquentiellement).
-- `composer validate`, `php spark routes`, `php -l` : propres.
-- Dernier audit complet : [AUDIT_2026-08-25.md](AUDIT_2026-08-25.md).
-
-## Commandes Utiles
+PHPUnit 10. `php spark test` recrée `database.tests.database`. Le code
+applicatif est aligné sur `template/` par rsync de `app/`, `tests/`,
+`public/assets/` — pas des README ni du `.env`.
 
 ```bash
 composer validate && php spark routes && php spark migrate:status
-php spark test                                   # base platform_test (destructif)
-php spark site:create --identifier droit --slug droit --name "Faculté de Droit"
-PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-superadmin \
-    --email admin@example.edu --username admin
+php spark test
 php spark app:production-check [--strict]
 ```
 
-## Documents Liés
+## Documents liés
 
-- [TEMPLATE_SETUP.md](TEMPLATE_SETUP.md) : créer une instance, pas à pas.
-- [MULTI_FOLDER_DEPLOYMENT.md](MULTI_FOLDER_DEPLOYMENT.md) : fonctionnement du
-  mode multi-dossiers.
-- [ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md) : modèle de
-  données `sites` / `user_sites` / `site_id`.
-- [05-BASE-DE-DONNEES.md](05-BASE-DE-DONNEES.md) : schéma issu des migrations.
+- [../README.md](../README.md)
+- [ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md)
+- [05-BASE-DE-DONNEES.md](05-BASE-DE-DONNEES.md)
+- [GUIDE_ADMINISTRATEUR.md](GUIDE_ADMINISTRATEUR.md)

@@ -2,6 +2,7 @@
 
 use App\Database\Seeds\TemplateStarterSeeder;
 use App\Models\SiteModel;
+use App\Support\InstanceCookieNames;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
@@ -413,7 +414,7 @@ final class AdminFacultyProfileTest extends CIUnitTestCase
 
     private function withLocaleCookie(string $locale): self
     {
-        service('superglobals')->setCookie('site_locale', $locale);
+        service('superglobals')->setCookie(InstanceCookieNames::locale(), $locale);
 
         return $this;
     }

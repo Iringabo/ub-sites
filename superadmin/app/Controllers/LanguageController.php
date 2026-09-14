@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Support\InstanceCookieNames;
 use CodeIgniter\HTTP\RedirectResponse;
 
 class LanguageController extends BaseController
@@ -18,7 +19,7 @@ class LanguageController extends BaseController
             $locale = 'fr';
         }
 
-        service('response')->setCookie('site_locale', $locale, YEAR, '', '/', '', null, true, 'Lax');
+        service('response')->setCookie(InstanceCookieNames::locale(), $locale, YEAR, '', '/', '', null, true, 'Lax');
 
         return redirect()
             ->to($this->safeRedirect())

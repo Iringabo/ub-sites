@@ -136,12 +136,12 @@ $deanParagraphs = array_values(array_filter(
     static fn (string $paragraph): bool => $paragraph !== '',
 ));
 $deanBlockText = $blockText('dean_message', 'content', $deanParagraphs === [] ? null : implode("\n\n", $deanParagraphs));
-$deanTitle = $blockText('dean_message', 'title', (string) ($deanMessage['title'] ?? 'Mot du doyen'));
+$deanTitle = $blockText('dean_message', 'title', (string) ($deanMessage['title'] ?? lang('Site.faculty.deanLabelFallback')));
 $contactCta = $firstBlock('contact_cta');
 $contactCtaSettings = $contactCta === null ? [] : $blockSettings($contactCta);
-$contactCtaTitle = $blockText('contact_cta', 'title', 'Contacter la faculté');
-$contactCtaText = $blockText('contact_cta', 'content', 'Envoyez-nous vos questions et demandes d’information.');
-$contactCtaLabel = site_text_or_placeholder((string) ($contactCtaSettings['label'] ?? $contactCtaSettings['button_label'] ?? ''), 'Nous écrire');
+$contactCtaTitle = $blockText('contact_cta', 'title', lang('Site.home.contactCtaTitle'));
+$contactCtaText = $blockText('contact_cta', 'content', lang('Site.home.contactCtaText'));
+$contactCtaLabel = site_text_or_placeholder((string) ($contactCtaSettings['label'] ?? $contactCtaSettings['button_label'] ?? ''), lang('Site.common.write'));
 $contactCtaUrl = site_public_url((string) ($contactCtaSettings['url'] ?? $contactCtaSettings['button_url'] ?? '/contact'));
 $staffPreviewTitle = $blockText('staff_preview', 'title', lang('Site.pageTitles.staff'));
 $staffPreviewText = $blockText('staff_preview', 'content', '');
@@ -316,7 +316,7 @@ $hasCarouselControls = count($heroSlides) > 1;
         <div class="row align-items-center g-5">
             <div class="col-lg-4 text-center">
                 <?php if (! empty($deanMessage['photo'])): ?>
-                    <img src="<?= esc(site_media_url((string) $deanMessage['photo']), 'attr') ?>" alt="<?= esc((string) ($deanMessage['name'] ?? 'Doyen'), 'attr') ?>" class="dean-photo">
+                    <img src="<?= esc(site_media_url((string) $deanMessage['photo']), 'attr') ?>" alt="<?= esc((string) ($deanMessage['name'] ?? lang('Site.faculty.deanPhotoAlt')), 'attr') ?>" class="dean-photo">
                 <?php else: ?>
                     <div class="card-icon mx-auto mb-3"><i class="bi bi-person-vcard"></i></div>
                 <?php endif ?>
@@ -328,7 +328,7 @@ $hasCarouselControls = count($heroSlides) > 1;
                 <?php endif ?>
             </div>
             <div class="col-lg-8">
-                <span class="section-label"><?= esc((string) ($deanMessage['label'] ?? 'Mot du doyen')) ?></span>
+                <span class="section-label"><?= esc((string) ($deanMessage['label'] ?? lang('Site.faculty.deanLabelFallback'))) ?></span>
                 <h2 class="section-title"><?= esc($deanTitle) ?></h2>
                 <div class="divider-green"></div>
                 <?php foreach (site_paragraphs($deanBlockText) as $paragraph): ?>
@@ -527,9 +527,9 @@ $hasCarouselControls = count($heroSlides) > 1;
         <?php if ($images !== []): ?>
             <section class="section-pad section-alt">
                 <div class="container">
-                    <?php $galleryTitle = site_text_or_placeholder(is_scalar($blockValue($block, 'title')) ? (string) $blockValue($block, 'title') : null, 'Galerie'); ?>
+                    <?php $galleryTitle = site_text_or_placeholder(is_scalar($blockValue($block, 'title')) ? (string) $blockValue($block, 'title') : null, lang('Site.home.gallery')); ?>
                     <div class="text-center mx-auto mb-5" style="max-width: 640px">
-                        <span class="section-label">Galerie</span>
+                        <span class="section-label"><?= esc(lang('Site.home.gallery')) ?></span>
                         <h2 class="section-title"><?= esc($galleryTitle) ?></h2>
                     </div>
                     <div class="row g-3">

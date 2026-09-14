@@ -21,7 +21,7 @@ class AdminAccessFilter implements FilterInterface
 
             return service('response')
                 ->setStatusCode(403)
-                ->setBody(view('errors/html/error_404', [
+                ->setBody(view('errors/html/error_403', [
                     'message' => 'Seul un superadministrateur peut accéder à cette administration centrale.',
                 ]));
         }

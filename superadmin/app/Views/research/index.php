@@ -9,8 +9,8 @@
 <section class="section-pad bg-white">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px;">
-            <span class="section-label"><?= esc($content['labs_label'] ?? 'Structures de recherche') ?></span>
-            <h2 class="section-title"><?= esc($content['labs_title'] ?? 'Nos Laboratoires') ?></h2>
+            <span class="section-label"><?= esc($content['labs_label'] ?? lang('Site.research.labsLabel')) ?></span>
+            <h2 class="section-title"><?= esc($content['labs_title'] ?? lang('Site.research.labsTitle')) ?></h2>
             <p class="section-subtitle mx-auto"><?= esc($content['labs_text'] ?? '') ?></p>
         </div>
         <div class="row g-4">
@@ -30,7 +30,7 @@
                                 <span class="badge-news badge-actualite"><?= esc($theme) ?></span>
                             <?php endforeach ?>
                         </div>
-                        <p class="small text-muted mb-0"><i class="bi bi-people me-1"></i><?= esc((string) $lab->researcher_count) ?> chercheurs</p>
+                        <p class="small text-muted mb-0"><i class="bi bi-people me-1"></i><?= esc((string) $lab->researcher_count) ?> <?= esc(lang('Site.research.researchers')) ?></p>
                     </article>
                 </div>
             <?php endforeach ?>
@@ -42,8 +42,8 @@
     <div class="container">
         <div class="row g-5">
             <div class="col-lg-4">
-                <span class="section-label"><?= esc($content['publications_label'] ?? 'Production scientifique') ?></span>
-                <h2 class="section-title"><?= esc($content['publications_title'] ?? 'Publications récentes') ?></h2>
+                <span class="section-label"><?= esc($content['publications_label'] ?? lang('Site.research.publicationsLabel')) ?></span>
+                <h2 class="section-title"><?= esc($content['publications_title'] ?? lang('Site.research.publicationsTitle')) ?></h2>
                 <div class="divider-green"></div>
                 <p class="text-muted"><?= esc($content['publications_text'] ?? '') ?></p>
                 <div class="d-flex flex-wrap gap-4 mt-4">
@@ -72,8 +72,8 @@
 <section class="section-pad bg-white">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px;">
-            <span class="section-label"><?= esc($content['projects_label'] ?? 'Financements et partenariats') ?></span>
-            <h2 class="section-title"><?= esc($content['projects_title'] ?? 'Projets & Financements') ?></h2>
+            <span class="section-label"><?= esc($content['projects_label'] ?? lang('Site.research.projectsLabel')) ?></span>
+            <h2 class="section-title"><?= esc($content['projects_title'] ?? lang('Site.research.projectsTitle')) ?></h2>
         </div>
         <div class="row g-4">
             <?php foreach ($projects as $project): ?>

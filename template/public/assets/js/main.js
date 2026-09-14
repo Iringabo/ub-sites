@@ -1,9 +1,9 @@
 // Reusable counter animation for server-rendered data-count elements.
-window.FSEG = window.FSEG || {};
+window.FacultySite = window.FacultySite || {};
 
-window.FSEG.initCounters = function (root) {
+window.FacultySite.initCounters = function (root) {
     root = root || document;
-    const counters = root.querySelectorAll('[data-count]:not([data-fseg-counted])');
+    const counters = root.querySelectorAll('[data-count]:not([data-counter-done])');
     if (!counters.length) return;
 
     const observer = new IntersectionObserver((entries) => {
@@ -16,7 +16,7 @@ window.FSEG.initCounters = function (root) {
     }, { threshold: 0.5 });
 
     counters.forEach(el => {
-        el.setAttribute('data-fseg-counted', 'true');
+        el.setAttribute('data-counter-done', 'true');
         observer.observe(el);
     });
 
@@ -77,36 +77,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 2. Counter animation (triggered by IntersectionObserver)
-    window.FSEG.initCounters();
+    window.FacultySite.initCounters();
 
-    // 3. Filter buttons (news & staff) + optional live search (news page)
-    const filterBtns = document.querySelectorAll('[data-filter]');
-    const searchInput = document.getElementById('newsSearch');
+    // 3. Client filters for in-page chips (staff). News search/chips are server GET.
+    const filterBtns = document.querySelectorAll('button[data-filter]');
     const noResults = document.getElementById('newsNoResults');
 
-    const ACCENT_MAP = { a: 'aàâä', e: 'eéèêë', i: 'iîï', o: 'oôö', u: 'uùûü', c: 'cç' };
-    const ACCENT_LOOKUP = {};
-    Object.keys(ACCENT_MAP).forEach(plain => {
-        ACCENT_MAP[plain].split('').forEach(accented => { ACCENT_LOOKUP[accented] = plain; });
-    });
-
-    function normalizeText(str) {
-        return str.toLowerCase().split('').map(ch => ACCENT_LOOKUP[ch] || ch).join('');
-    }
-
     function applyCardFilters() {
-        const activeBtn = document.querySelector('[data-filter].active');
+        const activeBtn = document.querySelector('button[data-filter].active');
         const filter = activeBtn ? activeBtn.getAttribute('data-filter') : 'tous';
-        const searchTerm = searchInput ? normalizeText(searchInput.value.trim()) : '';
         let visibleCount = 0;
 
         document.querySelectorAll('[data-category]').forEach(card => {
             const matchesCategory = filter === 'tous' || card.getAttribute('data-category') === filter;
-            const matchesSearch = !searchTerm || normalizeText(card.textContent).includes(searchTerm);
-            const show = matchesCategory && matchesSearch;
-            if (show) visibleCount++;
+            if (matchesCategory) visibleCount++;
             const col = card.closest('[class*="col-"]');
-            if (col) col.style.display = show ? '' : 'none';
+            if (col) col.style.display = matchesCategory ? '' : 'none';
         });
 
         noResults?.classList.toggle('d-none', visibleCount !== 0);
@@ -115,13 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
     filterBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const parent = btn.closest('div');
-            parent.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            parent.querySelectorAll('button[data-filter]').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             applyCardFilters();
         });
     });
-
-    searchInput?.addEventListener('input', applyCardFilters);
 
     // 4. Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -138,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', () => {
             const collapseElement = link.closest('.navbar-collapse');
 
-            if (!collapseElement || window.innerWidth >= 992 || link.classList.contains('dropdown-toggle')) {
+            if (!collapseElement || window.innerWidth >= 1200 || link.classList.contains('dropdown-toggle')) {
                 return;
             }
 
@@ -175,4 +159,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+});
+
+window.addEventListener('pageshow', () => {
+    document.querySelectorAll('#contactForm [data-contact-submit]').forEach((button) => {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+    });
 });

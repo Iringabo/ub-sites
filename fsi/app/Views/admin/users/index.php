@@ -5,19 +5,18 @@
 $currentUser = $currentUser ?? auth()->user();
 $currentActorIsSuperAdmin = (bool) ($currentActorIsSuperAdmin ?? false);
 $groupTitles = array_map(static fn (array $group): string => $group['title'], $groups);
-$permissionTitles = $permissions;
 $siteLabelsByUserId = $siteLabelsByUserId ?? [];
 $editableUserIds = array_map('intval', $editableUserIds ?? []);
 ?>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
-        <span class="section-label">Sécurité</span>
-        <h1 class="h3 mb-1">Utilisateurs</h1>
-        <p class="text-muted mb-0">Gérez les comptes Shield, leurs groupes, leurs permissions et leurs accès.</p>
+        <span class="section-label">Comptes & accès</span>
+        <h1 class="h3 mb-1">Comptes & accès</h1>
+        <p class="text-muted mb-0">Ajoutez ou modifiez les personnes qui administrent ou rédigent le site.</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="<?= site_url('admin/users/new') ?>" class="btn btn-primary-green"><i class="bi bi-person-plus me-1"></i>Créer un utilisateur</a>
+        <a href="<?= site_url('admin/users/new') ?>" class="btn btn-primary-green"><i class="bi bi-person-plus me-1"></i>Créer un compte</a>
         <a href="<?= site_url('admin') ?>" class="btn btn-outline-secondary">Tableau de bord</a>
     </div>
 </div>
@@ -47,17 +46,17 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
         <table class="table align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Compte</th>
+                    <th>Personne</th>
                     <th>État</th>
-                    <th>Groupes</th>
-                    <th>Permissions</th>
-                    <th>Sites</th>
+                    <th>Rôle</th>
+                    <th>Faculté</th>
                     <th>Dernière activité</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($users as $user): ?>
+                    <?php $userGroups = $user->getGroups() ?? []; ?>
                     <tr>
                         <td>
                             <div class="fw-semibold"><?= esc($user->username ?? '—') ?></div>
@@ -69,7 +68,6 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
                             </span>
                         </td>
                         <td>
-                            <?php $userGroups = $user->getGroups() ?? []; ?>
                             <?php if ($userGroups !== []): ?>
                                 <div class="d-flex flex-wrap gap-1">
                                     <?php foreach ($userGroups as $group): ?>
@@ -77,19 +75,7 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
                                     <?php endforeach ?>
                                 </div>
                             <?php else: ?>
-                                <span class="text-muted small">Aucun groupe</span>
-                            <?php endif ?>
-                        </td>
-                        <td>
-                            <?php $userPermissions = $user->getPermissions() ?? []; ?>
-                            <?php if ($userPermissions !== []): ?>
-                                <div class="d-flex flex-wrap gap-1">
-                                    <?php foreach ($userPermissions as $permission): ?>
-                                        <span class="badge text-bg-light"><?= esc($permissionTitles[$permission] ?? $permission) ?></span>
-                                    <?php endforeach ?>
-                                </div>
-                            <?php else: ?>
-                                <span class="text-muted small">Aucune permission directe</span>
+                                <span class="text-muted small">Aucun rôle</span>
                             <?php endif ?>
                         </td>
                         <td>
@@ -101,9 +87,9 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
                                     <?php endforeach ?>
                                 </div>
                             <?php elseif (in_array('superadmin', $userGroups, true)): ?>
-                                <span class="text-muted small">Tous les sites</span>
+                                <span class="text-muted small">Toutes les facultés</span>
                             <?php else: ?>
-                                <span class="text-muted small">Site courant</span>
+                                <span class="text-muted small">Faculté courante</span>
                             <?php endif ?>
                         </td>
                         <td class="small text-muted">
@@ -146,7 +132,7 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
                 <?php endforeach ?>
                 <?php if ($users === []): ?>
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">Aucun utilisateur ne correspond aux filtres.</td>
+                        <td colspan="6" class="text-center text-muted py-4">Aucun compte ne correspond aux filtres. <a href="<?= site_url('admin/users/new') ?>">Créer le premier compte</a>.</td>
                     </tr>
                 <?php endif ?>
             </tbody>

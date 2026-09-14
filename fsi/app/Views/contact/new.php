@@ -61,35 +61,35 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="name" class="form-label small fw-semibold"><?= esc(lang('Site.contact.fullName')) ?></label>
-                                <input type="text" class="form-control<?= array_key_exists('name', $errors) ? ' is-invalid' : '' ?>" id="name" name="name" value="<?= esc(old('name'), 'attr') ?>" maxlength="<?= esc($limits['nameMaxLength'], 'attr') ?>" autocomplete="name" required aria-describedby="name-error">
+                                <input type="text" class="form-control<?= array_key_exists('name', $errors) ? ' is-invalid' : '' ?>" id="name" name="name" value="<?= esc(old('name'), 'attr') ?>" maxlength="<?= esc($limits['nameMaxLength'], 'attr') ?>" autocomplete="name" required<?= array_key_exists('name', $errors) ? ' aria-describedby="name-error"' : '' ?>>
                                 <?php if (isset($errors['name'])): ?>
                                     <div class="invalid-feedback" id="name-error"><?= esc($errors['name']) ?></div>
                                 <?php endif ?>
                             </div>
                             <div class="col-md-6">
                                 <label for="email" class="form-label small fw-semibold"><?= esc(lang('Site.contact.email')) ?></label>
-                                <input type="email" class="form-control<?= array_key_exists('email', $errors) ? ' is-invalid' : '' ?>" id="email" name="email" value="<?= esc(old('email'), 'attr') ?>" maxlength="<?= esc($limits['emailMaxLength'], 'attr') ?>" autocomplete="email" required aria-describedby="email-error">
+                                <input type="email" class="form-control<?= array_key_exists('email', $errors) ? ' is-invalid' : '' ?>" id="email" name="email" value="<?= esc(old('email'), 'attr') ?>" maxlength="<?= esc($limits['emailMaxLength'], 'attr') ?>" autocomplete="email" required<?= array_key_exists('email', $errors) ? ' aria-describedby="email-error"' : '' ?>>
                                 <?php if (isset($errors['email'])): ?>
                                     <div class="invalid-feedback" id="email-error"><?= esc($errors['email']) ?></div>
                                 <?php endif ?>
                             </div>
                             <div class="col-md-6">
                                 <label for="phone" class="form-label small fw-semibold"><?= esc(lang('Site.contact.phone')) ?></label>
-                                <input type="tel" class="form-control<?= array_key_exists('phone', $errors) ? ' is-invalid' : '' ?>" id="phone" name="phone" value="<?= esc(old('phone'), 'attr') ?>" maxlength="<?= esc($limits['phoneMaxLength'], 'attr') ?>" autocomplete="tel" aria-describedby="phone-error">
+                                <input type="tel" class="form-control<?= array_key_exists('phone', $errors) ? ' is-invalid' : '' ?>" id="phone" name="phone" value="<?= esc(old('phone'), 'attr') ?>" maxlength="<?= esc($limits['phoneMaxLength'], 'attr') ?>" autocomplete="tel"<?= array_key_exists('phone', $errors) ? ' aria-describedby="phone-error"' : '' ?>>
                                 <?php if (isset($errors['phone'])): ?>
                                     <div class="invalid-feedback" id="phone-error"><?= esc($errors['phone']) ?></div>
                                 <?php endif ?>
                             </div>
                             <div class="col-md-6">
                                 <label for="subject" class="form-label small fw-semibold"><?= esc(lang('Site.contact.subject')) ?></label>
-                                <input type="text" class="form-control<?= array_key_exists('subject', $errors) ? ' is-invalid' : '' ?>" id="subject" name="subject" value="<?= esc(old('subject'), 'attr') ?>" maxlength="<?= esc($limits['subjectMaxLength'], 'attr') ?>" autocomplete="off" required aria-describedby="subject-error">
+                                <input type="text" class="form-control<?= array_key_exists('subject', $errors) ? ' is-invalid' : '' ?>" id="subject" name="subject" value="<?= esc(old('subject'), 'attr') ?>" maxlength="<?= esc($limits['subjectMaxLength'], 'attr') ?>" autocomplete="off" required<?= array_key_exists('subject', $errors) ? ' aria-describedby="subject-error"' : '' ?>>
                                 <?php if (isset($errors['subject'])): ?>
                                     <div class="invalid-feedback" id="subject-error"><?= esc($errors['subject']) ?></div>
                                 <?php endif ?>
                             </div>
                             <div class="col-12">
                                 <label for="message" class="form-label small fw-semibold"><?= esc(lang('Site.contact.message')) ?></label>
-                                <textarea class="form-control<?= array_key_exists('message', $errors) ? ' is-invalid' : '' ?>" id="message" name="message" rows="6" maxlength="<?= esc($limits['messageMaxLength'], 'attr') ?>" required aria-describedby="message-help message-error"><?= esc(old('message')) ?></textarea>
+                                <textarea class="form-control<?= array_key_exists('message', $errors) ? ' is-invalid' : '' ?>" id="message" name="message" rows="6" maxlength="<?= esc($limits['messageMaxLength'], 'attr') ?>" required aria-describedby="message-help<?= array_key_exists('message', $errors) ? ' message-error' : '' ?>"><?= esc(old('message')) ?></textarea>
                                 <div id="message-help" class="form-text"><?= esc(lang('Site.contact.messageHelp')) ?></div>
                                 <?php if (isset($errors['message'])): ?>
                                     <div class="invalid-feedback d-block" id="message-error"><?= esc($errors['message']) ?></div>

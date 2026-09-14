@@ -96,7 +96,7 @@ class SettingsController extends BaseController
         }
 
         $siteId = (int) service('siteResolver')->activeSiteId();
-        $model = model(SettingModel::class, false);
+        $model = model(SettingModel::class);
         $errors = [];
         $hasError = false;
 
@@ -131,7 +131,7 @@ class SettingsController extends BaseController
                 }
             }
 
-            $this->upsert($model, $siteId, $key, $raw, $type, $definition['context']);
+            $this->upsert($model, $siteId, $key, $raw, $type, $definition['context'], $errors, $hasError);
         }
 
         foreach ([['key' => 'assets.logo', 'file' => 'setting_file_assets_logo'], ['key' => 'seo.og_image', 'file' => 'setting_file_og_image']] as $pathDef) {
@@ -151,7 +151,7 @@ class SettingsController extends BaseController
                 continue;
             }
 
-            $this->upsert($model, $siteId, $key, $path, 'path', $this->definitions()[$key]['context']);
+            $this->upsert($model, $siteId, $key, $path, 'path', $this->definitions()[$key]['context'], $errors, $hasError);
         }
 
         if ($hasError) {
@@ -164,15 +164,15 @@ class SettingsController extends BaseController
     }
 
     /**
-     * @param array<string, string> $definition
+     * @param array<string, string> $errors
      */
-    private function upsert(SettingModel $model, int $siteId, string $key, string $value, string $type, string $context): void
+    private function upsert(SettingModel $model, int $siteId, string $key, string $value, string $type, string $context, array &$errors, bool &$hasError): void
     {
         $existing = $model->forSite($siteId)->where('key', $key)->first();
 
         try {
             if ($existing === null) {
-                $model->skipValidation(true)->insert([
+                $saved = $model->skipValidation(true)->insert([
                     'site_id' => $siteId,
                     'class'   => 'App\\Settings\\Site',
                     'key'     => $key,
@@ -181,10 +181,19 @@ class SettingsController extends BaseController
                     'context' => $context,
                 ]);
             } else {
-                $model->skipValidation(true)->update((int) $existing->id, ['value' => $value]);
+                $saved = $model->skipValidation(true)->update((int) $existing->id, ['value' => $value]);
             }
-            $model->skipValidation(false);
-        } catch (Throwable) {
+
+            if ($saved === false) {
+                $hasError = true;
+                $errors[$key] = 'L’enregistrement de ce paramètre a échoué.';
+                log_message('error', 'Settings upsert failed for {0}', [$key]);
+            }
+        } catch (Throwable $exception) {
+            $hasError = true;
+            $errors[$key] = 'L’enregistrement de ce paramètre a échoué.';
+            log_message('error', 'Settings upsert failed for {0}: {1}', [$key, $exception->getMessage()]);
+        } finally {
             $model->skipValidation(false);
         }
     }

@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Support\InstanceCookieNames;
 use CodeIgniter\Config\BaseConfig;
 use CodeIgniter\Session\Handlers\BaseHandler;
 use CodeIgniter\Session\Handlers\FileHandler;
@@ -125,4 +126,11 @@ class Session extends BaseConfig
      * seconds.
      */
     public int $lockMaxRetries = 300;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $this->cookieName = InstanceCookieNames::session();
+    }
 }

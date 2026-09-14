@@ -91,4 +91,101 @@ final class MediaServiceTest extends CIUnitTestCase
         $this->assertStringContainsString('return 404', $nginx);
         $this->assertStringContainsString('try_files $uri =404', $nginx);
     }
+
+    public function testStoreCopiesIntoConfiguredFacultyPublicRootAndDeleteRemovesBoth(): void
+    {
+        $central = sys_get_temp_dir() . '/media-central-' . uniqid('', true);
+        $faculty = sys_get_temp_dir() . '/media-faculty-' . uniqid('', true);
+        mkdir($central, 0755, true);
+        mkdir($faculty, 0755, true);
+        file_put_contents($faculty . '/index.php', '<?php');
+
+        $previous = getenv('app.uploadMirrors');
+        $_ENV['app.uploadMirrors'] = 'fseg:' . $faculty;
+        $_SERVER['app.uploadMirrors'] = 'fseg:' . $faculty;
+        putenv('app.uploadMirrors=fseg:' . $faculty);
+
+        $png = tempnam(sys_get_temp_dir(), 'site_png_');
+        file_put_contents($png, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII='));
+        $file = new UploadedFile($png, 'logo.png', 'image/png', filesize($png), UPLOAD_ERR_OK);
+        $error = null;
+
+        try {
+            $service = new MediaService($central, 'fseg');
+            $relative = $service->storePublicImage($file, 'settings', $error);
+
+            $this->assertNull($error);
+            $this->assertIsString($relative);
+            $this->assertFileExists($central . '/' . $relative);
+            $this->assertFileExists($faculty . '/' . $relative);
+
+            $service->deletePublicPath($relative);
+            $this->assertFileDoesNotExist($central . '/' . $relative);
+            $this->assertFileDoesNotExist($faculty . '/' . $relative);
+        } finally {
+            @unlink($png);
+            $this->removeDirectory($central);
+            $this->removeDirectory($faculty);
+            unset($_ENV['app.uploadMirrors'], $_SERVER['app.uploadMirrors']);
+            if ($previous === false) {
+                putenv('app.uploadMirrors');
+            } else {
+                putenv('app.uploadMirrors=' . $previous);
+            }
+        }
+    }
+
+    public function testTemplateSlugIsNotMirrored(): void
+    {
+        $this->assertNull((new MediaService())->resolveMirrorPublicRoot('template'));
+        $this->assertNull((new MediaService())->resolveMirrorPublicRoot('demo'));
+    }
+
+    public function testSiblingPublicRootIsUsedWhenUploadMirrorsAreEmpty(): void
+    {
+        $previous = getenv('app.uploadMirrors');
+        unset($_ENV['app.uploadMirrors'], $_SERVER['app.uploadMirrors']);
+        putenv('app.uploadMirrors');
+
+        try {
+            $root = (new MediaService())->resolveMirrorPublicRoot('fseg');
+            $this->assertNotNull($root);
+            $this->assertFileExists($root . '/index.php');
+        } finally {
+            if ($previous === false) {
+                putenv('app.uploadMirrors');
+            } else {
+                putenv('app.uploadMirrors=' . $previous);
+                $_ENV['app.uploadMirrors'] = $previous;
+                $_SERVER['app.uploadMirrors'] = $previous;
+            }
+        }
+    }
+
+    private function removeDirectory(string $directory): void
+    {
+        if (! is_dir($directory)) {
+            return;
+        }
+
+        $items = scandir($directory);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $path = $directory . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($path)) {
+                $this->removeDirectory($path);
+            } else {
+                @unlink($path);
+            }
+        }
+
+        @rmdir($directory);
+    }
 }

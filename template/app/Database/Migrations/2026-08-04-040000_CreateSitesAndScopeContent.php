@@ -82,9 +82,8 @@ class CreateSitesAndScopeContent extends Migration
         }
 
         // Aucun site n'est créé ici : le modèle reste neutre. Les sites
-        // facultaires sont créés par provisionnement (php spark site:create,
-        // bouton « Nouveau site » du tableau de bord superadmin ou seeder
-        // TemplateStarterSeeder).
+        // facultaires sont créés par php spark site:create (voir
+        // docs/CREER_UN_SITE.md) ou un seeder de test.
     }
 
     private function createUserSites(): void

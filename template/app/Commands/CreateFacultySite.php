@@ -8,15 +8,13 @@ use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
 /**
- * Companion to the "copy the folder" step of the multi-folder deployment
- * (see docs/MULTI_FOLDER_DEPLOYMENT.md). This command does the *database*
- * half of adding a new faculty: it inserts the `sites` row and provisions
- * editable starter content, exactly like clicking "Nouveau site" in
- * /admin/sites, but scriptable from the machine you're deploying on.
+ * Database half of adding a faculty (see docs/CREER_UN_SITE.md): inserts the
+ * `sites` row and provisions editable starter content. There is no "Nouveau
+ * site" screen anymore — run this from the copied folder after migrate --all.
  *
- * Run this once per new faculty, from ANY instance (they all share the same
- * database), then copy the faculty folder and point its .env at the
- * resulting slug.
+ * All instances share the same database. Prefer running site:create from the
+ * new faculty folder or from template/, then create the first admin from
+ * superadmin Comptes.
  */
 class CreateFacultySite extends BaseCommand
 {
@@ -82,7 +80,7 @@ class CreateFacultySite extends BaseCommand
         CLI::write('  app.siteSlug = ' . $slug, 'yellow');
         CLI::write('(mêmes identifiants de base de données que les autres dossiers).');
         CLI::newLine();
-        CLI::write('Voir docs/MULTI_FOLDER_DEPLOYMENT.md ou lancer :', 'white');
+        CLI::write('Voir docs/CREER_UN_SITE.md. Copie optionnelle :', 'white');
         CLI::write('  ./scripts/new-faculty-instance.sh ' . $slug . ' "' . $name . '" /chemin/vers/' . $slug, 'yellow');
 
         return EXIT_SUCCESS;

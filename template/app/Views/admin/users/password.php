@@ -12,13 +12,13 @@
     <a href="<?= site_url('admin/users/' . $user->id . '/edit') ?>" class="btn btn-outline-secondary">Retour</a>
 </div>
 
-<form action="<?= esc($action, 'attr') ?>" method="post" class="card-faculte">
+<form action="<?= esc($action, 'attr') ?>" method="post" class="card-faculte" data-unsaved-guard>
     <?= csrf_field() ?>
 
     <div class="row g-4">
         <div class="col-lg-6">
             <label for="password" class="form-label fw-semibold">Nouveau mot de passe</label>
-            <input type="password" class="form-control<?= isset($errors['password']) ? ' is-invalid' : '' ?>" id="password" name="password" maxlength="255" required aria-describedby="password-help password-error">
+            <input type="password" class="form-control<?= isset($errors['password']) ? ' is-invalid' : '' ?>" id="password" name="password" maxlength="255" required aria-describedby="password-help<?= isset($errors['password']) ? ' password-error' : '' ?>">
             <div class="form-text" id="password-help">Le mot de passe n’est jamais affiché ni journalisé.</div>
             <?php if (isset($errors['password'])): ?>
                 <div class="invalid-feedback" id="password-error"><?= esc($errors['password']) ?></div>
@@ -26,7 +26,7 @@
         </div>
         <div class="col-lg-6">
             <label for="confirm" class="form-label fw-semibold">Confirmation</label>
-            <input type="password" class="form-control<?= isset($errors['confirm']) ? ' is-invalid' : '' ?>" id="confirm" name="confirm" maxlength="255" required aria-describedby="confirm-error">
+            <input type="password" class="form-control<?= isset($errors['confirm']) ? ' is-invalid' : '' ?>" id="confirm" name="confirm" maxlength="255" required<?= isset($errors['confirm']) ? ' aria-describedby="confirm-error"' : '' ?>>
             <?php if (isset($errors['confirm'])): ?>
                 <div class="invalid-feedback" id="confirm-error"><?= esc($errors['confirm']) ?></div>
             <?php endif ?>

@@ -1,6 +1,9 @@
 <?php
 
 use App\Database\Seeds\TemplateStarterSeeder;
+use App\Entities\Setting;
+use App\Models\SettingModel;
+use CodeIgniter\Config\Factories;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
@@ -75,6 +78,64 @@ final class AdminErgonomicsTest extends CIUnitTestCase
             ->getRowArray();
         $this->assertIsArray($row);
         $this->assertSame('Faculté de test des coordonnées', $row['value']);
+    }
+
+    public function testSettingsUpsertFailureFlashesError(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $mock = new class () extends SettingModel {
+            public function forSite(?int $siteId = null): static
+            {
+                return $this;
+            }
+
+            public function where($key = null, $value = null, ?bool $escape = null)
+            {
+                return $this;
+            }
+
+            public function first()
+            {
+                return new Setting(['id' => 1, 'key' => 'institution.faculty_name']);
+            }
+
+            public function skipValidation(bool $skip = true)
+            {
+                return $this;
+            }
+
+            public function update($id = null, $row = null): bool
+            {
+                throw new RuntimeException('forced settings failure');
+            }
+        };
+
+        Factories::injectMock('models', SettingModel::class, $mock);
+
+        try {
+            $response = $this->post('/admin/settings/global', $this->withCsrf([
+                'setting_institution_faculty_name' => 'Faculté de test des coordonnées',
+                'setting_institution_short_name'   => 'FT',
+                'setting_institution_university'   => 'Université du Burundi',
+                'setting_contact_address'          => 'Bujumbura',
+                'setting_contact_phone'            => '+257 00 00 00 00',
+                'setting_contact_email'            => 'contact@example.test',
+                'setting_contact_hours'            => 'Lun-Ven 8h-17h',
+                'setting_footer_text'              => 'Pied de page de test',
+                'setting_footer_copyright'         => '© 2026 Faculté de test',
+                'setting_seo_default_title'        => 'Titre SEO de test',
+                'setting_seo_default_description'  => 'Description SEO de test.',
+                'setting_seo_theme_color'          => '#0D9B49',
+                'setting_home_hero_overlay_opacity'=> '0.80',
+            ]));
+
+            $response->assertRedirect();
+            $response->assertSessionHas('errors');
+            $response->assertSessionMissing('message');
+        } finally {
+            Factories::reset('models');
+        }
     }
 
     public function testBulkPublishUpdatesAllSelectedProgrammes(): void
@@ -165,6 +226,20 @@ final class AdminErgonomicsTest extends CIUnitTestCase
         }
     }
 
+    public function testOrderableIndexExposesBulkFormAttributeAndSortableBody(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $result = $this->get('/admin/home-highlights');
+
+        $result->assertOK();
+        $body = (string) $result->response()->getBody();
+        $this->assertStringContainsString('id="adminBulkForm"', $body);
+        $this->assertStringContainsString('form="adminBulkForm"', $body);
+        $this->assertStringContainsString('data-sortable', $body);
+        $this->assertStringContainsString('data-sortable-url', $body);
+    }
+
     public function testSettingsOverviewRequiresPermission(): void
     {
         $this->actingAs($this->directPermissionUser(
@@ -174,6 +249,60 @@ final class AdminErgonomicsTest extends CIUnitTestCase
         ));
 
         $this->get('/admin/settings/global')->assertRedirect();
+    }
+
+    public function testEditorDoesNotSeeAdministrationZone(): void
+    {
+        $this->actingAs($this->groupedUser('ergo-editor@example.test', 'ergoeditor', 'editor', 'editor'));
+
+        $result = $this->get('/admin');
+        $result->assertOK();
+        $result->assertSee('Contenu et communication');
+        $result->assertSee('Communauté et recherche');
+        $result->assertDontSee('Messages de contact');
+        $result->assertDontSee('Coordonnées &amp; identité');
+        $result->assertDontSee('Gérer les utilisateurs');
+    }
+
+    public function testFacultyAdminCanOpenSettingsAndSeesAdministration(): void
+    {
+        $this->actingAs($this->groupedUser('ergo-admin@example.test', 'ergofacadmin', 'admin', 'site_admin'));
+
+        $nav = $this->get('/admin');
+        $nav->assertOK();
+        $nav->assertSee('Administration');
+        $nav->assertSee('Coordonnées &amp; identité');
+
+        $settings = $this->get('/admin/settings/global');
+        $settings->assertOK();
+        $settings->assertSee('Coordonnées &amp; identité');
+    }
+
+    private function groupedUser(string $email, string $username, string $group, string $siteRole): User
+    {
+        /** @var UserModel $users */
+        $users = model(UserModel::class);
+        $existing = $users->where('username', $username)->first();
+        if ($existing instanceof User) {
+            return $existing;
+        }
+
+        $user = new User([
+            'username' => $username,
+            'email'    => $email,
+            'password' => 'MotDePasseErgo!2026',
+            'active'   => 1,
+        ]);
+        $users->save($user);
+
+        /** @var User $created */
+        $created = $users->findById($users->getInsertID());
+        $created->removeGroup('editor', 'admin', 'superadmin');
+        $created->addGroup($group);
+        $created->activate();
+        service('siteResolver')->syncUserSites((int) $created->id, [1], $siteRole);
+
+        return $created;
     }
 
     private function resetAuthState(): void

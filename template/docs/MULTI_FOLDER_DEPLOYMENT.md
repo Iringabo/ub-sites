@@ -1,188 +1,133 @@
 # Déploiement multi-dossiers (un dossier par site)
 
-> **Procédure recommandée** : suivre
-> [TEMPLATE_SETUP.md](TEMPLATE_SETUP.md) qui décrit la copie manuelle pas à
-> pas. Ce document explique le fonctionnement et les variantes (scripts).
+> **Pour ouvrir une faculté** : suivre [CREER_UN_SITE.md](CREER_UN_SITE.md)
+> (copie du dossier, trois champs `.env`, deux commandes). Ce document
+> explique le fonctionnement technique.
 
-Ce document décrit le fonctionnement du mode multi-dossiers, complété par
-la procédure pas à pas de [TEMPLATE_SETUP.md](TEMPLATE_SETUP.md). Toutes les
-instances partagent exactement le même code applicatif, les mêmes migrations
-et la même base de données : seule l'organisation des dossiers sur le
-serveur et le contenu du `.env` de chaque dossier changent. En développement
-local, chaque faculté est servie sur localhost avec son propre port
-(fseg=8101, fsi=8102, superadmin=8103) via `scripts/dev-serve.sh`.
+Toutes les instances partagent le même code applicatif, les mêmes
+migrations et **une seule base de données**. Seuls l’organisation des
+dossiers et le `.env` de chaque dossier changent.
 
-## Vue d'ensemble
+En local : FSEG = 8101, FSI = 8102, superadmin = 8103 via
+`scripts/dev-serve.sh`.
+
+## Vue d’ensemble
 
 ```
 /var/www/
 ├── template/       → le modèle (jamais exposé au web)
-├── superadmin/     → copie du modèle, app.centralAdminMode = true
-│                      Superadmin uniquement : gère les facultés, les
-│                      admins facultaires et les mots de passe.
-├── fseg/           → copie du modèle, app.siteSlug = fseg
-│                      Site public + /admin de la FSEG.
-├── fsi/            → copie du modèle, app.siteSlug = fsi
-│                      Site public + /admin de la FSI.
-└── droit/          → copie du modèle, app.siteSlug = droit
-                       Site public + /admin de la Faculté de Droit.
+├── superadmin/     → copie, app.centralAdminMode = true
+│                      Superadmin : choisit une faculté et en édite le
+│                      contenu ici (même site_id). Liste / comptes.
+├── fseg/           → copie, app.siteSlug = fseg
+├── fsi/            → copie, app.siteSlug = fsi
+└── droit/          → copie, app.siteSlug = droit
 ```
 
-Chaque dossier est une copie **complète et fonctionnelle** de
-l'application (mêmes fichiers PHP, mêmes vues, mêmes migrations). Ce qui
-distingue un dossier d'un autre, ce sont uniquement quelques lignes dans
-son `.env` :
+Ce qui distingue un dossier d’un autre, ce sont quelques lignes du `.env` :
 
-| Variable                     | Dans `superadmin/`       | Dans un dossier facultaire |
-|--------------------------|-----------------------|------------------------------|
-| `app.centralAdminMode`  | `true`                | `false`                     |
-| `app.siteSlug`          | sans effet            | `fseg`, `fsi`, `droit`, …    |
-| `database.default.*`    | **identique partout** | **identique partout**       |
+| Variable | Dans `superadmin/` | Dans un dossier facultaire |
+|---|---|---|
+| `app.centralAdminMode` | `true` | `false` |
+| `app.siteSlug` | sans effet | `fseg`, `fsi`, `droit`, … |
+| `session.cookieName` | `ci_session_central` | `ci_session_fseg`, … |
+| `session.rememberCookieName` | `remember_central` | `remember_fseg`, … |
+| `app.uploadMirrors` | carte `slug:/chemin` | laisser vide |
+| `app.previewBase.{slug}` | URLs d’aperçu local | inutile |
+| `app.proxyIPs` | IPs du reverse proxy, ou vide | idem |
+| `database.default.*` | **identique partout** | **identique partout** |
 
-**La base de données est unique et partagée par tous les dossiers.** Chaque
-table de contenu (`posts`, `programmes`, `staff`, `pages`, …) porte déjà une
-colonne `site_id` (voir [ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md)
-et [05-BASE-DE-DONNEES.md](05-BASE-DE-DONNEES.md)). C'est cette colonne, et
-non le dossier, qui isole les données d'une faculté : un dossier ne fait que
-dire au code "pour cette copie-là, sers uniquement les données dont
-`site_id` correspond à `fsi`". C'est le même mécanisme d'isolation que le
-mode par nom d'hôte ; on change seulement comment on choisit le site actif.
+L’isolation des contenus est la colonne `site_id`, pas le dossier. Voir
+[ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md).
 
-## Comment ça marche techniquement
+## Comment ça marche
 
-- `App\Services\SiteResolverService` choisit déjà le site actif dans cet
-  ordre : hôte connu → `app.siteId` → `app.siteSlug`. Un dossier facultaire
-  dont le site configuré est introuvable répond 404 explicitement — jamais
-  de repli vers une autre faculté. L'instance superadmin, elle, se sert du
-  premier site actif pour le rendu interne.
-- `App\Services\AdminAccessService::isCentralAdminInstance()` lit
-  `app.centralAdminMode`. Quand c'est vrai, `isCentralAdminHost()` renvoie
-  toujours `true`, quel que soit le nom d'hôte réel. Tous les contrôleurs et
-  vues qui distinguaient déjà "administration centrale" vs "administration
-  facultaire" par nom d'hôte (`Home`, `DashboardController`,
-  `UserController`, `SiteResolverService`, `AdminAccessFilter`,
-  `layouts/admin.php`) fonctionnent donc sans modification.
-- `App\Filters\CentralAdminOnlyFilter` est un filtre global qui ne fait
-  rien tant que `app.centralAdminMode` est faux. Quand c'est vrai, il
-  redirige toute URL qui n'est pas `/admin/*` (ni une route
-  d'authentification) vers `/admin`, pour garantir que le dossier `admin/`
-  ne rend jamais de page publique facultaire.
+- `SiteResolverService` choisit le site : hôte connu → `app.siteId` →
+  `app.siteSlug`. Un dossier facultaire dont le site est introuvable
+  répond 404 — jamais de repli vers une autre faculté.
+- En `/admin`, un superadmin peut forcer le site via
+  `active_admin_site_id` (sélecteur). Les sites `template` et `demo` sont
+  exclus.
+- `isCentralAdminInstance()` lit `app.centralAdminMode`.
+- `CentralAdminOnlyFilter` : si le mode central est vrai, toute URL hors
+  `/admin/*` et hors authentification redirige vers `/admin`.
+- Cookie de session **par instance** pour que localhost:8101 et
+  localhost:8103 ne s’écrasent pas.
 
-Rien d'autre n'a changé dans la logique métier, les permissions Shield, la
-distinction superadmin / admin facultaire / éditeur, ni les migrations.
+Les permissions Shield (superadmin / admin / éditeur) sont les mêmes dans
+tous les dossiers. L’édition superadmin du contenu se fait **dans**
+`superadmin/`, sur le `site_id` choisi.
 
-## Créer une nouvelle faculté
+## Créer une faculté
 
-Deux étapes indépendantes, dans l'ordre que vous voulez :
+Procédure pour un non-programmeur : [CREER_UN_SITE.md](CREER_UN_SITE.md).
 
-**1. Créer la ligne en base de données** (une seule fois, depuis n'importe
-quel dossier existant, puisqu'ils partagent la même base) :
+1. Copier `template/` (ou `scripts/new-faculty-instance.sh` depuis ce
+   dossier modèle).
+2. `.env` : URL, base partagée, `app.siteSlug`, cookies de session / remember,
+   et `app.proxyIPs` si un reverse proxy est utilisé.
+3. `php spark migrate --all` **une fois** pour toute la plateforme.
+4. Dans le nouveau dossier : `php spark site:create …`.
+5. Premier administrateur de la faculté, **depuis ce dossier** :
 
 ```bash
-php spark site:create --identifier fsi --slug fsi --name="Faculté des Sciences et Ingénierie"
+PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-faculty-admin \
+  --email admin-faculte@example.edu --username adminfac \
+  --password-env PLATFORM_ADMIN_PASSWORD
 ```
 
-Cela crée le site et provisionne du contenu de démarrage éditable (page
-d'accueil, hero, statistiques, un programme et un membre du personnel
-d'exemple, etc. — tout est modifiable ensuite dans `/admin`). C'est
-exactement ce que fait le bouton "Nouveau site" de `/admin/sites` pour un
-superadmin ; la commande CLI est juste pratique pour scripter un
-déploiement.
+   Ou bien : **Comptes** dans `superadmin/`. Ensuite cet administrateur
+   crée ses éditeurs depuis le `/admin` de sa faculté.
 
-**2. Copier le dossier** pour obtenir un site fonctionnel :
+On ne crée plus de faculté depuis l’écran `/admin/sites`.
 
-```bash
-./scripts/new-faculty-instance.sh fsi "Faculté des Sciences et Ingénierie" ../fsi
-```
-
-Ce script :
-- copie le projet (sans `.git`, `vendor` optionnel, ni les fichiers
-  temporaires de `writable/`) vers `../fsi` ;
-- crée un `.env` avec `app.siteSlug = fsi` et `app.centralAdminMode = false` ;
-- rappelle les deux réglages qu'il reste à faire à la main : l'URL publique
-  réelle (`app.baseURL`) et les identifiants de base de données (à copier
-  depuis un dossier existant — ils doivent être identiques partout).
-
-Ensuite :
-```bash
-cd ../fsi
-composer install --no-dev   # sauf si vous avez utilisé --link-vendor
-```
-
-C'est tout : le nouveau dossier sert immédiatement le site de la nouvelle
-faculté, avec son propre `/admin` où le superadmin (ou un admin facultaire
-qu'il aura assigné) peut se connecter et remplacer le contenu de démarrage.
-
-### Option : partager `vendor/` entre dossiers
-
-Ajoutez `--link-vendor` à la commande pour créer un lien symbolique vers le
-`vendor/` du dossier source au lieu de dupliquer ~30 Mo de dépendances par
-faculté. Pratique en VPS avec accès shell ; à éviter sur un hébergement
-mutualisé qui ne supporte pas toujours les liens symboliques inter-dossiers
-(voir [GUIDE_DEPLOIEMENT_CPANEL.md](GUIDE_DEPLOIEMENT_CPANEL.md)), auquel cas
-préférez des copies complètes.
-
-## Créer le dossier superadministration (une seule fois)
+## Dossier superadministration (une fois)
 
 ```bash
 ./scripts/new-admin-instance.sh ../superadmin
-# puis, une fois le .env pointé vers la base partagée :
 cd ../superadmin && php spark admin:create-superadmin --email vous@example.edu --username vous
 ```
 
-Placez ce dossier sur son propre sous-domaine ou port dédié (en local : http://localhost:8103) et
-hors du document root de chaque faculté. Ce n'est pas une exigence
-technique stricte (`CentralAdminOnlyFilter` bloquerait de toute façon les
-pages publiques) mais une bonne pratique : ce dossier n'a rien à faire
-visible sur le domaine d'une faculté.
+`admin:create-superadmin` ne fonctionne que si `app.centralAdminMode=true`
+(dossier superadmin). Depuis une faculté, utilisez
+`admin:create-faculty-admin`. Un superadmin existant peut aussi CRUD tous
+les admins (y compris d’autres superadmins) via l’UI Comptes.
+Placez-le hors du document root des facultés. En local :
+`http://localhost:8103`.
 
-## Qui peut faire quoi
+## Maintenir les copies
 
-- **Superadmin** (compte créé via `php spark admin:create-superadmin`, actif
-  dans le dossier `superadmin/` et dans tous les dossiers facultaires puisque
-  les comptes vivent dans la même base) :
-  - crée/désactive des facultés (`/admin/sites` depuis `superadmin/`) ;
-  - crée les comptes admin facultaire et fixe/réinitialise leur mot de
-    passe (`/admin/users` depuis `superadmin/`) ;
-  - garde aussi un accès complet à l'administration de chaque faculté.
-- **Admin facultaire** (groupe Shield `admin`, assigné à un site via
-  `user_sites`) : se connecte directement sur `/admin` **du dossier de sa
-  faculté**, et peut y créer/gérer ses propres éditeurs
-  (`/admin/users`, restreint aux utilisateurs de son site — logique déjà
-  présente dans `AdminAccessService::canManageFacultyUsers()`).
-- **Éditeur** : se connecte sur `/admin` du dossier de sa faculté, gère le
-  contenu selon ses permissions (actualités, programmes, personnel, etc.),
-  ne gère pas les utilisateurs.
+Un correctif de code doit être répété. Source : `template/`.
 
-Rien de nouveau ici par rapport au modèle par nom d'hôte : c'est la même
-logique de rôles et de permissions, seulement accédée via un dossier dédié
-plutôt qu'un sous-domaine partagé.
+```bash
+cd template && ./scripts/sync-instances.sh
+```
 
-## Maintenir plusieurs copies à jour
+Le script recopie uniquement `app/`, `tests/` et `public/assets/` vers
+`fseg/`, `fsi/`, `superadmin/`, `med/`, `fabi/` et `flsh/` (s’ils existent). Équivalent manuel :
 
-C'est le principal compromis du mode multi-dossiers : un correctif de code
-doit être répété dans chaque dossier (contrairement au mode par nom
-d'hôte, où une seule instance sert tout le monde). Deux approches :
+```bash
+rsync -a template/app/ fseg/app/
+rsync -a template/app/ fsi/app/
+rsync -a template/app/ superadmin/app/
+rsync -a template/tests/ fseg/tests/
+rsync -a template/tests/ fsi/tests/
+rsync -a template/tests/ superadmin/tests/
+rsync -a template/public/assets/ fseg/public/assets/
+rsync -a template/public/assets/ fsi/public/assets/
+rsync -a template/public/assets/ superadmin/public/assets/
+```
 
-- **Petit nombre de facultés / hébergement simple** : gardez ce dossier
-  comme "modèle" versionné (Git), et pour chaque mise à jour, régénérez
-  chaque dossier facultaire avec le script (il préserve leur `.env`
-  puisqu'il ne l'écrase pas s'il existe déjà — sauvegardez-le avant, ou
-  fusionnez les deux `.env` à la main) puis relancez les migrations sur la
-  base partagée (une fois suffit, la base est unique).
-- **VPS avec accès shell** : utilisez `--link-vendor` et un script de
-  déploiement (`git pull` + `rsync` du code applicatif vers chaque dossier,
-  en excluant `.env` et `writable/`) pour propager les changements de code
-  en une seule commande.
+Ne pas recopier `.env`, `writable/`, `docs/` ni les README (ils divergent
+par instance). Relancer `php spark migrate --all` **une fois** sur la
+base partagée.
 
-Dans les deux cas, les migrations (`php spark migrate`) ne se lancent
-qu'une fois : la base est commune.
+Chaque instance a son propre `vendor/` : `--link-vendor` est refusé par
+les scripts de création (l’autoload `App\\` pointerait vers le modèle).
 
 ## Documents liés
 
-- [ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md) : le modèle de
-  données `sites` / `user_sites` / `site_id`, commun aux deux modes de
-  déploiement.
-- [GUIDE_DEPLOIEMENT_CPANEL.md](GUIDE_DEPLOIEMENT_CPANEL.md) : contraintes
-  d'un hébergement mutualisé (utile si vous hébergez chaque dossier sur un
-  domaine addon cPanel).
+- [CREER_UN_SITE.md](CREER_UN_SITE.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md)
+- [GUIDE_DEPLOIEMENT_CPANEL.md](GUIDE_DEPLOIEMENT_CPANEL.md)

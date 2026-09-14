@@ -21,7 +21,7 @@ $oldValue = static function (string $key, ?string $current) use ($errors, $input
 };
 ?>
 
-<form method="post" action="<?= site_url('admin/settings/global') ?>" enctype="multipart/form-data" class="card-faculte">
+<form method="post" action="<?= site_url('admin/settings/global') ?>" enctype="multipart/form-data" class="card-faculte" data-unsaved-guard>
     <?= csrf_field() ?>
 
     <?php foreach ($groups as $group): ?>

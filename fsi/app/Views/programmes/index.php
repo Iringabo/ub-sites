@@ -9,7 +9,7 @@
 <section class="section-pad-sm bg-white">
     <div class="container">
         <div class="text-center mx-auto mb-4" style="max-width: 640px;">
-            <span class="section-label"><?= esc($content['offer_label'] ?? 'Offre académique') ?></span>
+            <span class="section-label"><?= esc($content['offer_label'] ?? lang('Site.programmes.offerLabel')) ?></span>
             <h2 class="section-title"><?= esc($content['offer_title'] ?? '') ?></h2>
             <p class="section-subtitle mx-auto"><?= esc($content['offer_text'] ?? '') ?></p>
         </div>

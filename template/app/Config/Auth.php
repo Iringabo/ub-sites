@@ -15,6 +15,7 @@ namespace Config;
 
 use CodeIgniter\Shield\Config\Auth as ShieldAuth;
 use CodeIgniter\Shield\Authentication\Actions\ActionInterface;
+use App\Support\InstanceCookieNames;
 use CodeIgniter\Shield\Authentication\AuthenticatorInterface;
 use CodeIgniter\Shield\Authentication\Authenticators\AccessTokens;
 use CodeIgniter\Shield\Authentication\Authenticators\HmacSha256;
@@ -29,6 +30,15 @@ use CodeIgniter\Shield\Models\UserModel;
 
 class Auth extends ShieldAuth
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->sessionConfig['rememberCookieName'] = InstanceCookieNames::remember();
+        if (InstanceCookieNames::isCentral()) {
+            $this->sessionConfig['allowRemembering'] = false;
+        }
+    }
+
     /**
      * ////////////////////////////////////////////////////////////////////
      * AUTHENTICATION

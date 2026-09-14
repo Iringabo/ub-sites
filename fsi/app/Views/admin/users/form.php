@@ -40,7 +40,7 @@ if (is_array($postedSiteRoles)) {
     <div>
         <span class="section-label"><?= $isNew ? 'Création' : 'Modification' ?></span>
         <h1 class="h3 mb-1"><?= $isNew ? 'Créer un utilisateur' : esc($user->username ?? 'Utilisateur') ?></h1>
-        <p class="text-muted mb-0">Les comptes, groupes et permissions sont gérés via Shield.</p>
+        <p class="text-muted mb-0"><?= $isNew ? 'Créez un administrateur ou un rédacteur pour cette faculté.' : 'Modifiez le compte, son rôle et son accès à la faculté.' ?></p>
     </div>
     <div class="d-flex gap-2">
         <?php if (! $isNew && $passwordAction !== null): ?>
@@ -50,27 +50,27 @@ if (is_array($postedSiteRoles)) {
     </div>
 </div>
 
-<form action="<?= esc($action, 'attr') ?>" method="post" class="card-faculte">
+<form action="<?= esc($action, 'attr') ?>" method="post" class="card-faculte" data-unsaved-guard>
     <?= csrf_field() ?>
 
     <div class="row g-4">
         <div class="col-lg-6">
             <label for="username" class="form-label fw-semibold">Nom d’utilisateur</label>
-            <input type="text" class="form-control<?= isset($errors['username']) ? ' is-invalid' : '' ?>" id="username" name="username" value="<?= esc(old('username', $user->username ?? ''), 'attr') ?>" maxlength="30" required aria-describedby="username-error">
+            <input type="text" class="form-control<?= isset($errors['username']) ? ' is-invalid' : '' ?>" id="username" name="username" value="<?= esc(old('username', $user->username ?? ''), 'attr') ?>" maxlength="30" required<?= isset($errors['username']) ? ' aria-describedby="username-error"' : '' ?>>
             <?php if (isset($errors['username'])): ?>
                 <div class="invalid-feedback" id="username-error"><?= esc($errors['username']) ?></div>
             <?php endif ?>
         </div>
         <div class="col-lg-6">
             <label for="email" class="form-label fw-semibold">Adresse électronique</label>
-            <input type="email" class="form-control<?= isset($errors['email']) ? ' is-invalid' : '' ?>" id="email" name="email" value="<?= esc($userEmail, 'attr') ?>" maxlength="254" required aria-describedby="email-error">
+            <input type="email" class="form-control<?= isset($errors['email']) ? ' is-invalid' : '' ?>" id="email" name="email" value="<?= esc($userEmail, 'attr') ?>" maxlength="254" required<?= isset($errors['email']) ? ' aria-describedby="email-error"' : '' ?>>
             <?php if (isset($errors['email'])): ?>
                 <div class="invalid-feedback" id="email-error"><?= esc($errors['email']) ?></div>
             <?php endif ?>
         </div>
         <div class="col-lg-6">
             <label for="password" class="form-label fw-semibold"><?= $isNew ? 'Mot de passe' : 'Nouveau mot de passe' ?></label>
-            <input type="password" class="form-control<?= isset($errors['password']) ? ' is-invalid' : '' ?>" id="password" name="password" maxlength="255" autocomplete="new-password" <?= $isNew ? 'required' : '' ?> aria-describedby="password-help password-error">
+            <input type="password" class="form-control<?= isset($errors['password']) ? ' is-invalid' : '' ?>" id="password" name="password" maxlength="255" autocomplete="new-password" <?= $isNew ? 'required' : '' ?> aria-describedby="password-help<?= isset($errors['password']) ? ' password-error' : '' ?>">
             <div class="form-text" id="password-help">Le mot de passe n’est jamais affiché ni journalisé.</div>
             <?php if (isset($errors['password'])): ?>
                 <div class="invalid-feedback" id="password-error"><?= esc($errors['password']) ?></div>
@@ -78,7 +78,7 @@ if (is_array($postedSiteRoles)) {
         </div>
         <div class="col-lg-6">
             <label for="confirm" class="form-label fw-semibold">Confirmation du mot de passe</label>
-            <input type="password" class="form-control<?= isset($errors['confirm']) ? ' is-invalid' : '' ?>" id="confirm" name="confirm" maxlength="255" autocomplete="new-password" <?= $isNew ? 'required' : '' ?> aria-describedby="confirm-error">
+            <input type="password" class="form-control<?= isset($errors['confirm']) ? ' is-invalid' : '' ?>" id="confirm" name="confirm" maxlength="255" autocomplete="new-password" <?= $isNew ? 'required' : '' ?><?= isset($errors['confirm']) ? ' aria-describedby="confirm-error"' : '' ?>>
             <?php if (isset($errors['confirm'])): ?>
                 <div class="invalid-feedback" id="confirm-error"><?= esc($errors['confirm']) ?></div>
             <?php endif ?>
@@ -95,7 +95,7 @@ if (is_array($postedSiteRoles)) {
         </div>
         <div class="col-lg-6">
             <fieldset class="border rounded-3 p-3 h-100">
-                <legend class="float-none w-auto px-2 small fw-semibold">Groupes</legend>
+                <legend class="float-none w-auto px-2 small fw-semibold">Rôle</legend>
                 <?php if (isset($errors['groups'])): ?>
                     <div class="text-danger small mb-2" id="groups-error"><?= esc($errors['groups']) ?></div>
                 <?php endif ?>
@@ -142,10 +142,24 @@ if (is_array($postedSiteRoles)) {
         </div>
         <div class="col-12">
             <fieldset class="border rounded-3 p-3">
-                <legend class="float-none w-auto px-2 small fw-semibold">Sites autorisés</legend>
+                <legend class="float-none w-auto px-2 small fw-semibold">Faculté concernée</legend>
                 <?php if (isset($errors['site_ids'])): ?>
                     <div class="text-danger small mb-2" id="site-ids-error"><?= esc($errors['site_ids']) ?></div>
                 <?php endif ?>
+                <?php if (! $currentActorIsSuperAdmin): ?>
+                    <?php $onlySite = $sites[0] ?? null; ?>
+                    <?php if ($onlySite !== null): ?>
+                        <input type="hidden" name="site_ids[]" value="<?= esc((string) $onlySite->id, 'attr') ?>">
+                        <p class="mb-2">Ce compte n’aura accès qu’à <strong><?= esc($onlySite->name) ?></strong>.</p>
+                        <label for="site_role_<?= esc((string) $onlySite->id, 'attr') ?>" class="form-label small fw-semibold">Rôle sur cette faculté</label>
+                        <?php $selectedRole = (string) ($selectedSiteRoles[(int) $onlySite->id] ?? 'editor'); ?>
+                        <select class="form-select" id="site_role_<?= esc((string) $onlySite->id, 'attr') ?>" name="site_roles[<?= esc((string) $onlySite->id, 'attr') ?>]" style="max-width: 24rem;">
+                            <?php foreach ($siteRoleOptions as $roleKey => $roleLabel): ?>
+                                <option value="<?= esc($roleKey, 'attr') ?>" <?= $selectedRole === $roleKey ? 'selected' : '' ?>><?= esc($roleLabel) ?></option>
+                            <?php endforeach ?>
+                        </select>
+                    <?php endif ?>
+                <?php else: ?>
                 <div class="row g-2">
                     <?php foreach ($sites as $site): ?>
                         <?php $checked = in_array((int) $site->id, $selectedSiteIds, true); ?>
@@ -157,23 +171,18 @@ if (is_array($postedSiteRoles)) {
                                     <span class="text-muted small d-block"><?= esc($site->slug) ?></span>
                                 </label>
                                 <label for="site_role_<?= esc((string) $site->id, 'attr') ?>" class="form-label small fw-semibold mt-3">Rôle sur ce site</label>
-                                <?php $selectedRole = (string) ($selectedSiteRoles[(int) $site->id] ?? ($currentActorIsSuperAdmin ? 'editor' : 'editor')); ?>
-                                <select class="form-select form-select-sm" id="site_role_<?= esc((string) $site->id, 'attr') ?>" name="site_roles[<?= esc((string) $site->id, 'attr') ?>]" <?= $currentActorIsSuperAdmin ? '' : 'disabled' ?>>
+                                <?php $selectedRole = (string) ($selectedSiteRoles[(int) $site->id] ?? 'editor'); ?>
+                                <select class="form-select form-select-sm" id="site_role_<?= esc((string) $site->id, 'attr') ?>" name="site_roles[<?= esc((string) $site->id, 'attr') ?>]">
                                     <?php foreach ($siteRoleOptions as $roleKey => $roleLabel): ?>
-                                        <?php if (! $currentActorIsSuperAdmin && $roleKey !== 'editor') {
-                                            continue;
-                                        } ?>
                                         <option value="<?= esc($roleKey, 'attr') ?>" <?= $selectedRole === $roleKey ? 'selected' : '' ?>><?= esc($roleLabel) ?></option>
                                     <?php endforeach ?>
                                 </select>
-                                <?php if (! $currentActorIsSuperAdmin): ?>
-                                    <input type="hidden" name="site_roles[<?= esc((string) $site->id, 'attr') ?>]" value="editor">
-                                <?php endif ?>
                             </div>
                         </div>
                     <?php endforeach ?>
                 </div>
-                <p class="form-text mb-0 mt-2">Les contenus affichés et modifiés dans l’administration sont limités au site sélectionné.</p>
+                <?php endif ?>
+                <p class="form-text mb-0 mt-2">Un administrateur gère les comptes et les réglages de cette faculté. Un éditeur rédige les contenus.</p>
             </fieldset>
         </div>
     </div>

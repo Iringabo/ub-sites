@@ -1,9 +1,11 @@
 <?php
 
 use App\Database\Seeds\TemplateStarterSeeder;
+use App\Support\InstanceCookieNames;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
+use Config\Services;
 
 /**
  * @internal
@@ -32,6 +34,11 @@ final class FoundationRoutesTest extends CIUnitTestCase
         $_COOKIE = [];
         service('superglobals')->setCookieArray([]);
         $this->withSession([]);
+        config('App')->proxyIPs = [];
+        service('siteResolver')->reset();
+        service('contentTranslationService')->reset();
+        service('settingsService')->reset();
+        Services::language()->setLocale('fr');
     }
 
     public function testHomePageIsDisplayedInFrench(): void
@@ -79,8 +86,8 @@ final class FoundationRoutesTest extends CIUnitTestCase
 
         $this->assertStringContainsString('<html lang="en">', $body);
         $this->assertStringContainsString('content="en_US"', $body);
-        $result->assertSee('Welcome to FSEG');
-        $result->assertDontSee('Bienvenue sur le site de');
+        $this->assertStringContainsString('Welcome to FSEG', $body);
+        $this->assertStringNotContainsString('Bienvenue sur le site de', $body);
         $this->assertStringNotContainsString('please review before publication', strtolower($body));
     }
 
@@ -88,6 +95,9 @@ final class FoundationRoutesTest extends CIUnitTestCase
     {
         $switch = $this->get('/language/en?redirect=' . rawurlencode('/actualites'));
         $switch->assertRedirectTo(site_url('actualites'));
+        $localeCookie = $switch->response()->getCookie(InstanceCookieNames::locale());
+        $this->assertNotNull($localeCookie);
+        $this->assertSame('en', $localeCookie->getValue());
 
         $unsafe = $this->get('/language/en?redirect=' . rawurlencode('https://evil.example/path'));
         $unsafe->assertRedirectTo(site_url('/'));
@@ -113,6 +123,30 @@ final class FoundationRoutesTest extends CIUnitTestCase
         $this->assertStringContainsString('<html lang="en">', $body);
         $result->assertSee('Search for news or an event');
         $result->assertSee('Actualité exemple à modifier');
+    }
+
+    public function testLanguageSwitchKeepsTheNextPublicPageInEnglish(): void
+    {
+        $this->get('/language/en')->assertRedirect();
+
+        $home = $this->withLocaleCookie('en')->get('/');
+        $home->assertOK();
+        $body = (string) $home->response()->getBody();
+        $this->assertStringContainsString('<html lang="en">', $body);
+        $this->assertStringNotContainsString('<html lang="fr">', $body);
+    }
+
+    public function testMissingPublicPageRendersHtmlEvenWithoutHtmlAccept(): void
+    {
+        $result = $this
+            ->withHeaders(['Accept' => 'application/json'])
+            ->get('/page-introuvable-html-404');
+
+        $result->assertStatus(404);
+        $this->assertStringContainsString('text/html', $result->response()->getHeaderLine('Content-Type'));
+        $body = (string) $result->response()->getBody();
+        $this->assertStringContainsString(lang('Errors.notFound'), $body);
+        $this->assertStringNotContainsString('"exception"', $body);
     }
 
     public function testEnglishPostDetailFallsBackToFrenchWithoutTranslation(): void
@@ -258,7 +292,7 @@ final class FoundationRoutesTest extends CIUnitTestCase
 
     private function withLocaleCookie(string $locale): self
     {
-        service('superglobals')->setCookie('site_locale', $locale);
+        service('superglobals')->setCookie(InstanceCookieNames::locale(), $locale);
 
         return $this;
     }

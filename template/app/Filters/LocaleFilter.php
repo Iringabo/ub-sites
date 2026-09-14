@@ -2,6 +2,8 @@
 
 namespace App\Filters;
 
+use App\Support\InstanceCookieNames;
+use App\Support\TrustedProxies;
 use CodeIgniter\Filters\FilterInterface;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -9,8 +11,6 @@ use Config\Services;
 
 class LocaleFilter implements FilterInterface
 {
-    private const COOKIE_NAME = 'site_locale';
-
     /**
      * @var list<string>
      */
@@ -76,12 +76,12 @@ class LocaleFilter implements FilterInterface
     {
         $queryLocale = $this->normalizeLocale((string) $request->getGet('lang'));
         if ($queryLocale !== null) {
-            service('response')->setCookie(self::COOKIE_NAME, $queryLocale, YEAR, '', '/', '', null, true, 'Lax');
+            service('response')->setCookie($this->cookieName(), $queryLocale, YEAR, '', '/', '', null, true, 'Lax');
 
             return $queryLocale;
         }
 
-        $cookieLocale = $this->normalizeLocale((string) $request->getCookie(self::COOKIE_NAME));
+        $cookieLocale = $this->normalizeLocale((string) $request->getCookie($this->cookieName()));
         if ($cookieLocale !== null) {
             return $cookieLocale;
         }
@@ -92,6 +92,11 @@ class LocaleFilter implements FilterInterface
         }
 
         return $this->localeFromBrowser($request) ?? $this->siteDefaultLocale();
+    }
+
+    private function cookieName(): string
+    {
+        return InstanceCookieNames::locale();
     }
 
     private function isFrenchOnlyArea(RequestInterface $request): bool
@@ -115,6 +120,10 @@ class LocaleFilter implements FilterInterface
 
     private function localeFromCountry(RequestInterface $request): ?string
     {
+        if (! TrustedProxies::isConfigured()) {
+            return null;
+        }
+
         foreach (['CF-IPCountry', 'X-Vercel-IP-Country', 'CloudFront-Viewer-Country'] as $header) {
             $country = strtoupper(trim($request->getHeaderLine($header)));
 

@@ -31,6 +31,13 @@ Ne copiez pas le fichier `env` suivi par Git pour créer un environnement local.
 - Ne pas réécrire l'historique sans accord explicite.
 - Préserver les modifications existantes d'autres contributeurs dans le working tree.
 
+## Copies d’instances
+
+Le code source de vérité est `template/app`, `template/tests` et
+`template/public/assets`. Après une modification, recopier vers fseg, fsi
+et superadmin (`rsync -a`, sans `.env`, `writable/` ni `docs/`). Ne pas
+partager `vendor/` par symlink sans `composer dump-autoload` dans la copie.
+
 ## Multi-Site
 
 - Tout contenu éditorial site-dépendant doit avoir un `site_id`.

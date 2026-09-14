@@ -1,140 +1,110 @@
-# Guide Administrateur
+# Guide administrateur
 
-Dernière actualisation documentaire : 11 août 2026.
+Dernière actualisation : 10 septembre 2026.
 
-Ce guide décrit les écrans réellement présents dans le back-office.
+Ce guide décrit le back-office tel qu’il fonctionne aujourd’hui. L’interface
+est en français. Les textes anglais du site public se saisissent dans
+l’onglet « Version anglaise » lorsqu’il est proposé.
 
 ## Connexion
 
-Aller sur `/admin`. Si vous n'êtes pas connecté, l'application affiche la page de connexion en français. Utiliser l'adresse email et le mot de passe fournis par l'administrateur technique.
+Aller sur `/admin`. Utiliser l’adresse e-mail et le mot de passe fournis.
 
-## Tableau De Bord
+- Une faculté : se connecter sur le `/admin` **de son dossier** (exemple local
+  FSEG : `http://localhost:8101/admin`).
+- Superadministrateur : se connecter sur le dossier `superadmin/`
+  (`http://localhost:8103/admin`). Seul le groupe Shield `superadmin` y est
+  accepté.
 
-Le tableau de bord affiche une synthèse des contenus du site actif : publications, formations, messages, contenus récents et raccourcis de gestion.
+Consulter une page publique **ne déconnecte pas**. La session se termine
+uniquement avec **Déconnexion**.
 
-## Choisir Le Site Facultaire
+**Voir le site** ouvre le site public dans un nouvel onglet.
 
-Si votre compte a accès à plusieurs sites, un sélecteur apparaît dans l'administration. Le site choisi détermine les contenus visibles et modifiables.
+## Trois zones de travail
 
-Un superadministrateur peut accéder à tous les sites actifs. Un autre administrateur ne voit que les sites qui lui sont affectés.
+Le menu n’est pas une copie du site public. Il est regroupé par métier. Une
+zone sans droit disparaît.
 
-## Accueil
+### Tableau de bord
 
-La zone Accueil permet de gérer :
+Synthèse du site actif, messages récents, et une liste de mise en route tant
+que des textes d’exemple (« à remplacer ») n’ont pas été écrasés. Les
+raccourcis respectent les permissions.
 
-- contenu d'accueil;
-- images du carrousel;
-- atouts;
-- statistiques.
+### Contenu et communication
 
-Les textes français sont saisis dans les champs principaux. Les traductions anglaises se saisissent dans la section "Version anglaise" lorsqu'elle est disponible.
+Accueil (textes, carrousel, points forts, chiffres), actualités et
+événements, formations, présentation / mot du doyen, pages
+institutionnelles, blocs de page, historique.
 
-## Actualités Et Événements
+### Communauté et recherche
 
-Le module permet de créer, modifier, filtrer et publier des actualités ou événements.
+Personnel, alumni, témoignages, laboratoires, publications, projets.
 
-Statuts disponibles :
+Les projets et laboratoires sont indépendants. Les formations ne sont pas
+liées obligatoirement au personnel. Un témoignage peut, ou non, pointer vers
+un profil alumni.
 
-- brouillon;
-- programmé;
-- publié;
-- archivé.
+### Administration
 
-Les actions de publication, retour en brouillon, programmation et archivage sont effectuées depuis l'administration. Un événement peut avoir des dates, un lieu et un lien d'inscription.
+Visible pour l’administrateur de faculté et le superadministrateur.
 
-## Formations
+- **Messages de contact** : filtrer, ouvrir, marquer lu / traité, archiver,
+  supprimer (suppression logique ; pas d’écran de restauration).
+- **Coordonnées et identité** (`/admin/settings/global`) : textes publics,
+  coordonnées, liens, images. Jamais de secrets techniques.
+- **Utilisateurs** (dossier facultaire) : comptes de **cette** faculté.
 
-Le module Formations gère les programmes de licence, master et doctorat. Chaque formation possède un slug, une durée, un résumé, une description, des conditions d'admission, des débouchés et des options de mise en avant sur l'accueil.
+Sur l’instance superadmin, le groupe **Plateforme** s’ajoute : aperçu du
+site choisi, liste des facultés, comptes de toutes les facultés.
 
-Les formations ne sont pas liées obligatoirement au personnel.
+## Qui peut faire quoi
 
-## Recherche
+| Rôle | Où | Droits |
+|---|---|---|
+| Éditeur | `/admin` de sa faculté | Zones contenu et communauté. Pas de messages, pas d’utilisateurs, pas d’identité. |
+| Administrateur de faculté | `/admin` de sa faculté | Les trois zones. Crée un **administrateur** ou un **éditeur** pour *sa* faculté seulement. Pas de superadmin, pas d’autre site. |
+| Superadministrateur | dossier `superadmin/` | Plateforme + les trois zones de la faculté **choisie**. Les enregistrements écrivent le `site_id` de cette faculté. |
 
-La zone Recherche contient :
+Le personnel d’une faculté ne peut pas administrer une autre faculté, même
+en tapant une autre URL.
 
-- laboratoires;
-- publications scientifiques;
-- projets de recherche.
+## Choisir une faculté (superadmin)
 
-Les projets et laboratoires sont indépendants. Il n'existe pas de relation obligatoire entre eux dans l'application actuelle.
+1. Le tableau de bord liste les facultés **réelles** (pas le modèle interne
+   `template` / `demo`).
+2. **Gérer le contenu** ou le sélecteur en haut enregistre la faculté active.
+3. L’édition se fait **ici**, sans ouvrir le dossier de la faculté.
+4. **Facultés** permet de modifier nom, domaines, statut, couleurs. On ne
+   **crée** pas une faculté depuis cet écran : copier le dossier `template/`
+   (voir `template/docs/CREER_UN_SITE.md`).
 
-## Personnel
+## Utilisateurs
 
-Le module Personnel gère les enseignants-chercheurs et le personnel administratif : nom, photo, grade, spécialité, rôle, email, biographie, publication et ordre d'affichage.
+Selon les droits :
 
-## Alumni
+- créer un compte, modifier nom / e-mail / actif ;
+- réinitialiser un mot de passe ;
+- affecter le rôle **administrateur** ou **éditeur** du site concerné.
 
-La zone Communauté contient :
+L’écran facultaire propose un seul site (le sien) et un rôle, pas une grille
+de permissions. On ne peut pas se retirer soi-même l’accès admin ni
+désactiver le dernier superadministrateur.
 
-- profils alumni;
-- témoignages.
+## Contenus : règles communes
 
-Un témoignage peut être lié facultativement à un profil alumni.
-
-## Pages Et Historique
-
-Les pages publiques modifiables sont prédéfinies. Vous pouvez modifier leurs contenus et métadonnées, mais la création et la suppression de pages sont désactivées dans l'interface actuelle.
-
-Le module Historique gère les repères chronologiques affichés sur la page faculté.
-
-## Faculté
-
-Le menu Faculté contient l'écran "Présentation / Mot du doyen". Il permet de modifier, pour le site facultaire actif :
-
-- la photo du doyen;
-- le nom complet;
-- la fonction;
-- le domaine ou département;
-- le petit libellé;
-- le titre principal;
-- le message;
-- la signature affichée en bas du message.
-
-Les champs français sont la version source. L'onglet English permet de saisir les textes anglais. Les champs anglais laissés vides utilisent la version française sur le site public.
-
-La photo est commune aux deux langues. Si aucune nouvelle image n'est choisie, la photo actuelle est conservée. Si une nouvelle image est envoyée, seuls les formats JPG, PNG et WebP sont acceptés.
-
-## Messages De Contact
-
-Le module `/admin/messages` permet de consulter les messages envoyés depuis le formulaire public.
-
-Actions disponibles :
-
-- filtrer par texte, statut et dates;
-- ouvrir un message;
-- marquer comme lu;
-- marquer comme traité;
-- archiver;
-- supprimer.
-
-La suppression retire le message de l'interface courante après archivage et suppression logique. Il n'existe pas d'écran de restauration des messages dans l'administration actuelle.
-
-## Utilisateurs Et Permissions
-
-Le module Utilisateurs permet, selon vos droits :
-
-- créer un utilisateur;
-- modifier son nom, email, état actif/inactif;
-- réinitialiser un mot de passe;
-- affecter groupes, permissions et sites;
-- activer ou désactiver un compte.
-
-Les protections empêchent de retirer son propre accès admin et de désactiver le dernier superadministrateur.
-
-## Sites Facultaires
-
-Le module Sites facultaires est réservé à `sites.manage`. Il permet de gérer l'identifiant, le nom, le slug, les domaines autorisés, l'état, la langue par défaut, le logo, les couleurs et les coordonnées.
-
-La suppression des sites est désactivée.
-
-## Paramètres Publics
-
-Les paramètres publics modifiables alimentent les textes, coordonnées, liens et images du site. Les secrets techniques ne doivent jamais y être stockés.
+- **Actualités / événements** : brouillon, programmé, publié, archivé.
+- **Pages** : pages prédéfinies ; création et suppression désactivées.
+- **Mot du doyen** : photo commune aux deux langues (JPG, PNG, WebP).
+- Les champs anglais vides affichent le français sur le site public.
 
 ## Langue
 
-Le public peut choisir français ou anglais. L'administration reste en français. Les champs anglais laissés vides utilisent le français sur le site public.
+Le public peut choisir français ou anglais (`site_locale`).
+L’administration reste en français.
 
 ## Déconnexion
 
-Utiliser le bouton de déconnexion du back-office. Après déconnexion, les pages `/admin` demandent de se reconnecter.
+Bouton **Déconnexion** du back-office. Ensuite, `/admin` redemande une
+connexion.

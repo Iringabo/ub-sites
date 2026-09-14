@@ -141,7 +141,7 @@ class ContactController extends BaseController
     private function contactPayload(): array
     {
         $name    = $this->normalizeSingleLine((string) $this->request->getPost('name'));
-        $email   = $this->normalizeSingleLine((string) $this->request->getPost('email'));
+        $email   = strtolower($this->normalizeSingleLine((string) $this->request->getPost('email')));
         $phone   = $this->normalizeSingleLine((string) $this->request->getPost('phone'));
         $subject = $this->normalizeSingleLine((string) $this->request->getPost('subject'));
         $message = $this->normalizeMessage((string) $this->request->getPost('message'));
@@ -174,12 +174,19 @@ class ContactController extends BaseController
         }
 
         $threshold = Time::now()->subSeconds(self::RATE_LIMIT_SECONDS)->toDateTimeString();
-
-        return model(ContactMessageModel::class, false)
+        $recent = model(ContactMessageModel::class, false)
             ->forSite()
-            ->where('LOWER(email)', $email)
+            ->select('email')
             ->where('created_at >=', $threshold)
-            ->countAllResults() > 0;
+            ->findAll();
+
+        foreach ($recent as $row) {
+            if (strtolower(trim((string) $row->email)) === $email) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -191,7 +198,7 @@ class ContactController extends BaseController
         $ip = trim((string) $ip);
 
         if ($ip === '') {
-            return false;
+            return true;
         }
 
         $threshold = Time::now()->subSeconds(self::IP_RATE_WINDOW_SECONDS)->toDateTimeString();

@@ -136,7 +136,7 @@ if ($remainingFields !== []) {
     </div>
 </div>
 
-<form action="<?= esc($action, 'attr') ?>" method="post" enctype="multipart/form-data" class="card-faculte">
+<form action="<?= esc($action, 'attr') ?>" method="post" enctype="multipart/form-data" class="card-faculte" data-unsaved-guard>
     <?= csrf_field() ?>
 
     <?php foreach ($fieldGroups as $groupIndex => $group): ?>
@@ -428,35 +428,6 @@ if ($remainingFields !== []) {
                     <?php endforeach ?>
                 </div>
             <?php endif ?>
-        </section>
-    <?php endif ?>
-
-    <?php if (($config['key'] ?? '') === 'sites' && $isNew): ?>
-        <section class="card-faculte mt-4" aria-labelledby="first-admin-title">
-            <h2 class="h5 mb-1" id="first-admin-title"><i class="bi bi-person-plus me-2"></i>Administrateur de la faculté <span class="text-muted small">(facultatif)</span></h2>
-            <p class="text-muted small">Créez en une étape le compte qui administrera cette faculté. Vous pourrez aussi le créer plus tard depuis « Comptes & accès ».</p>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label" for="first_admin_email">Adresse électronique</label>
-                    <input type="email" id="first_admin_email" name="first_admin_email" class="form-control <?= isset($errors['first_admin_email']) ? 'is-invalid' : '' ?>" value="<?= esc(old('first_admin_email') ?? '', 'attr') ?>" autocomplete="off">
-                    <?php if (isset($errors['first_admin_email'])): ?><div class="invalid-feedback"><?= esc($errors['first_admin_email']) ?></div><?php endif ?>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label" for="first_admin_username">Identifiant</label>
-                    <input type="text" id="first_admin_username" name="first_admin_username" class="form-control <?= isset($errors['first_admin_username']) ? 'is-invalid' : '' ?>" value="<?= esc(old('first_admin_username') ?? '', 'attr') ?>" autocomplete="off">
-                    <?php if (isset($errors['first_admin_username'])): ?><div class="invalid-feedback"><?= esc($errors['first_admin_username']) ?></div><?php endif ?>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label" for="first_admin_password">Mot de passe</label>
-                    <input type="password" id="first_admin_password" name="first_admin_password" class="form-control <?= isset($errors['first_admin_password']) ? 'is-invalid' : '' ?>" autocomplete="new-password">
-                    <?php if (isset($errors['first_admin_password'])): ?><div class="invalid-feedback"><?= esc($errors['first_admin_password']) ?></div><?php endif ?>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label" for="first_admin_confirm">Confirmation</label>
-                    <input type="password" id="first_admin_confirm" name="first_admin_confirm" class="form-control <?= isset($errors['first_admin_confirm']) ? 'is-invalid' : '' ?>" autocomplete="new-password">
-                    <?php if (isset($errors['first_admin_confirm'])): ?><div class="invalid-feedback"><?= esc($errors['first_admin_confirm']) ?></div><?php endif ?>
-                </div>
-            </div>
         </section>
     <?php endif ?>
 

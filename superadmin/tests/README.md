@@ -6,7 +6,7 @@ Le projet utilise PHPUnit 10 avec les outils de test CodeIgniter 4.
 
 `tests/bootstrap.php` supprime puis recrée la base configurée dans `database.tests.database` à chaque processus PHPUnit lorsque `ENVIRONMENT=testing` et que le pilote est `MySQLi`.
 
-Ne pointez jamais `database.tests.database` vers une base de développement, recette ou production. La base de test doit être dédiée, par exemple `fseg_test`, avec un utilisateur SQL limité à cet usage.
+Ne pointez jamais `database.tests.database` vers une base de développement, recette ou production. La base de test doit être dédiée, par exemple `platform_test`, avec un utilisateur SQL limité à cet usage.
 
 ## Commandes
 
@@ -21,16 +21,15 @@ php spark testdb:seed TemplateStarterSeeder
 ## Configuration
 
 - `phpunit.dist.xml` charge `tests/bootstrap.php`.
-- La base par défaut documentée pour les tests est `fseg_test`.
+- La base par défaut dans `phpunit.dist.xml` est `platform_test` (surcharge possible via `.env`).
 - Les variables `database.tests.*` peuvent être surchargées dans `.env` ou l'environnement système.
 - Le préfixe de test configuré est `test_`.
 
 ## Types De Tests Présents
 
 - Tests base de données : schéma, seeders et indépendance des modules.
-- Tests feature : routes publiques, administration, messages, utilisateurs, contenus, sécurité, multi-site.
-- Tests unitaires : helpers, médias, notifications, santé, production readiness, responsive/accessibilité.
-- Tests traduction : locale publique, fallback français, traductions éditoriales.
+- Tests feature : routes publiques, administration (trois zones, utilisateurs facultaires, sélecteur superadmin, session, onboarding), messages, contenus, sécurité, multi-site.
+- Tests unitaires : helpers, médias, notifications, santé, production readiness, nom du cookie de session, responsive/accessibilité.
 
 ## Bonnes Pratiques
 

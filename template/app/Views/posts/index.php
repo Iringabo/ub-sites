@@ -25,9 +25,9 @@
         </form>
 
         <div class="d-flex flex-wrap justify-content-center gap-2 mb-5">
-            <a class="btn btn-outline-green<?= $selectedType === null ? ' active' : '' ?>" href="<?= site_url('actualites' . ($query !== '' ? '?q=' . urlencode($query) : '')) ?>" data-filter="tous"><?= esc(lang('Site.posts.all')) ?></a>
-            <a class="btn btn-outline-green<?= $selectedType === 'news' ? ' active' : '' ?>" href="<?= site_url('actualites?type=actualite' . ($query !== '' ? '&q=' . urlencode($query) : '')) ?>" data-filter="actualite"><?= esc(lang('Site.posts.news')) ?></a>
-            <a class="btn btn-outline-green<?= $selectedType === 'event' ? ' active' : '' ?>" href="<?= site_url('actualites?type=evenement' . ($query !== '' ? '&q=' . urlencode($query) : '')) ?>" data-filter="evenement"><?= esc(lang('Site.posts.events')) ?></a>
+            <a class="btn btn-outline-green<?= $selectedType === null ? ' active' : '' ?>" href="<?= site_url('actualites' . ($query !== '' ? '?q=' . urlencode($query) : '')) ?>"><?= esc(lang('Site.posts.all')) ?></a>
+            <a class="btn btn-outline-green<?= $selectedType === 'news' ? ' active' : '' ?>" href="<?= site_url('actualites?type=actualite' . ($query !== '' ? '&q=' . urlencode($query) : '')) ?>"><?= esc(lang('Site.posts.news')) ?></a>
+            <a class="btn btn-outline-green<?= $selectedType === 'event' ? ' active' : '' ?>" href="<?= site_url('actualites?type=evenement' . ($query !== '' ? '&q=' . urlencode($query) : '')) ?>"><?= esc(lang('Site.posts.events')) ?></a>
         </div>
 
         <div class="row g-4">

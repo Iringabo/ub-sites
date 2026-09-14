@@ -7,6 +7,10 @@ use CodeIgniter\Model;
 
 class SiteModel extends Model
 {
+    /**
+     * @var list<string>
+     */
+    public const THEMES = ['default', 'institutional', 'modern', 'research'];
     protected $table            = 'sites';
     protected $primaryKey       = 'id';
     protected $returnType       = Site::class;

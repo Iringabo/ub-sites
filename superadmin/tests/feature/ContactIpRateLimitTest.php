@@ -63,6 +63,17 @@ final class ContactIpRateLimitTest extends CIUnitTestCase
         );
     }
 
+    public function testEmptyClientIpIsRateLimited(): void
+    {
+        $controller = new \App\Controllers\ContactController();
+        $method = new ReflectionMethod($controller, 'isRateLimitedByIp');
+        $method->setAccessible(true);
+
+        $this->assertTrue($method->invoke($controller, null));
+        $this->assertTrue($method->invoke($controller, ''));
+        $this->assertTrue($method->invoke($controller, '   '));
+    }
+
     private function seedRecentMessages(string $ip, int $count): void
     {
         $now = date('Y-m-d H:i:s');

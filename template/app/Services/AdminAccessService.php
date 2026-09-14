@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\TrustedProxies;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\Shield\Entities\User;
 
@@ -47,7 +48,7 @@ class AdminAccessService
      * True when this physical instance (this copy of the codebase, i.e. this
      * folder on disk) is dedicated to the central superadmin app, as opposed
      * to a single faculty's public/admin site. Set via `app.centralAdminMode`
-     * in that instance's own .env file. See docs/MULTI_FOLDER_DEPLOYMENT.md.
+     * in that instance's own .env file. See docs/ARCHITECTURE.md.
      */
     public function isCentralAdminInstance(): bool
     {
@@ -115,11 +116,11 @@ class AdminAccessService
         }
 
         $targetGroups = $target->getGroups() ?? [];
-        if (in_array('superadmin', $targetGroups, true) || in_array('admin', $targetGroups, true)) {
+        if (in_array('superadmin', $targetGroups, true)) {
             return false;
         }
 
-        return $this->siteRole((int) $target->id, $siteId) === 'editor';
+        return in_array($this->siteRole((int) $target->id, $siteId), ['site_admin', 'editor'], true);
     }
 
     /**
@@ -180,27 +181,11 @@ class AdminAccessService
 
     private function requestHost(RequestInterface $request): string
     {
-        foreach ([
-            $request->getHeaderLine('Host'),
-            $request->getHeaderLine('HTTP_HOST'),
-            (string) ($request->getServer('HTTP_HOST') ?? ''),
-            (string) ($request->getServer('SERVER_NAME') ?? ''),
-            trim(explode(',', $request->getHeaderLine('X-Forwarded-Host'))[0] ?? ''),
-        ] as $candidate) {
-            $host = $this->normalizedHost((string) $candidate);
-            if ($host !== '') {
-                return $host;
-            }
-        }
-
-        return '';
+        return TrustedProxies::hostCandidates($request)[0] ?? '';
     }
 
     private function normalizedHost(string $host): string
     {
-        $host = strtolower(trim($host));
-        $host = preg_replace('/:\d+$/', '', $host) ?? $host;
-
-        return trim($host, '.');
+        return TrustedProxies::normalizedHost($host);
     }
 }

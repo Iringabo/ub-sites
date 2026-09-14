@@ -1109,6 +1109,24 @@ footer.site-footer hr {
     font-size: 0.8rem;
 }
 
+.admin-current-site-central {
+    margin-top: 0.2rem;
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(13, 155, 73, 0.14);
+    color: var(--green-dark, #0B6F38);
+    font-weight: 650;
+    font-size: 0.84rem;
+}
+
+.admin-topbar-actions kbd {
+    font-size: 0.68rem;
+    padding: 0.1rem 0.3rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    background: #fff;
+}
+
 .admin-topbar-title strong {
     overflow: hidden;
     color: var(--text-dark);
