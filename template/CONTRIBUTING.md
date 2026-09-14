@@ -34,9 +34,12 @@ Ne copiez pas le fichier `env` suivi par Git pour créer un environnement local.
 ## Copies d’instances
 
 Le code source de vérité est `template/app`, `template/tests` et
-`template/public/assets`. Après une modification, recopier vers fseg, fsi
-et superadmin (`rsync -a`, sans `.env`, `writable/` ni `docs/`). Ne pas
-partager `vendor/` par symlink sans `composer dump-autoload` dans la copie.
+`template/public/assets`. Après une modification, depuis `template/` :
+`./scripts/sync-instances.sh` (cible : fseg, fsi, superadmin, med, fabi,
+flsh). Ne pas partager `vendor/` par symlink sans `composer dump-autoload`
+dans la copie. Opérations locales : [docs/LOCAL_OPERATIONS.md](docs/LOCAL_OPERATIONS.md).
+Les mots de passe locaux : fichier `LOCAL_CREDENTIALS.md` à la racine
+(plateforme), **ignoré par Git**.
 
 ## Multi-Site
 

@@ -10,8 +10,9 @@ l’onglet « Version anglaise » lorsqu’il est proposé.
 
 Aller sur `/admin`. Utiliser l’adresse e-mail et le mot de passe fournis.
 
-- Une faculté : se connecter sur le `/admin` **de son dossier** (exemple local
-  FSEG : `http://localhost:8101/admin`).
+- Une faculté : se connecter sur le `/admin` **de son dossier** (exemples
+  locaux : FSEG `http://localhost:8101/admin`, FSI `:8102`, MED `:8104`,
+  FABI `:8105`, FLSH `:8106`).
 - Superadministrateur : se connecter sur le dossier `superadmin/`
   (`http://localhost:8103/admin`). Seul le groupe Shield `superadmin` y est
   accepté.

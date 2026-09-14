@@ -1,0 +1,7 @@
+# Local-only secrets (never commit)
+LOCAL_CREDENTIALS.md
+
+# OS junk
+.DS_Store
+Thumbs.db
+*.tmp

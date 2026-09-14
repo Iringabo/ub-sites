@@ -16,14 +16,15 @@ L'application utilise une seule base pour plusieurs sites facultaires partageant
 
 Pour le public :
 
-1. lire les candidats host depuis `Host`, `HTTP_HOST`, `SERVER_NAME` et `X-Forwarded-Host`;
-2. chercher une correspondance dans `sites.hostnames` parmi les sites actifs;
-3. si `app.requireKnownHostname=true`, répondre 404 lorsqu'aucun site actif ne correspond à l'hôte;
-4. utiliser `app.siteId` si configuré;
-5. utiliser `app.siteSlug`, par défaut `fseg`;
-6. retomber sur le site FSEG par défaut.
+1. lire les candidats host depuis `Host` et `HTTP_HOST` (pas `SERVER_NAME`) ;
+2. lire `X-Forwarded-Host` seulement si `app.proxyIPs` est renseigné ;
+3. chercher une correspondance dans `sites.hostnames` parmi les sites actifs;
+4. si `app.requireKnownHostname=true`, répondre 404 lorsqu'aucun site actif ne correspond à l'hôte;
+5. utiliser `app.siteId` si configuré;
+6. utiliser `app.siteSlug` (obligatoire sur une instance facultaire) ;
+7. si la base est indisponible et qu’un `app.siteSlug` est défini, échouer (404) plutôt que d’usurper un site `id=1`.
 
-En développement local, chaque faculté est servie sur son propre port (`scripts/dev-serve.sh`) : fseg=8101, fsi=8102, superadmin=8103. Pour réserver l'affichage public aux domaines configurés en production, activer `app.requireKnownHostname=true`. Un dossier facultaire dont `app.siteSlug` ne correspond à aucun site actif répond 404 explicite.
+En développement local, chaque faculté est servie sur son propre port (`scripts/dev-serve.sh`) : fseg=8101, fsi=8102, superadmin=8103, med=8104, fabi=8105, flsh=8106. Pour réserver l'affichage public aux domaines configurés en production, activer `app.requireKnownHostname=true`. Un dossier facultaire dont `app.siteSlug` ne correspond à aucun site actif répond 404 explicite.
 
 Pour l'administration :
 
@@ -34,7 +35,7 @@ Pour l'administration :
 
 Renseigner `app.allowedHostnames` (ex. `localhost,127.0.0.1` en local, ou les domaines publics en production) pour que `site_url()` et `base_url()` génèrent des URLs sûres.
 
-Le service lit directement `X-Forwarded-Host`; il faut donc ne laisser parvenir ce header à PHP que depuis un proxy de confiance. `app.proxyIPs` reste nécessaire pour la confiance accordée par CodeIgniter aux informations proxy, mais il ne filtre pas à lui seul la lecture de `X-Forwarded-Host` par `SiteResolverService`.
+`SiteResolverService` et `AdminAccessService` partagent le même filtre de proxy (`App\Support\TrustedProxies`) : sans `app.proxyIPs`, `X-Forwarded-Host` est ignoré.
 
 ## Isolation Des Données
 

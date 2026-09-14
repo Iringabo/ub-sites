@@ -1,13 +1,19 @@
 <?php
 
 /**
- * One-off local helper (not a committed spark command): create/reset
- * faculty site_admin accounts. Password from PLATFORM_ADMIN_PASSWORD only.
+ * One-off local helper: create/reset faculty site_admin accounts.
+ * Password from PLATFORM_ADMIN_PASSWORD only.
  *
  *   PLATFORM_ADMIN_PASSWORD='...' php scripts/ensure-faculty-admins.php
  */
 
 declare(strict_types=1);
+
+use CodeIgniter\Boot;
+use CodeIgniter\Shield\Entities\User;
+use CodeIgniter\Shield\Models\UserModel;
+use Config\Database;
+use Config\Paths;
 
 $password = getenv('PLATFORM_ADMIN_PASSWORD');
 if (! is_string($password) || strlen($password) < 8) {
@@ -16,34 +22,32 @@ if (! is_string($password) || strlen($password) < 8) {
 }
 
 $root = dirname(__DIR__) . '/fseg';
-chdir($root);
 
-define('FCPATH', $root . '/public/');
-define('COMPOSER_PATH', $root . '/vendor/autoload.php');
-define('SECONDARY_ROOT_PATH_SYMLINKED', true);
+define('FCPATH', $root . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR);
+chdir(FCPATH);
 
-require $root . '/vendor/autoload.php';
-require $root . '/app/Config/Paths.php';
-$paths = new Config\Paths();
-require $paths->systemDirectory . '/bootstrap.php';
+require FCPATH . '../app/Config/Paths.php';
+$paths = new Paths();
+require $paths->systemDirectory . '/Boot.php';
 
-$app = Config\Services::codeigniter();
-$app->initialize();
-$app->setContext('cli');
+// bootConsole assumes ENVIRONMENT is already defined (as in util_bootstrap.php).
+if (! defined('ENVIRONMENT')) {
+    $env = $_ENV['CI_ENVIRONMENT'] ?? $_SERVER['CI_ENVIRONMENT'] ?? getenv('CI_ENVIRONMENT') ?: 'development';
+    define('ENVIRONMENT', $env);
+}
 
-use CodeIgniter\Shield\Entities\User;
-use CodeIgniter\Shield\Models\UserModel;
-use Config\Database;
+Boot::bootConsole($paths);
 
-$db = Database::connect();
+$db    = Database::connect();
+$users = model(UserModel::class);
 
 $accounts = [
+    ['email' => 'fseg-admin@ub.local', 'username' => 'fsegadmin', 'slug' => 'fseg'],
+    ['email' => 'fsi-admin@ub.local', 'username' => 'fsiadmin', 'slug' => 'fsi'],
     ['email' => 'med-admin@ub.local', 'username' => 'medadmin', 'slug' => 'med'],
     ['email' => 'fabi-admin@ub.local', 'username' => 'fabiadmin', 'slug' => 'fabi'],
     ['email' => 'flsh-admin@ub.local', 'username' => 'flshadmin', 'slug' => 'flsh'],
 ];
-
-$users = model(UserModel::class);
 
 foreach ($accounts as $account) {
     $site = $db->table('sites')->where('slug', $account['slug'])->get()->getRowArray();
@@ -86,7 +90,21 @@ foreach ($accounts as $account) {
     echo "  assigned site_admin on {$account['slug']} (site_id={$siteId})\n";
 }
 
-// Proper French name for FSI if still ASCII
+// Reset known local superadmin if present
+$supIdentity = $db->table('auth_identities')
+    ->where('type', 'email_password')
+    ->where('secret', 'sup@test.com')
+    ->get()
+    ->getRowArray();
+if ($supIdentity !== null) {
+    $sup = $users->findById((int) $supIdentity['user_id']);
+    $sup->password = $password;
+    $users->save($sup);
+    $sup->addGroup('superadmin');
+    $sup->activate();
+    echo "Reset password for sup@test.com\n";
+}
+
 $db->table('sites')->where('slug', 'fsi')->update([
     'name' => 'Faculté des Sciences et Ingénierie',
 ]);

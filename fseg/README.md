@@ -50,6 +50,8 @@ php spark test
 La commande recrée la base `database.tests.database`. Lire
 [tests/README.md](tests/README.md).
 
+Identifiants locaux : `LOCAL_CREDENTIALS.md` à la racine (gitignored).
+
 ## Documentation
 
 - [Guide administrateur](docs/GUIDE_ADMINISTRATEUR.md)

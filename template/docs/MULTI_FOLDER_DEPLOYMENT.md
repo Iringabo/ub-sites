@@ -8,8 +8,9 @@ Toutes les instances partagent le même code applicatif, les mêmes
 migrations et **une seule base de données**. Seuls l’organisation des
 dossiers et le `.env` de chaque dossier changent.
 
-En local : FSEG = 8101, FSI = 8102, superadmin = 8103 via
-`scripts/dev-serve.sh`.
+En local : FSEG = 8101, FSI = 8102, superadmin = 8103, MED = 8104,
+FABI = 8105, FLSH = 8106 via `scripts/dev-serve.sh` (voir
+[LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md) pour `PLATFORM_INSTANCES`).
 
 ## Vue d’ensemble
 
@@ -21,7 +22,9 @@ En local : FSEG = 8101, FSI = 8102, superadmin = 8103 via
 │                      contenu ici (même site_id). Liste / comptes.
 ├── fseg/           → copie, app.siteSlug = fseg
 ├── fsi/            → copie, app.siteSlug = fsi
-└── droit/          → copie, app.siteSlug = droit
+├── med/            → copie, app.siteSlug = med
+├── fabi/           → copie, app.siteSlug = fabi
+└── flsh/           → copie, app.siteSlug = flsh
 ```
 
 Ce qui distingue un dossier d’un autre, ce sont quelques lignes du `.env` :
@@ -29,7 +32,7 @@ Ce qui distingue un dossier d’un autre, ce sont quelques lignes du `.env` :
 | Variable | Dans `superadmin/` | Dans un dossier facultaire |
 |---|---|---|
 | `app.centralAdminMode` | `true` | `false` |
-| `app.siteSlug` | sans effet | `fseg`, `fsi`, `droit`, … |
+| `app.siteSlug` | sans effet | `fseg`, `fsi`, `med`, `fabi`, `flsh`, … |
 | `session.cookieName` | `ci_session_central` | `ci_session_fseg`, … |
 | `session.rememberCookieName` | `remember_central` | `remember_fseg`, … |
 | `app.uploadMirrors` | carte `slug:/chemin` | laisser vide |
@@ -110,12 +113,10 @@ Le script recopie uniquement `app/`, `tests/` et `public/assets/` vers
 rsync -a template/app/ fseg/app/
 rsync -a template/app/ fsi/app/
 rsync -a template/app/ superadmin/app/
-rsync -a template/tests/ fseg/tests/
-rsync -a template/tests/ fsi/tests/
-rsync -a template/tests/ superadmin/tests/
-rsync -a template/public/assets/ fseg/public/assets/
-rsync -a template/public/assets/ fsi/public/assets/
-rsync -a template/public/assets/ superadmin/public/assets/
+rsync -a template/app/ med/app/
+rsync -a template/app/ fabi/app/
+rsync -a template/app/ flsh/app/
+# idem tests/ et public/assets/ — ou utiliser sync-instances.sh
 ```
 
 Ne pas recopier `.env`, `writable/`, `docs/` ni les README (ils divergent
@@ -127,6 +128,7 @@ les scripts de création (l’autoload `App\\` pointerait vers le modèle).
 
 ## Documents liés
 
+- [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md) — seed UB, cartes, admins locaux
 - [CREER_UN_SITE.md](CREER_UN_SITE.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md)

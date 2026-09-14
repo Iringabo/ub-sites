@@ -1,17 +1,20 @@
 # Architecture actuelle
 
-Dernière actualisation : 10 septembre 2026. Ce document décrit l’état
-présent du dépôt modèle.
+Dernière actualisation : 14 septembre 2026. Ce document décrit l’état
+présent de la plateforme.
 
 ## Vue d’ensemble
 
-Ce dossier est le **modèle**. On le copie pour chaque instance.
+Le dossier `template/` est le **modèle**. On le copie pour chaque instance.
 
 ```
 <racine plateforme>/
 ├── template/      ← ce dépôt (jamais exposé au web)
 ├── fseg/          ← copie : app.siteSlug=fseg   → public + /admin FSEG
 ├── fsi/           ← copie : app.siteSlug=fsi    → public + /admin FSI
+├── med/           ← copie : app.siteSlug=med
+├── fabi/          ← copie : app.siteSlug=fabi
+├── flsh/          ← copie : app.siteSlug=flsh
 └── superadmin/    ← copie : app.centralAdminMode=true → pilotage
 ```
 
@@ -19,6 +22,7 @@ Ce dossier est le **modèle**. On le copie pour chaque instance.
 - Migrations **une fois**, depuis n’importe quelle instance.
 - Chaque instance : son `vendor/`, son `.env`, son cookie de session.
 - Création d’une faculté : [CREER_UN_SITE.md](CREER_UN_SITE.md).
+- Seed / cartes / admins locaux : [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md).
 
 ## Développement local
 
@@ -27,6 +31,9 @@ Ce dossier est le **modèle**. On le copie pour chaque instance.
 | fseg | http://localhost:**8101** | `app.siteSlug=fseg`, `session.cookieName=ci_session_fseg` |
 | fsi | http://localhost:**8102** | `app.siteSlug=fsi`, `session.cookieName=ci_session_fsi` |
 | superadmin | http://localhost:**8103** | `app.centralAdminMode=true`, `session.cookieName=ci_session_central` |
+| med | http://localhost:**8104** | `app.siteSlug=med`, `session.cookieName=ci_session_med` |
+| fabi | http://localhost:**8105** | `app.siteSlug=fabi`, `session.cookieName=ci_session_fabi` |
+| flsh | http://localhost:**8106** | `app.siteSlug=flsh`, `session.cookieName=ci_session_flsh` |
 
 ```bash
 cd fseg && ./scripts/dev-serve.sh start
@@ -34,8 +41,9 @@ cd fseg && ./scripts/dev-serve.sh start
 ./scripts/dev-serve.sh stop
 ```
 
-Les ports viennent de `app.baseURL` (`PLATFORM_INSTANCES` peut surcharger
-la liste).
+Les ports viennent de `app.baseURL`. Par défaut le script lance
+`fseg fsi superadmin` ; pour les six sites :
+`PLATFORM_INSTANCES='fseg fsi superadmin med fabi flsh'`.
 
 ## Résolution du site actif
 
@@ -103,22 +111,26 @@ lorsque la base connectée est bien celle configurée.
 - PHPUnit 10, tests feature / database / unit dans `tests/`.
 - `tests/bootstrap.php` **supprime et recrée** `database.tests.database`.
 - Après une modification dans `template/app`, `template/tests` ou
-  `template/public/assets`, recopier vers fseg, fsi et superadmin
-  (voir [MULTI_FOLDER_DEPLOYMENT.md](MULTI_FOLDER_DEPLOYMENT.md)).
+  `template/public/assets`, recopier vers fseg, fsi, superadmin, med, fabi
+  et flsh (voir [MULTI_FOLDER_DEPLOYMENT.md](MULTI_FOLDER_DEPLOYMENT.md)).
 
 ## Commandes utiles
 
 ```bash
 composer validate && php spark routes && php spark migrate:status
 php spark test
-php spark site:create --identifier droit --slug droit --name "Faculté de Droit"
+php spark site:create --identifier med --slug med --name "Faculté de Médecine"
+PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-faculty-admin \
+    --email admin-faculte@example.edu --username adminfac --password-env PLATFORM_ADMIN_PASSWORD
+# Superadmin uniquement depuis le dossier superadmin/ :
 PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-superadmin \
-    --email admin@example.edu --username admin
+    --email admin@example.edu --username admin --password-env PLATFORM_ADMIN_PASSWORD
 php spark app:production-check [--strict]
 ```
 
 ## Documents liés
 
+- [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md)
 - [CREER_UN_SITE.md](CREER_UN_SITE.md)
 - [MULTI_FOLDER_DEPLOYMENT.md](MULTI_FOLDER_DEPLOYMENT.md)
 - [ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md)

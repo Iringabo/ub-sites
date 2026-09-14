@@ -1,32 +1,13 @@
-# Commencer ici
+# Commencer ici — FABI
 
-Ce dossier est le **modèle** de la plateforme : on le copie pour créer un
-site facultaire (public + `/admin`) ou l’instance superadministration.
+Ce dossier est le site de la Faculté d'Agronomie et de Bioingénierie :
+pages publiques et `/admin` de **cette** faculté seulement.
 
-## Lecture rapide
+1. Lire [README.md](README.md) pour lancer le site.
+2. Lire [docs/GUIDE_ADMINISTRATEUR.md](docs/GUIDE_ADMINISTRATEUR.md) pour
+   les écrans d’administration.
+3. En local : `./scripts/dev-serve.sh` puis `http://localhost:8105/`.
 
-1. [docs/CREER_UN_SITE.md](docs/CREER_UN_SITE.md) — copier le dossier et
-   ouvrir un site, sans être programmeur.
-2. [README.md](README.md) — vue d’ensemble.
-3. [docs/README.md](docs/README.md) — choisir le bon guide.
-
-## Lancement local minimal
-
-```bash
-composer install
-cp .env.example .env
-php spark key:generate
-php spark migrate --all
-php spark admin:create-superadmin
-php spark serve
-```
-
-Le site public est sur `http://localhost:8080/`. L’administration est sur
-`/admin`.
-
-## Rappels
-
-- Ne jamais copier un `.env` réel d’une instance vers une autre.
-- Les tests recréent la base `database.tests.database` : lire
-  [tests/README.md](tests/README.md).
-- Le serveur web n’expose que le dossier `public/`.
+Ne copiez pas le `.env` d’un autre dossier. Partez de `.env.example`.
+Identifiants locaux : `LOCAL_CREDENTIALS.md` à la racine de la plateforme
+(ignoré par Git).

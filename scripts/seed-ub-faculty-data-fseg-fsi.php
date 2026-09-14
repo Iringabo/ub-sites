@@ -350,13 +350,13 @@ return [
             'contact' => [
                 'title' => 'Contact',
                 'content' => [
-                    'banner_subtitle' => 'Décanat FSEG',
+                    'banner_subtitle' => 'FSEG — Campus Mutanga, Université du Burundi',
                     'banner_image' => 'assets/images/faculties/fseg/banner.jpg',
                     'contact_label' => 'Coordonnées',
                     'contact_title' => 'Contacter la FSEG',
                     'form_title' => 'Envoyer un message',
                     'form_help' => 'Indiquez le département concerné (Gestion, Économie politique, Économie rurale) si possible.',
-                    'map_url' => '',
+                    'map_url' => 'https://www.google.com/maps?q=-3.376061%2C29.383330%20(FSEG%20%E2%80%94%20Campus%20Mutanga%2C%20Universit%C3%A9%20du%20Burundi)&hl=fr&z=17&output=embed',
                 ],
                 'seo_title' => 'Contact — FSEG',
                 'seo_description' => 'Contacter la FSEG.',
@@ -722,13 +722,13 @@ return [
             'contact' => [
                 'title' => 'Contact',
                 'content' => [
-                    'banner_subtitle' => 'Secrétariat FSI — Campus Kiriri',
+                    'banner_subtitle' => 'FSI — Campus Kiriri, 164 Chaussée Prince Louis Rwagasore',
                     'banner_image' => 'assets/images/faculties/fsi/banner.jpg',
                     'contact_label' => 'Coordonnées',
                     'contact_title' => 'Contacter la FSI',
                     'form_title' => 'Envoyer un message',
                     'form_help' => 'Précisez le département (Génie civil, Architecture, Électromécanique, TIC).',
-                    'map_url' => '',
+                    'map_url' => 'https://www.google.com/maps?q=-3.389031%2C29.375322%20(FSI%20%E2%80%94%20164%20Chauss%C3%A9e%20Prince%20Louis%20Rwagasore%2C%20Campus%20Kiriri)&hl=fr&z=17&output=embed',
                 ],
                 'seo_title' => 'Contact — FSI',
                 'seo_description' => 'Contacter la FSI.',

@@ -31,3 +31,8 @@ On n’y crée pas de faculté. Procédure : `template/docs/CREER_UN_SITE.md`.
 - [Contribuer](../CONTRIBUTING.md)
 - [Tests](../tests/README.md)
 - [Changelog](../CHANGELOG.md)
+
+## Opérations plateforme
+
+- [Opérations locales (seed, cartes, admins)](../../template/docs/LOCAL_OPERATIONS.md)
+- Identifiants locaux : `LOCAL_CREDENTIALS.md` à la racine (gitignored)

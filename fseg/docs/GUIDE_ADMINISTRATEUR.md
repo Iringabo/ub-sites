@@ -10,14 +10,20 @@ l’onglet « Version anglaise » lorsqu’il est proposé.
 
 Aller sur `/admin`. Utiliser l’adresse e-mail et le mot de passe fournis.
 
-- Une faculté : se connecter sur le `/admin` **de son dossier** (exemple local
-  FSEG : `http://localhost:8101/admin`).
+- Une faculté : se connecter sur le `/admin` **de son dossier** (exemples
+  locaux : FSEG `http://localhost:8101/admin`, FSI `:8102`, MED `:8104`,
+  FABI `:8105`, FLSH `:8106`).
 - Superadministrateur : se connecter sur le dossier `superadmin/`
   (`http://localhost:8103/admin`). Seul le groupe Shield `superadmin` y est
   accepté.
 
 Consulter une page publique **ne déconnecte pas**. La session se termine
 uniquement avec **Déconnexion**.
+
+La case **Se souvenir de moi** (30 jours) n’est proposée que sur les
+dossiers facultaires. Ne pas l’utiliser sur un ordinateur partagé : elle
+reconstruit la session sans mot de passe. L’instance superadmin la
+désactive.
 
 **Voir le site** ouvre le site public dans un nouvel onglet.
 
@@ -54,7 +60,7 @@ Visible pour l’administrateur de faculté et le superadministrateur.
   supprimer (suppression logique ; pas d’écran de restauration).
 - **Coordonnées et identité** (`/admin/settings/global`) : textes publics,
   coordonnées, liens, images. Jamais de secrets techniques.
-- **Utilisateurs** (dossier facultaire) : comptes de **cette** faculté.
+- **Comptes & accès** (dossier facultaire) : comptes de **cette** faculté.
 
 Sur l’instance superadmin, le groupe **Plateforme** s’ajoute : aperçu du
 site choisi, liste des facultés, comptes de toutes les facultés.
@@ -63,7 +69,7 @@ site choisi, liste des facultés, comptes de toutes les facultés.
 
 | Rôle | Où | Droits |
 |---|---|---|
-| Éditeur | `/admin` de sa faculté | Zones contenu et communauté. Pas de messages, pas d’utilisateurs, pas d’identité. |
+| Éditeur | `/admin` de sa faculté | Zones contenu et communauté. Pas de messages, pas de comptes, pas d’identité. |
 | Administrateur de faculté | `/admin` de sa faculté | Les trois zones. Crée un **administrateur** ou un **éditeur** pour *sa* faculté seulement. Pas de superadmin, pas d’autre site. |
 | Superadministrateur | dossier `superadmin/` | Plateforme + les trois zones de la faculté **choisie**. Les enregistrements écrivent le `site_id` de cette faculté. |
 
@@ -80,7 +86,7 @@ en tapant une autre URL.
    **crée** pas une faculté depuis cet écran : copier le dossier `template/`
    (voir `template/docs/CREER_UN_SITE.md`).
 
-## Utilisateurs
+## Comptes & accès
 
 Selon les droits :
 
@@ -101,7 +107,7 @@ désactiver le dernier superadministrateur.
 
 ## Langue
 
-Le public peut choisir français ou anglais (`site_locale`).
+Le public peut choisir français ou anglais (cookie `site_locale_{slug}`).
 L’administration reste en français.
 
 ## Déconnexion

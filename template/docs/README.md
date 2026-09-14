@@ -11,6 +11,8 @@ Ce dossier est le **modèle** de la plateforme. État du système :
   cookies de session, qualité.
 - [Déploiement multi-dossiers](MULTI_FOLDER_DEPLOYMENT.md) : fonctionnement
   technique, rsync des copies.
+- [Opérations locales](LOCAL_OPERATIONS.md) : seed UB, cartes campus, admins
+  CLI, images offline (scripts racine).
 - [Guide d’installation](GUIDE_INSTALLATION_DEPLOIEMENT.md) : machine neuve,
   base, production.
 - [Guide cPanel](GUIDE_DEPLOIEMENT_CPANEL.md) : hébergement mutualisé.

@@ -31,6 +31,10 @@ Remplacez `fseg` par l’identifiant de la faculté. Ne copiez jamais le fichier
 
 Un script optionnel fait la même copie : `scripts/new-faculty-instance.sh`.
 
+Après création, pour charger le contenu de démonstration UB (local) ou
+mettre à jour les cartes : voir [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md)
+et les scripts à la racine de la plateforme.
+
 ## 2. Remplir trois champs dans `.env`
 
 ```bash

@@ -31,6 +31,8 @@ Ne pas utiliser `cp env .env`. Le fichier `env` peut contenir des valeurs sensib
 
 ```ini
 CI_ENVIRONMENT = development
+# Exemple démarrage unique du modèle ; en multi-dossiers utiliser 8101–8106
+# (voir ARCHITECTURE.md / LOCAL_OPERATIONS.md).
 app.baseURL = 'http://localhost:8080/'
 app.defaultLocale = fr
 app.appTimezone = Africa/Bujumbura
@@ -82,9 +84,13 @@ php spark serve
 Vérifier :
 
 - `http://localhost:8101/` (fseg) · `:8102` (fsi) · `:8103` (superadmin)
+  · `:8104` (med) · `:8105` (fabi) · `:8106` (flsh)
 
-Lancer les trois instances d'un coup : `scripts/dev-serve.sh start`
-(arrêt : `stop`, état : `status`). Le `.env` d'une instance locale contient :
+Lancer les instances : `scripts/dev-serve.sh start` (défaut : fseg, fsi,
+superadmin). Les six sites :
+`PLATFORM_INSTANCES='fseg fsi superadmin med fabi flsh' scripts/dev-serve.sh start`
+(arrêt : `stop`, état : `status`). Opérations seed / cartes / admins :
+[LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md). Le `.env` d'une instance locale contient :
 
 ```ini
 app.baseURL = 'http://localhost:8101/'

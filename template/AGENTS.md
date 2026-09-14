@@ -5,7 +5,8 @@ Ce fichier est un guide opérationnel court pour les futurs agents. Il ne rempla
 ## Source De Vérité
 
 - Pour l'état actuel, lire le code, les migrations, les routes, les modèles, les services, les vues, la configuration et les tests.
-- Lire d'abord [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/CREER_UN_SITE.md](docs/CREER_UN_SITE.md), [docs/MULTI_FOLDER_DEPLOYMENT.md](docs/MULTI_FOLDER_DEPLOYMENT.md) et [docs/README.md](docs/README.md).
+- Lire d'abord [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/CREER_UN_SITE.md](docs/CREER_UN_SITE.md), [docs/MULTI_FOLDER_DEPLOYMENT.md](docs/MULTI_FOLDER_DEPLOYMENT.md), [docs/LOCAL_OPERATIONS.md](docs/LOCAL_OPERATIONS.md) et [docs/README.md](docs/README.md).
+- Identifiants locaux de la plateforme : `LOCAL_CREDENTIALS.md` à la racine parent (gitignored ; ne jamais committer).
 
 ## Mission Du Dépôt
 

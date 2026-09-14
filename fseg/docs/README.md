@@ -33,3 +33,8 @@ Pour ouvrir une *autre* faculté, utiliser le dossier `template/`
 - [Contribuer](../CONTRIBUTING.md)
 - [Tests](../tests/README.md)
 - [Changelog](../CHANGELOG.md)
+
+## Opérations plateforme
+
+- [Opérations locales (seed, cartes, admins)](../../template/docs/LOCAL_OPERATIONS.md)
+- Identifiants locaux : `LOCAL_CREDENTIALS.md` à la racine (gitignored)

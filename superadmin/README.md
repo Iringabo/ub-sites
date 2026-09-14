@@ -19,7 +19,7 @@ Dans `.env` :
 - `app.baseURL` — en local : `http://localhost:8103/`
 - `app.centralAdminMode = true`
 - `session.cookieName = ci_session_central`
-- `database.default.*` — la **même** base que fseg et fsi
+- `database.default.*` — la **même** base que les dossiers facultaires (fseg, fsi, med, fabi, flsh)
 
 Puis :
 
@@ -31,6 +31,8 @@ Puis :
 - La page d’accueil publique redirige vers `/admin`
 
 Connectez-vous avec un compte du groupe **superadministrateur**.
+
+Identifiants locaux : `LOCAL_CREDENTIALS.md` à la racine de la plateforme (fichier ignoré par Git).
 
 ## Choisir une faculté
 

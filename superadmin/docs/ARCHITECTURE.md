@@ -1,55 +1,138 @@
 # Architecture actuelle
 
-Dernière actualisation : 10 septembre 2026.
+Dernière actualisation : 14 septembre 2026. Ce document décrit l’état
+présent de la plateforme.
 
-Ce dossier est **l’instance de superadministration**, pas le modèle. On n’y
-crée pas de nouveau site. Procédure : `template/docs/CREER_UN_SITE.md`.
+## Vue d’ensemble
+
+Le dossier `template/` est le **modèle**. On le copie pour chaque instance.
 
 ```
 <racine plateforme>/
-├── template/      ← modèle
-├── fseg/ / fsi/   ← sites publics + /admin facultaires
-└── superadmin/    ← ce dossier : app.centralAdminMode=true
+├── template/      ← ce dépôt (jamais exposé au web)
+├── fseg/          ← copie : app.siteSlug=fseg   → public + /admin FSEG
+├── fsi/           ← copie : app.siteSlug=fsi    → public + /admin FSI
+├── med/           ← copie : app.siteSlug=med
+├── fabi/          ← copie : app.siteSlug=fabi
+├── flsh/          ← copie : app.siteSlug=flsh
+└── superadmin/    ← copie : app.centralAdminMode=true → pilotage
 ```
 
-- **Une seule base** ; l’édition porte sur le `site_id` **choisi**.
-- Cookie : `ci_session_central`.
-- `CentralAdminOnlyFilter` : le public redirige vers `/admin`.
+- **Une seule base MySQL/MariaDB** ; isolation par `site_id`.
+- Migrations **une fois**, depuis n’importe quelle instance.
+- Chaque instance : son `vendor/`, son `.env`, son cookie de session.
+- Création d’une faculté : [CREER_UN_SITE.md](CREER_UN_SITE.md).
+- Seed / cartes / admins locaux : [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md).
 
-## Local
+## Développement local
 
-http://localhost:**8103**/admin — groupe Shield `superadmin` uniquement.
+| Instance | URL | `.env` clé |
+|---|---|---|
+| fseg | http://localhost:**8101** | `app.siteSlug=fseg`, `session.cookieName=ci_session_fseg` |
+| fsi | http://localhost:**8102** | `app.siteSlug=fsi`, `session.cookieName=ci_session_fsi` |
+| superadmin | http://localhost:**8103** | `app.centralAdminMode=true`, `session.cookieName=ci_session_central` |
+| med | http://localhost:**8104** | `app.siteSlug=med`, `session.cookieName=ci_session_med` |
+| fabi | http://localhost:**8105** | `app.siteSlug=fabi`, `session.cookieName=ci_session_fabi` |
+| flsh | http://localhost:**8106** | `app.siteSlug=flsh`, `session.cookieName=ci_session_flsh` |
 
 ```bash
-./scripts/dev-serve.sh start
+cd fseg && ./scripts/dev-serve.sh start
+./scripts/dev-serve.sh status
+./scripts/dev-serve.sh stop
 ```
 
-## Comportement
+Les ports viennent de `app.baseURL`. Par défaut le script lance
+`fseg fsi superadmin` ; pour les six sites :
+`PLATFORM_INSTANCES='fseg fsi superadmin med fabi flsh'`.
 
-1. Tableau de bord plateforme : facultés réelles (pas `template` / `demo`).
-2. Sélecteur ou **Gérer le contenu** → `active_admin_site_id`.
-3. Les trois zones éditent cette faculté dans **cette** application.
-4. **Voir le site** ouvre l’hôte public de la faculté (nouvel onglet).
-5. **Facultés** : modifier une fiche existante. Création UI désactivée.
-6. **Comptes** : premier admin d’une faculté ; ensuite il gère ses éditeurs
-   dans le dossier de sa faculté.
+## Résolution du site actif
 
-## Isolation
+`App\Services\SiteResolverService` :
 
-Même `SiteScopedModel::forSite()` que les facultés, avec le site de session.
+1. `/admin/*` : site en session (superadmin), sinon site lié au dossier ;
+2. hôte listé dans `hostnames` d’un site actif ;
+3. `app.siteId` puis `app.siteSlug` ;
+4. dossier facultaire HTTP : site introuvable ou inactif → **404** ;
+5. superadmin / CLI : premier site actif, sinon entité neutre.
+
+Les identifiants / slugs `template` et `demo` sont traités comme squelette
+et exclus du sélecteur superadmin.
+
+## Modèle d’accès
+
+Groupes Shield : `superadmin`, `admin`, `editor`
+(`app/Config/AuthGroups.php`).
+
+| Qui | Où | Peut faire |
+|---|---|---|
+| Superadministrateur | `superadmin/` | facultés existantes, comptes, **édition in situ** du `site_id` choisi |
+| Administrateur de faculté | `/admin` de son dossier | trois zones ; crée admin/éditeur **de sa faculté** ; identité |
+| Éditeur | `/admin` de son dossier | contenu ; pas d’utilisateurs ni d’identité |
+
+`AdminAccessFilter` lie le personnel au site du dossier. Le sélecteur de
+site est réservé au superadmin.
+
+Le menu `/admin` a trois zones métier (`AdminNavigationService`) : contenu
+et communication ; communauté et recherche ; administration. Sur
+l’instance centrale s’ajoute le groupe Plateforme. L’écran `/admin/sites`
+n’offre plus la création.
+
+## Isolation multi-sites
+
+- Tables `sites` et `user_sites` ; `site_id` sur contenus, paramètres,
+  messages, traductions.
+- Lectures/écritures via `SiteScopedModel::forSite()`.
+- Médias : `public/uploads/sites/{slug}/…`.
+
+## Front-end auto-hébergé
+
+Bootstrap 5.3.3, Bootstrap Icons 1.11.3, Inter dans
+`public/assets/vendor/`. CSP `'self'` ; exception
+`frame-src https://www.google.com` pour la carte contact.
+
+## Bilinguisme
+
+Français source ; anglais public via `content_translations` (fallback FR).
+Cookie de langue par instance (`site_locale_{slug}` ou `site_locale_central`).
+Admin / auth : français. Les pages d’erreur publiques suivent la locale.
+
+## Sécurité (synthèse)
+
+Shield, CSRF, en-têtes, CSP, validation serveur, uploads (extension + MIME
++ `getimagesize`, noms aléatoires), rate-limit contact (e-mail 120 s, IP
+20/h), verrous anti-auto-lockout et dernier superadmin. Détails :
+[SECURITY_REVIEW.md](SECURITY_REVIEW.md).
+
+`php spark app:production-check` contrôle notamment `settings.site_id`
+lorsque la base connectée est bien celle configurée.
 
 ## Qualité
 
-PHPUnit 10. `php spark test` recrée `database.tests.database`. Aligner le
-code sur `template/` par rsync de `app/`, `tests/`, `public/assets/`.
+- PHPUnit 10, tests feature / database / unit dans `tests/`.
+- `tests/bootstrap.php` **supprime et recrée** `database.tests.database`.
+- Après une modification dans `template/app`, `template/tests` ou
+  `template/public/assets`, recopier vers fseg, fsi, superadmin, med, fabi
+  et flsh (voir [MULTI_FOLDER_DEPLOYMENT.md](MULTI_FOLDER_DEPLOYMENT.md)).
+
+## Commandes utiles
 
 ```bash
-php spark app:production-check [--strict]
+composer validate && php spark routes && php spark migrate:status
 php spark test
+php spark site:create --identifier med --slug med --name "Faculté de Médecine"
+PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-faculty-admin \
+    --email admin-faculte@example.edu --username adminfac --password-env PLATFORM_ADMIN_PASSWORD
+# Superadmin uniquement depuis le dossier superadmin/ :
+PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-superadmin \
+    --email admin@example.edu --username admin --password-env PLATFORM_ADMIN_PASSWORD
+php spark app:production-check [--strict]
 ```
 
 ## Documents liés
 
-- [../README.md](../README.md)
+- [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md)
+- [CREER_UN_SITE.md](CREER_UN_SITE.md)
+- [MULTI_FOLDER_DEPLOYMENT.md](MULTI_FOLDER_DEPLOYMENT.md)
 - [ARCHITECTURE_MULTI_SITES.md](ARCHITECTURE_MULTI_SITES.md)
+- [05-BASE-DE-DONNEES.md](05-BASE-DE-DONNEES.md)
 - [GUIDE_ADMINISTRATEUR.md](GUIDE_ADMINISTRATEUR.md)

@@ -4,19 +4,20 @@
 # propre .env (app.baseURL) ; à défaut, sur les ports par défaut ci-dessous.
 #
 # Usage (depuis n'importe quelle instance) :
-#   scripts/dev-serve.sh           démarre fseg + fsi + superadmin
+#   scripts/dev-serve.sh           démarre fseg + fsi + superadmin (+ med/fabi/flsh si présents)
 #   scripts/dev-serve.sh stop      arrête tout
 #   scripts/dev-serve.sh status    vérifie ce qui répond
+#   PLATFORM_INSTANCES='fseg fsi' scripts/dev-serve.sh start   # sous-ensemble
 #
-# Ports par défaut : fseg=8101, fsi=8102, superadmin=8103.
+# Ports par défaut : fseg=8101, fsi=8102, superadmin=8103, med=8104, fabi=8105, flsh=8106.
 set -u
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 instance_dir="$(dirname "$script_dir")"
 platform_dir="$(dirname "$instance_dir")"
 
-INSTANCES="${PLATFORM_INSTANCES:-fseg fsi superadmin}"
-declare -A DEFAULT_PORTS=( [fseg]=8101 [fsi]=8102 [superadmin]=8103 )
+INSTANCES="${PLATFORM_INSTANCES:-fseg fsi superadmin med fabi flsh}"
+declare -A DEFAULT_PORTS=( [fseg]=8101 [fsi]=8102 [superadmin]=8103 [med]=8104 [fabi]=8105 [flsh]=8106 )
 
 port_of() {
   local dir="$1" name="$2" p=""

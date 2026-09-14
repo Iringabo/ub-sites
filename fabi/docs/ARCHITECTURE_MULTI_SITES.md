@@ -24,7 +24,7 @@ Pour le public :
 6. utiliser `app.siteSlug` (obligatoire sur une instance facultaire) ;
 7. si la base est indisponible et qu’un `app.siteSlug` est défini, échouer (404) plutôt que d’usurper un site `id=1`.
 
-En développement local, chaque faculté est servie sur son propre port (`scripts/dev-serve.sh`) : fseg=8101, fsi=8102, superadmin=8103. Pour réserver l'affichage public aux domaines configurés en production, activer `app.requireKnownHostname=true`. Un dossier facultaire dont `app.siteSlug` ne correspond à aucun site actif répond 404 explicite.
+En développement local, chaque faculté est servie sur son propre port (`scripts/dev-serve.sh`) : fseg=8101, fsi=8102, superadmin=8103, med=8104, fabi=8105, flsh=8106. Pour réserver l'affichage public aux domaines configurés en production, activer `app.requireKnownHostname=true`. Un dossier facultaire dont `app.siteSlug` ne correspond à aucun site actif répond 404 explicite.
 
 Pour l'administration :
 
