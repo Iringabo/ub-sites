@@ -229,4 +229,29 @@ class HomePageService
             ->orderBy('id', 'ASC')
             ->findAll());
     }
+
+    /**
+     * Resolve a hero CTA target key to a public URL (or null if none).
+     */
+    public function resolveCtaUrl(string $target, ?string $customUrl = null): ?string
+    {
+        $target = strtolower(trim($target));
+        if ($target === '' || $target === 'none') {
+            return null;
+        }
+
+        if ($target === 'custom') {
+            $custom = trim((string) $customUrl);
+            return $custom !== '' ? site_public_url($custom) : null;
+        }
+
+        return match ($target) {
+            'programmes'      => site_url('formations'),
+            'contact'         => site_url('contact'),
+            'news'            => site_url('actualites'),
+            'about'           => site_url('/#presentation'),
+            'faculty_profile' => site_url('faculte'),
+            default           => null,
+        };
+    }
 }

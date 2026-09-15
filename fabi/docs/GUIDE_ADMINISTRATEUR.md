@@ -1,10 +1,24 @@
 # Guide administrateur
 
-Dernière actualisation : 10 septembre 2026.
+Dernière actualisation : 15 septembre 2026.
 
 Ce guide décrit le back-office tel qu’il fonctionne aujourd’hui. L’interface
 est en français. Les textes anglais du site public se saisissent dans
 l’onglet « Version anglaise » lorsqu’il est proposé.
+
+## Menu admin (architecture actuelle)
+
+Zones : **Accueil** (héros / sections & ordre / points forts / chiffres /
+textes des sections), **Pages du site**, **Messages**, **Comptes**,
+**Identité**, et **Plateforme** (superadmin uniquement). Les modules
+« Pages institutionnelles » et « Blocs de page » sont retirés de l’UI.
+
+Sur l’accueil, chaque slide du héros porte badge, titre, texte et boutons
+(lien via liste déroulante). L’ordre et la visibilité des sections se
+gèrent dans **Sections & ordre** (glisser-déposer).
+
+Sur l’instance centrale, choisissez une faculté dans le sélecteur avant
+d’éditer le contenu — aucun site n’est imposé silencieusement.
 
 ## Connexion
 
@@ -70,8 +84,8 @@ site choisi, liste des facultés, comptes de toutes les facultés.
 | Rôle | Où | Droits |
 |---|---|---|
 | Éditeur | `/admin` de sa faculté | Zones contenu et communauté. Pas de messages, pas de comptes, pas d’identité. |
-| Administrateur de faculté | `/admin` de sa faculté | Les trois zones. Crée un **administrateur** ou un **éditeur** pour *sa* faculté seulement. Pas de superadmin, pas d’autre site. |
-| Superadministrateur | dossier `superadmin/` | Plateforme + les trois zones de la faculté **choisie**. Les enregistrements écrivent le `site_id` de cette faculté. |
+| Administrateur de faculté | `/admin` de sa faculté | Les trois zones. Crée uniquement un **éditeur** pour *sa* faculté. Pas d’autre administrateur, pas de superadmin, pas d’autre site. |
+| Superadministrateur | dossier `superadmin/` | Plateforme + les trois zones de la faculté **choisie**. Seul rôle autorisé à **créer des administrateurs** de faculté. |
 
 Le personnel d’une faculté ne peut pas administrer une autre faculté, même
 en tapant une autre URL.
@@ -92,7 +106,13 @@ Selon les droits :
 
 - créer un compte, modifier nom / e-mail / actif ;
 - réinitialiser un mot de passe ;
-- affecter le rôle **administrateur** ou **éditeur** du site concerné.
+- côté faculté : uniquement le rôle **éditeur de cette faculté** ;
+- côté superadmin : rôle **administrateur** ou **éditeur** de la faculté choisie.
+
+Côté faculté, le formulaire crée toujours un éditeur (seul un
+superadministrateur peut créer un administrateur). Côté superadmin, on
+choisit le groupe plateforme puis la faculté (pré-cochée = faculté active)
+et le rôle sur cette faculté.
 
 L’écran facultaire propose un seul site (le sien) et un rôle, pas une grille
 de permissions. On ne peut pas se retirer soi-même l’accès admin ni

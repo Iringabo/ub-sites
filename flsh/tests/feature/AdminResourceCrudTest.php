@@ -40,8 +40,8 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         $this->actingAs($this->superAdminUser());
 
         foreach ([
-            '/admin/home-content'      => 'Accueil',
-            '/admin/home-hero-slides'  => 'Images du carrousel',
+            '/admin/home-content'      => 'Textes des sections',
+            '/admin/home-hero-slides'  => 'Héros (slides)',
             '/admin/home-highlights'   => 'Atouts de l’accueil',
             '/admin/site-stats'        => 'Statistiques',
             '/admin/programmes'        => 'Formations',
@@ -206,15 +206,6 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         $this->assertIsArray($home);
 
         $this->post('/admin/home-content/' . $home['id'], $this->withCsrf([
-            'hero_badge'             => 'Faculté FSEG',
-            'hero_title'             => 'Accueil administrable Phase 5',
-            'hero_text'              => 'Texte administrable de démonstration.',
-            'hero_media_type'        => 'image',
-            'hero_media_path'        => 'assets/images/logo-placeholder.png',
-            'hero_primary_label'     => 'Découvrir',
-            'hero_primary_url'       => '/formations',
-            'hero_secondary_label'   => 'Contacter',
-            'hero_secondary_url'     => '/contact',
             'about_label'            => 'Présentation',
             'about_title'            => 'Présentation administrable',
             'about_body'             => 'Texte de présentation administrable.',
@@ -240,7 +231,7 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         ]))->assertRedirect();
 
         $updatedHome = $this->db->table('home_content')->where('id', $home['id'])->get()->getRowArray();
-        $this->assertSame('Accueil administrable Phase 5', $updatedHome['hero_title']);
+        $this->assertSame('Présentation administrable', $updatedHome['about_title']);
         $this->assertSame('Programmes administrables', $updatedHome['programmes_label']);
         $this->assertSame('Actualités administrables', $updatedHome['posts_label']);
         $this->assertNotEmpty($updatedHome['updated_by']);

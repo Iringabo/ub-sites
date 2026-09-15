@@ -64,7 +64,14 @@ Sous chaque instance : `public/assets/images/faculties/{fseg,fsi,med,fabi,flsh}/
 Source de vérité des binaires : `template/public/assets/images/faculties/`.
 Après ajout : `cd template && ./scripts/sync-instances.sh`.
 
-## Ports et `dev-serve`
+## Accueil (héros & sections)
+
+- Chaque slide : image + badge + titre + texte + boutons (cible via
+  liste déroulante : aucun, formations, contact, actualités, etc.).
+- **Sections & ordre** (`admin/home-sections`) : cocher et glisser-déposer.
+- Les modules « Pages institutionnelles » et « Blocs de page » ne sont plus
+  exposés dans le menu admin.
+
 
 Le script lance par défaut les six instances présentes
 (`fseg fsi superadmin med fabi flsh`). Sous-ensemble possible via

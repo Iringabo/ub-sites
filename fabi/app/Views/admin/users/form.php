@@ -20,7 +20,7 @@ $isCurrentUser = (int) ($user->id ?? 0) === (int) (auth()->id() ?? 0);
 $currentActorIsSuperAdmin = (bool) ($currentActorIsSuperAdmin ?? false);
 $sites = $sites ?? [];
 $selectedSiteRoles = $selectedSiteRoles ?? [];
-$siteRoleOptions = $siteRoleOptions ?? ['site_admin' => 'Administrateur de faculté', 'editor' => 'Éditeur'];
+$siteRoleOptions = $siteRoleOptions ?? ['site_admin' => 'Administrateur de cette faculté', 'editor' => 'Éditeur de cette faculté'];
 $postedSiteIds = old('site_ids');
 
 if (is_array($postedSiteIds)) {
@@ -39,8 +39,16 @@ if (is_array($postedSiteRoles)) {
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
         <span class="section-label"><?= $isNew ? 'Création' : 'Modification' ?></span>
-        <h1 class="h3 mb-1"><?= $isNew ? 'Créer un utilisateur' : esc($user->username ?? 'Utilisateur') ?></h1>
-        <p class="text-muted mb-0"><?= $isNew ? 'Créez un administrateur ou un rédacteur pour cette faculté.' : 'Modifiez le compte, son rôle et son accès à la faculté.' ?></p>
+        <h1 class="h3 mb-1"><?= $isNew ? 'Créer un compte' : esc($user->username ?? 'Utilisateur') ?></h1>
+        <p class="text-muted mb-0">
+            <?php if ($isNew): ?>
+                <?= $currentActorIsSuperAdmin
+                    ? 'Attribuez un administrateur, un éditeur ou un superadministrateur, puis choisissez la faculté concernée.'
+                    : 'Créez un éditeur pour cette faculté. Seul un superadministrateur peut créer un administrateur.' ?>
+            <?php else: ?>
+                Modifiez le compte, son rôle et son accès à la faculté.
+            <?php endif ?>
+        </p>
     </div>
     <div class="d-flex gap-2">
         <?php if (! $isNew && $passwordAction !== null): ?>
@@ -93,71 +101,84 @@ if (is_array($postedSiteRoles)) {
                 <?php endif ?>
             </div>
         </div>
-        <div class="col-lg-6">
-            <fieldset class="border rounded-3 p-3 h-100">
-                <legend class="float-none w-auto px-2 small fw-semibold">Rôle</legend>
-                <?php if (isset($errors['groups'])): ?>
-                    <div class="text-danger small mb-2" id="groups-error"><?= esc($errors['groups']) ?></div>
-                <?php endif ?>
-                <div class="d-grid gap-2">
-                    <?php foreach ($groups as $key => $group): ?>
-                        <?php if ($key === 'superadmin' && ! $currentActorIsSuperAdmin) {
-                            continue;
-                        } ?>
-                        <?php $checked = in_array($key, $selectedGroups, true); ?>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="<?= esc($key, 'attr') ?>" id="group_<?= esc($key, 'attr') ?>" name="groups[]" <?= $checked ? 'checked' : '' ?>>
-                            <label class="form-check-label" for="group_<?= esc($key, 'attr') ?>">
-                                <span class="fw-semibold"><?= esc($group['title']) ?></span>
-                                <span class="text-muted small d-block"><?= esc($group['description']) ?></span>
-                            </label>
-                        </div>
-                    <?php endforeach ?>
-                </div>
-            </fieldset>
-        </div>
-        <div class="col-lg-6">
-            <fieldset class="border rounded-3 p-3 h-100">
-                <legend class="float-none w-auto px-2 small fw-semibold">Permissions directes</legend>
-                <?php if (isset($errors['permissions'])): ?>
-                    <div class="text-danger small mb-2" id="permissions-error"><?= esc($errors['permissions']) ?></div>
-                <?php endif ?>
-                <div class="d-grid gap-2">
-                    <?php if ($permissions === []): ?>
-                        <p class="text-muted small mb-0">Les permissions de ce compte sont déterminées par son groupe et son rôle facultaire.</p>
-                    <?php else: ?>
-                        <?php foreach ($permissions as $key => $label): ?>
-                            <?php if ($key === 'sites.manage' && ! $currentActorIsSuperAdmin) {
-                                continue;
-                            } ?>
-                            <?php $checked = in_array($key, $selectedPermissions, true); ?>
+        <?php if ($currentActorIsSuperAdmin): ?>
+            <div class="col-lg-6">
+                <fieldset class="border rounded-3 p-3 h-100">
+                    <legend class="float-none w-auto px-2 small fw-semibold">Groupe plateforme</legend>
+                    <?php if (isset($errors['groups'])): ?>
+                        <div class="text-danger small mb-2" id="groups-error"><?= esc($errors['groups']) ?></div>
+                    <?php endif ?>
+                    <div class="d-grid gap-2">
+                        <?php foreach ($groups as $key => $group): ?>
+                            <?php $checked = in_array($key, $selectedGroups, true); ?>
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="<?= esc($key, 'attr') ?>" id="permission_<?= esc($key, 'attr') ?>" name="permissions[]" <?= $checked ? 'checked' : '' ?>>
-                                <label class="form-check-label" for="permission_<?= esc($key, 'attr') ?>"><?= esc($label) ?></label>
+                                <input class="form-check-input" type="checkbox" value="<?= esc($key, 'attr') ?>" id="group_<?= esc($key, 'attr') ?>" name="groups[]" <?= $checked ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="group_<?= esc($key, 'attr') ?>">
+                                    <span class="fw-semibold"><?= esc($group['title']) ?></span>
+                                    <span class="text-muted small d-block"><?= esc($group['description']) ?></span>
+                                </label>
                             </div>
                         <?php endforeach ?>
+                    </div>
+                </fieldset>
+            </div>
+            <div class="col-lg-6">
+                <fieldset class="border rounded-3 p-3 h-100">
+                    <legend class="float-none w-auto px-2 small fw-semibold">Permissions directes</legend>
+                    <?php if (isset($errors['permissions'])): ?>
+                        <div class="text-danger small mb-2" id="permissions-error"><?= esc($errors['permissions']) ?></div>
                     <?php endif ?>
-                </div>
-            </fieldset>
-        </div>
+                    <div class="d-grid gap-2">
+                        <?php if ($permissions === []): ?>
+                            <p class="text-muted small mb-0">Les permissions de ce compte sont déterminées par son groupe et son rôle facultaire.</p>
+                        <?php else: ?>
+                            <?php foreach ($permissions as $key => $label): ?>
+                                <?php $checked = in_array($key, $selectedPermissions, true); ?>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="<?= esc($key, 'attr') ?>" id="permission_<?= esc($key, 'attr') ?>" name="permissions[]" <?= $checked ? 'checked' : '' ?>>
+                                    <label class="form-check-label" for="permission_<?= esc($key, 'attr') ?>"><?= esc($label) ?></label>
+                                </div>
+                            <?php endforeach ?>
+                        <?php endif ?>
+                    </div>
+                </fieldset>
+            </div>
+        <?php endif ?>
         <div class="col-12">
             <fieldset class="border rounded-3 p-3">
-                <legend class="float-none w-auto px-2 small fw-semibold">Faculté concernée</legend>
+                <legend class="float-none w-auto px-2 small fw-semibold">
+                    <?= $currentActorIsSuperAdmin ? 'Faculté et rôle' : 'Rôle sur cette faculté' ?>
+                </legend>
                 <?php if (isset($errors['site_ids'])): ?>
                     <div class="text-danger small mb-2" id="site-ids-error"><?= esc($errors['site_ids']) ?></div>
+                <?php endif ?>
+                <?php if (isset($errors['groups']) && ! $currentActorIsSuperAdmin): ?>
+                    <div class="text-danger small mb-2" id="groups-error"><?= esc($errors['groups']) ?></div>
                 <?php endif ?>
                 <?php if (! $currentActorIsSuperAdmin): ?>
                     <?php $onlySite = $sites[0] ?? null; ?>
                     <?php if ($onlySite !== null): ?>
+                        <?php
+                        $selectedRole = (string) ($selectedSiteRoles[(int) $onlySite->id] ?? 'editor');
+                        $isSelfAdminEdit = ! $isNew && $isCurrentUser && $selectedRole === 'site_admin';
+                        ?>
                         <input type="hidden" name="site_ids[]" value="<?= esc((string) $onlySite->id, 'attr') ?>">
-                        <p class="mb-2">Ce compte n’aura accès qu’à <strong><?= esc($onlySite->name) ?></strong>.</p>
-                        <label for="site_role_<?= esc((string) $onlySite->id, 'attr') ?>" class="form-label small fw-semibold">Rôle sur cette faculté</label>
-                        <?php $selectedRole = (string) ($selectedSiteRoles[(int) $onlySite->id] ?? 'editor'); ?>
-                        <select class="form-select" id="site_role_<?= esc((string) $onlySite->id, 'attr') ?>" name="site_roles[<?= esc((string) $onlySite->id, 'attr') ?>]" style="max-width: 24rem;">
-                            <?php foreach ($siteRoleOptions as $roleKey => $roleLabel): ?>
-                                <option value="<?= esc($roleKey, 'attr') ?>" <?= $selectedRole === $roleKey ? 'selected' : '' ?>><?= esc($roleLabel) ?></option>
-                            <?php endforeach ?>
-                        </select>
+                        <p class="mb-3">Ce compte n’aura accès qu’à <strong><?= esc($onlySite->name) ?></strong>.</p>
+                        <?php if ($isSelfAdminEdit): ?>
+                            <input type="hidden" name="site_roles[<?= esc((string) $onlySite->id, 'attr') ?>]" value="site_admin">
+                            <input type="hidden" name="groups[]" value="admin">
+                            <div class="border rounded-3 p-3" style="max-width: 28rem;">
+                                <span class="fw-semibold">Administrateur de cette faculté</span>
+                                <span class="text-muted small d-block">Votre rôle administrateur est conservé. Seul un superadministrateur peut créer d’autres administrateurs.</span>
+                            </div>
+                        <?php else: ?>
+                            <input type="hidden" name="site_roles[<?= esc((string) $onlySite->id, 'attr') ?>]" value="editor">
+                            <input type="hidden" name="groups[]" value="editor">
+                            <div class="border rounded-3 p-3" style="max-width: 28rem;">
+                                <span class="fw-semibold">Éditeur de cette faculté</span>
+                                <span class="text-muted small d-block">Peut rédiger et mettre à jour les contenus autorisés. Pour créer un administrateur, utilisez l’instance superadmin.</span>
+                            </div>
+                        <?php endif ?>
                     <?php endif ?>
                 <?php else: ?>
                 <div class="row g-2">
@@ -170,7 +191,7 @@ if (is_array($postedSiteRoles)) {
                                     <span class="fw-semibold"><?= esc($site->name) ?></span>
                                     <span class="text-muted small d-block"><?= esc($site->slug) ?></span>
                                 </label>
-                                <label for="site_role_<?= esc((string) $site->id, 'attr') ?>" class="form-label small fw-semibold mt-3">Rôle sur ce site</label>
+                                <label for="site_role_<?= esc((string) $site->id, 'attr') ?>" class="form-label small fw-semibold mt-3">Rôle sur cette faculté</label>
                                 <?php $selectedRole = (string) ($selectedSiteRoles[(int) $site->id] ?? 'editor'); ?>
                                 <select class="form-select form-select-sm" id="site_role_<?= esc((string) $site->id, 'attr') ?>" name="site_roles[<?= esc((string) $site->id, 'attr') ?>]">
                                     <?php foreach ($siteRoleOptions as $roleKey => $roleLabel): ?>
@@ -181,8 +202,8 @@ if (is_array($postedSiteRoles)) {
                         </div>
                     <?php endforeach ?>
                 </div>
+                <p class="form-text mb-0 mt-2">Cochez la faculté active par défaut. Un administrateur gère comptes et réglages ; un éditeur rédige les contenus. Seul le superadmin peut créer des administrateurs de faculté.</p>
                 <?php endif ?>
-                <p class="form-text mb-0 mt-2">Un administrateur gère les comptes et les réglages de cette faculté. Un éditeur rédige les contenus.</p>
             </fieldset>
         </div>
     </div>

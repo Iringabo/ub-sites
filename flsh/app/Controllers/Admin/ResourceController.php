@@ -34,6 +34,14 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
+        }
+
+        if ($redirect = $this->centralSiteSelectionGuard($resource)) {
+            return $redirect;
+        }
+
         if ($redirect = $this->centralContentGuard($resource)) {
             return $redirect;
         }
@@ -640,6 +648,13 @@ class ResourceController extends BaseController
             if ($id === null) {
                 $data['hero_media_type'] = 'image';
                 $data['hero_media_path'] = 'assets/images/hero/campus-walkway.jpg';
+                $data['hero_badge'] ??= 'Faculté';
+                $data['hero_title'] ??= 'Titre à personnaliser';
+                $data['hero_text'] ??= 'Texte à personnaliser via les slides du héros.';
+                $data['hero_primary_label'] ??= 'En savoir plus';
+                $data['hero_primary_url'] ??= '/formations';
+                $data['hero_secondary_label'] ??= 'Contact';
+                $data['hero_secondary_url'] ??= '/contact';
             }
         }
 
@@ -1061,7 +1076,7 @@ class ResourceController extends BaseController
                 'seo_title',
                 'seo_description',
             ],
-            'home-hero-slides' => ['alt_text'],
+            'home-hero-slides' => ['alt_text', 'badge', 'title', 'text', 'primary_cta_label', 'secondary_cta_label'],
             'home-highlights' => ['title', 'description'],
             'site-stats' => ['label', 'suffix'],
             'programmes' => ['title', 'duration', 'summary', 'description', 'admission_conditions'],
@@ -1133,6 +1148,44 @@ class ResourceController extends BaseController
         }
 
         return null;
+    }
+
+    private function retiredResourceGuard(string $resource): ?RedirectResponse
+    {
+        if (in_array($resource, service('adminNavigation')->retiredResourceKeys(), true)) {
+            return redirect()->to('/admin')->with('error', 'Ce module n’est plus disponible dans l’administration.');
+        }
+
+        return null;
+    }
+
+    private function centralSiteSelectionGuard(string $resource): ?RedirectResponse
+    {
+        if ($resource === 'sites') {
+            return null;
+        }
+
+        if (service('siteResolver')->requiresExplicitAdminSiteSelection()) {
+            return redirect()->to('/admin')->with('error', 'Choisissez d’abord une faculté dans le sélecteur en haut de page.');
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function heroCtaTargetOptions(): array
+    {
+        return [
+            'none'            => 'Aucun bouton',
+            'programmes'      => 'Formations',
+            'contact'         => 'Contact',
+            'news'            => 'Actualités',
+            'about'           => 'Présentation (accueil)',
+            'faculty_profile' => 'Présentation & mot du doyen',
+            'custom'          => 'Lien personnalisé',
+        ];
     }
 
     /**
@@ -1603,18 +1656,17 @@ class ResourceController extends BaseController
     {
         return [
             'home-content' => [
-                'title'          => 'Accueil',
+                'title'          => 'Textes des sections',
                 'singular'       => 'contenu d’accueil',
                 'model'          => HomeContentModel::class,
                 'permission'     => 'home.manage',
                 'singleton'      => true,
                 'unique'         => ['singleton_key'],
                 'defaults'       => ['singleton_key' => 1],
-                'search'         => ['hero_title', 'hero_text', 'about_title', 'research_title', 'programmes_title', 'programmes_text', 'posts_title', 'posts_text'],
+                'search'         => ['about_title', 'research_title', 'programmes_title', 'programmes_text', 'posts_title', 'posts_text'],
                 'orderBy'        => ['id' => 'ASC'],
-                'previewField'   => ['name' => 'hero_text', 'label' => 'Texte du héros'],
+                'previewField'   => ['name' => 'about_body', 'label' => 'Présentation'],
                 'sections'       => [
-                    ['title' => 'Héros', 'fields' => ['hero_badge', 'hero_title', 'hero_text', 'hero_primary_label', 'hero_primary_url', 'hero_secondary_label', 'hero_secondary_url']],
                     ['title' => 'Présentation', 'fields' => ['about_label', 'about_title', 'about_body', 'about_button_label', 'about_button_url']],
                     ['title' => 'Recherche', 'fields' => ['research_label', 'research_title', 'research_body', 'research_button_label', 'research_button_url']],
                     ['title' => 'Formations', 'fields' => ['programmes_label', 'programmes_title', 'programmes_text', 'programmes_button_label', 'programmes_button_url']],
@@ -1622,15 +1674,8 @@ class ResourceController extends BaseController
                     ['title' => 'Référencement', 'fields' => ['seo_title', 'seo_description']],
                 ],
                 'fields'         => [
-                    ['name' => 'hero_badge', 'label' => 'Badge du héros', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
-                    ['name' => 'hero_title', 'label' => 'Titre du héros', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
-                    ['name' => 'hero_text', 'label' => 'Texte du héros', 'type' => 'textarea', 'required' => true],
-                    ['name' => 'hero_primary_label', 'label' => 'Libellé du bouton principal', 'type' => 'text', 'required' => true, 'max' => 255],
-                    ['name' => 'hero_primary_url', 'label' => 'Lien du bouton principal', 'type' => 'text', 'required' => true, 'max' => 500],
-                    ['name' => 'hero_secondary_label', 'label' => 'Libellé du bouton secondaire', 'type' => 'text', 'required' => true, 'max' => 255],
-                    ['name' => 'hero_secondary_url', 'label' => 'Lien du bouton secondaire', 'type' => 'text', 'required' => true, 'max' => 500],
                     ['name' => 'about_label', 'label' => 'Libellé de présentation', 'type' => 'text', 'required' => true, 'max' => 255],
-                    ['name' => 'about_title', 'label' => 'Titre de présentation', 'type' => 'text', 'required' => true, 'max' => 255],
+                    ['name' => 'about_title', 'label' => 'Titre de présentation', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
                     ['name' => 'about_body', 'label' => 'Texte de présentation', 'type' => 'textarea', 'required' => true],
                     ['name' => 'about_button_label', 'label' => 'Libellé du bouton de présentation', 'type' => 'text', 'nullable' => true, 'max' => 255],
                     ['name' => 'about_button_url', 'label' => 'Lien du bouton de présentation', 'type' => 'text', 'nullable' => true, 'max' => 500],
@@ -1654,16 +1699,32 @@ class ResourceController extends BaseController
                 ],
             ],
             'home-hero-slides' => [
-                'title'          => 'Images du carrousel',
-                'singular'       => 'image du carrousel',
+                'title'          => 'Héros (slides)',
+                'singular'       => 'slide du héros',
                 'model'          => HomeHeroSlideModel::class,
                 'permission'     => 'home.manage',
                 'publishedField' => 'is_published',
-                'search'         => ['alt_text', 'image_path'],
+                'search'         => ['alt_text', 'title', 'badge', 'text'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'text', 'label' => 'Texte'],
+                'sections'       => [
+                    ['title' => 'Image', 'fields' => ['image_path', 'alt_text']],
+                    ['title' => 'Textes du slide', 'fields' => ['badge', 'title', 'text']],
+                    ['title' => 'Bouton principal', 'fields' => ['primary_cta_target', 'primary_cta_label', 'primary_cta_url']],
+                    ['title' => 'Bouton secondaire', 'fields' => ['secondary_cta_target', 'secondary_cta_label', 'secondary_cta_url']],
+                ],
                 'fields'         => $this->orderedPublishedFields([
                     ['name' => 'image_path', 'label' => 'Image', 'type' => 'image', 'folder' => 'home-hero-slides', 'required' => true, 'list' => true],
-                    ['name' => 'alt_text', 'label' => 'Texte alternatif', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
+                    ['name' => 'alt_text', 'label' => 'Texte alternatif', 'type' => 'text', 'required' => true, 'max' => 255],
+                    ['name' => 'badge', 'label' => 'Badge', 'type' => 'text', 'nullable' => true, 'max' => 255, 'list' => true],
+                    ['name' => 'title', 'label' => 'Titre', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
+                    ['name' => 'text', 'label' => 'Texte', 'type' => 'textarea', 'required' => true],
+                    ['name' => 'primary_cta_target', 'label' => 'Lien du bouton principal', 'type' => 'select', 'required' => true, 'options' => $this->heroCtaTargetOptions(), 'list' => true],
+                    ['name' => 'primary_cta_label', 'label' => 'Libellé du bouton principal', 'type' => 'text', 'nullable' => true, 'max' => 255, 'showWhen' => ['primary_cta_target' => '!none']],
+                    ['name' => 'primary_cta_url', 'label' => 'URL personnalisée (principal)', 'type' => 'text', 'nullable' => true, 'max' => 500, 'showWhen' => ['primary_cta_target' => 'custom']],
+                    ['name' => 'secondary_cta_target', 'label' => 'Lien du bouton secondaire', 'type' => 'select', 'required' => true, 'options' => $this->heroCtaTargetOptions()],
+                    ['name' => 'secondary_cta_label', 'label' => 'Libellé du bouton secondaire', 'type' => 'text', 'nullable' => true, 'max' => 255, 'showWhen' => ['secondary_cta_target' => '!none']],
+                    ['name' => 'secondary_cta_url', 'label' => 'URL personnalisée (secondaire)', 'type' => 'text', 'nullable' => true, 'max' => 500, 'showWhen' => ['secondary_cta_target' => 'custom']],
                 ]),
             ],
             'home-highlights' => [
@@ -1909,7 +1970,7 @@ class ResourceController extends BaseController
                     'theme'            => 'default',
                     'theme_config'     => '{"layout":"classic","hero_image":"assets/images/hero/campus-walkway.jpg"}',
                     'menu_config'      => '{"items":["faculte","formations","recherche","corps-enseignant","actualites","alumni","contact"]}',
-                    'enabled_sections' => ['hero', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'statistics', 'contact_cta'],
+                    'enabled_sections' => ['hero', 'statistics', 'about', 'highlights', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'contact_cta'],
                 ],
                 'fields'           => [
                     ['name' => 'identifier', 'label' => 'Identifiant interne', 'type' => 'text', 'required' => true, 'max' => 80, 'pattern' => '/^[a-z0-9_.-]+$/', 'patternMessage' => 'L’identifiant contient uniquement minuscules, chiffres, points, tirets et underscores.', 'list' => true],

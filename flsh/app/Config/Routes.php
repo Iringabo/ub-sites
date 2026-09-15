@@ -82,6 +82,11 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
         $routes->post('(:num)/draft', 'PostController::draft/$1', ['as' => 'admin.posts.draft']);
     });
 
+    $routes->group('home-sections', ['filter' => 'permission:home.manage'], static function (RouteCollection $routes): void {
+        $routes->get('/', 'HomeSectionsController::index');
+        $routes->post('/', 'HomeSectionsController::save');
+    });
+
     $adminResources = [
         'home-content'      => 'home.manage',
         'home-hero-slides'  => 'home.manage',
@@ -93,10 +98,10 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
         'publications'      => 'research.manage',
         'research-projects' => 'research.manage',
         'timeline-items'    => 'pages.manage',
-        'content-blocks'    => 'pages.manage',
+        'content-blocks'    => 'pages.manage', // retired from UI; route kept & guarded
         'alumni-profiles'   => 'alumni.manage',
         'testimonials'      => 'alumni.manage',
-        'pages'             => 'pages.manage',
+        'pages'             => 'pages.manage', // retired from UI; route kept & guarded
         'settings'          => 'settings.manage',
         'sites'             => 'sites.manage',
     ];

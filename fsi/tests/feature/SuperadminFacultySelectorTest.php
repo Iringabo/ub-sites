@@ -203,7 +203,9 @@ final class SuperadminFacultySelectorTest extends CIUnitTestCase
         $workspace = $this->withHeaders(['Host' => 'admin.ub.local'])->get('/admin/site');
         $workspace->assertOK();
         $workspace->assertSee('Vous modifiez : Faculté de Droit');
-        $workspace->assertSee('Contenu et communication');
+        $workspace->assertSee('Accueil');
+        $workspace->assertDontSee('Pages institutionnelles');
+        $workspace->assertDontSee('Blocs de page');
 
         $posts = $this->withHeaders(['Host' => 'admin.ub.local'])->get('/admin/posts');
         $posts->assertOK();
@@ -386,6 +388,43 @@ final class SuperadminFacultySelectorTest extends CIUnitTestCase
         $created->activate();
 
         return $created;
+    }
+
+    public function testCentralWithoutSelectionBlocksContentEditing(): void
+    {
+        $this->actingAs($this->superAdminUser());
+        $_SESSION = [];
+        $this->withSession([]);
+        service('siteResolver')->reset();
+
+        $result = $this->withHeaders(['Host' => 'admin.ub.local'])->get('/admin/programmes');
+        $result->assertRedirect();
+        $result->assertSessionHas('error');
+    }
+
+    public function testSiteSelectionHonorsReturnTo(): void
+    {
+        $this->actingAs($this->superAdminUser());
+        $returnTo = site_url('admin/users');
+
+        $result = $this->post('/admin/site-selection', $this->withCsrf([
+            'site_id'   => (string) $this->secondSiteId,
+            'return_to' => $returnTo,
+        ]));
+
+        $result->assertRedirect();
+        $this->assertStringContainsString('/admin/users', (string) $result->response()->getHeaderLine('Location'));
+    }
+
+    public function testRetiredPagesModuleRedirectsAway(): void
+    {
+        $this->actingAs($this->superAdminUser());
+        $this->withSession(['active_admin_site_id' => $this->defaultSiteId]);
+        service('siteResolver')->reset();
+
+        $result = $this->get('/admin/pages');
+        $result->assertRedirect();
+        $result->assertSessionHas('error');
     }
 
     /**

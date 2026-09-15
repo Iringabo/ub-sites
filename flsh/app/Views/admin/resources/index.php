@@ -149,33 +149,55 @@ $orderable = ! $trash
                         <td class="text-end">
                             <div class="d-inline-flex flex-wrap justify-content-end gap-1">
                                 <?php if ($trash): ?>
-                                    <form method="post" action="<?= site_url('admin/' . $resource . '/' . $itemId . '/restore') ?>">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-green btn-sm">Restaurer</button>
-                                    </form>
-                                    <form method="post" action="<?= site_url('admin/' . $resource . '/' . $itemId . '/purge') ?>" data-confirm="Supprimer définitivement ce contenu et ses médias téléversés ? Cette action ne pourra pas être annulée.">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-danger btn-sm">Supprimer définitivement</button>
-                                    </form>
+                                    <?= view('admin/partials/row_actions', ['actions' => [
+                                        ['type' => 'form', 'action' => site_url('admin/' . $resource . '/' . $itemId . '/restore'), 'icon' => 'arrow-counterclockwise', 'label' => 'Restaurer', 'class' => 'outline'],
+                                        ['type' => 'form', 'action' => site_url('admin/' . $resource . '/' . $itemId . '/purge'), 'icon' => 'trash', 'label' => 'Supprimer définitivement', 'class' => 'danger', 'confirm' => 'Supprimer définitivement ce contenu et ses médias téléversés ? Cette action ne pourra pas être annulée.'],
+                                    ]]) ?>
                                 <?php else: ?>
-                                    <?php if ($previewField !== null && ! empty($itemValue($item, $previewField['name']))): ?>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm admin-preview-toggle" data-target="preview-<?= esc((string) $itemId, 'attr') ?>" aria-expanded="false">
-                                            <i class="bi bi-eye me-1" aria-hidden="true"></i>Aperçu
-                                        </button>
-                                    <?php endif ?>
-                                    <a href="<?= site_url('admin/' . $resource . '/' . $itemId . '/edit') ?>" class="btn btn-primary-green btn-sm">Modifier</a>
-                                    <?php if (! ($config['singleton'] ?? false) && ! ($config['creationDisabled'] ?? false)): ?>
-                                        <form method="post" action="<?= site_url('admin/' . $resource . '/' . $itemId . '/duplicate') ?>" data-confirm="Dupliquer ce contenu ? Une copie (non publiée) sera créée.">
-                                            <?= csrf_field() ?>
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm">Dupliquer</button>
-                                        </form>
-                                    <?php endif ?>
-                                    <?php if (! ($config['singleton'] ?? false) && ! ($config['deletionDisabled'] ?? false)): ?>
-                                        <form method="post" action="<?= site_url('admin/' . $resource . '/' . $itemId . '/delete') ?>" data-confirm="<?= $supportsTrash ? 'Archiver ce contenu ? Il pourra être restauré depuis la corbeille.' : 'Voulez-vous vraiment supprimer ce contenu ? Cette action est irréversible.' ?>">
-                                            <?= csrf_field() ?>
-                                            <button type="submit" class="btn btn-outline-danger btn-sm"><?= $supportsTrash ? 'Archiver' : 'Supprimer' ?></button>
-                                        </form>
-                                    <?php endif ?>
+                                    <?php
+                                    $rowActions = [];
+                                    if ($previewField !== null && ! empty($itemValue($item, $previewField['name']))) {
+                                        $rowActions[] = [
+                                            'type' => 'button',
+                                            'icon' => 'eye',
+                                            'label' => 'Aperçu',
+                                            'class' => 'secondary',
+                                            'extraClass' => 'admin-preview-toggle',
+                                            'attrs' => [
+                                                'data-target' => 'preview-' . $itemId,
+                                                'aria-expanded' => 'false',
+                                            ],
+                                        ];
+                                    }
+                                    $rowActions[] = [
+                                        'type' => 'link',
+                                        'href' => site_url('admin/' . $resource . '/' . $itemId . '/edit'),
+                                        'icon' => 'pencil',
+                                        'label' => 'Modifier',
+                                        'class' => 'primary',
+                                    ];
+                                    if (! ($config['singleton'] ?? false) && ! ($config['creationDisabled'] ?? false)) {
+                                        $rowActions[] = [
+                                            'type' => 'form',
+                                            'action' => site_url('admin/' . $resource . '/' . $itemId . '/duplicate'),
+                                            'icon' => 'copy',
+                                            'label' => 'Dupliquer',
+                                            'class' => 'secondary',
+                                            'confirm' => 'Dupliquer ce contenu ? Une copie (non publiée) sera créée.',
+                                        ];
+                                    }
+                                    if (! ($config['singleton'] ?? false) && ! ($config['deletionDisabled'] ?? false)) {
+                                        $rowActions[] = [
+                                            'type' => 'form',
+                                            'action' => site_url('admin/' . $resource . '/' . $itemId . '/delete'),
+                                            'icon' => $supportsTrash ? 'archive' : 'trash',
+                                            'label' => $supportsTrash ? 'Archiver' : 'Supprimer',
+                                            'class' => 'danger',
+                                            'confirm' => $supportsTrash ? 'Archiver ce contenu ? Il pourra être restauré depuis la corbeille.' : 'Voulez-vous vraiment supprimer ce contenu ? Cette action est irréversible.',
+                                        ];
+                                    }
+                                    echo view('admin/partials/row_actions', ['actions' => $rowActions]);
+                                    ?>
                                 <?php endif ?>
                             </div>
                         </td>

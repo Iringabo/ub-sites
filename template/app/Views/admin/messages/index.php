@@ -75,31 +75,22 @@ $statusLabels = $statuses ?? [];
                         </td>
                         <td class="small text-muted"><?= esc(site_format_date($message->created_at, true)) ?></td>
                         <td class="text-end">
-                            <div class="d-inline-flex flex-wrap justify-content-end gap-1">
-                                <a href="<?= site_url('admin/messages/' . $message->id) ?>" class="btn btn-primary-green btn-sm">Consulter</a>
-                                <?php if ($message->status === 'new'): ?>
-                                    <form method="post" action="<?= site_url('admin/messages/' . $message->id . '/read') ?>">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-green btn-sm">Marquer comme lu</button>
-                                    </form>
-                                <?php endif ?>
-                                <?php if ($message->status !== 'handled'): ?>
-                                    <form method="post" action="<?= site_url('admin/messages/' . $message->id . '/handled') ?>">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-green btn-sm">Marquer comme traité</button>
-                                    </form>
-                                <?php endif ?>
-                                <?php if ($message->status !== 'archived'): ?>
-                                    <form method="post" action="<?= site_url('admin/messages/' . $message->id . '/archive') ?>" data-confirm="Voulez-vous vraiment archiver ce message ?">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-secondary btn-sm">Archiver</button>
-                                    </form>
-                                <?php endif ?>
-                                <form method="post" action="<?= site_url('admin/messages/' . $message->id . '/delete') ?>" data-confirm="Voulez-vous vraiment supprimer ce message ? Cette action est irréversible.">
-                                    <?= csrf_field() ?>
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">Supprimer</button>
-                                </form>
-                            </div>
+                            <?php
+                            $msgActions = [
+                                ['type' => 'link', 'href' => site_url('admin/messages/' . $message->id), 'icon' => 'eye', 'label' => 'Consulter', 'class' => 'primary'],
+                            ];
+                            if ($message->status === 'new') {
+                                $msgActions[] = ['type' => 'form', 'action' => site_url('admin/messages/' . $message->id . '/read'), 'icon' => 'envelope-open', 'label' => 'Marquer comme lu', 'class' => 'outline'];
+                            }
+                            if ($message->status !== 'handled') {
+                                $msgActions[] = ['type' => 'form', 'action' => site_url('admin/messages/' . $message->id . '/handled'), 'icon' => 'check2', 'label' => 'Marquer comme traité', 'class' => 'outline'];
+                            }
+                            if ($message->status !== 'archived') {
+                                $msgActions[] = ['type' => 'form', 'action' => site_url('admin/messages/' . $message->id . '/archive'), 'icon' => 'archive', 'label' => 'Archiver', 'class' => 'secondary', 'confirm' => 'Voulez-vous vraiment archiver ce message ?'];
+                            }
+                            $msgActions[] = ['type' => 'form', 'action' => site_url('admin/messages/' . $message->id . '/delete'), 'icon' => 'trash', 'label' => 'Supprimer', 'class' => 'danger', 'confirm' => 'Voulez-vous vraiment supprimer ce message ? Cette action est irréversible.'];
+                            echo view('admin/partials/row_actions', ['actions' => $msgActions]);
+                            ?>
                         </td>
                     </tr>
                 <?php endforeach ?>

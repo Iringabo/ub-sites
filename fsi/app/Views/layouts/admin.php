@@ -94,12 +94,20 @@ $brandSubtitle = $brand['subtitle'];
                         <kbd class="d-none d-xl-inline ms-1">Ctrl+K</kbd>
                     </button>
                     <?php if (count($availableSites) > 1): ?>
+                        <?php
+                        $hasExplicitSite = service('siteResolver')->hasExplicitAdminSiteSelection();
+                        $currentPath = site_url(uri_string());
+                        ?>
                         <form class="admin-site-switcher" method="post" action="<?= site_url('admin/site-selection') ?>">
                             <?= csrf_field() ?>
+                            <input type="hidden" name="return_to" value="<?= esc($currentPath, 'attr') ?>">
                             <label class="visually-hidden" for="adminSiteSwitcher">Site à administrer</label>
-                            <select class="form-select form-select-sm" id="adminSiteSwitcher" name="site_id" onchange="this.form.requestSubmit()">
+                            <select class="form-select form-select-sm" id="adminSiteSwitcher" name="site_id" onchange="this.form.requestSubmit()" required>
+                                <?php if ($isCentralAdmin && ! $hasExplicitSite): ?>
+                                    <option value="" selected disabled>Choisir une faculté…</option>
+                                <?php endif ?>
                                 <?php foreach ($availableSites as $site): ?>
-                                    <option value="<?= esc((string) $site->id, 'attr') ?>" <?= (int) $site->id === (int) ($activeSite->id ?? 0) ? 'selected' : '' ?>>
+                                    <option value="<?= esc((string) $site->id, 'attr') ?>" <?= $hasExplicitSite && (int) $site->id === (int) ($activeSite->id ?? 0) ? 'selected' : '' ?>>
                                         <?= esc($site->name) ?>
                                     </option>
                                 <?php endforeach ?>

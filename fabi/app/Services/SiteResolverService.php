@@ -150,6 +150,25 @@ class SiteResolverService
     }
 
     /**
+     * True when the admin session explicitly chose a faculty (superadmin switcher).
+     */
+    public function hasExplicitAdminSiteSelection(): bool
+    {
+        return (int) (service('session')->get('active_admin_site_id') ?? 0) > 0;
+    }
+
+    /**
+     * On the central host, content editing requires an explicit faculty selection.
+     */
+    public function requiresExplicitAdminSiteSelection(?RequestInterface $request = null): bool
+    {
+        $request ??= service('request');
+
+        return service('adminAccess')->isCentralAdminHost($request)
+            && ! $this->hasExplicitAdminSiteSelection();
+    }
+
+    /**
      * @param list<int> $siteIds
      */
     public function syncUserSites(int $userId, array $siteIds, string $role = 'site_admin'): void

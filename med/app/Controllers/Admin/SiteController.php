@@ -22,9 +22,20 @@ class SiteController extends BaseController
         service('settingsService')->reset();
         service('contentTranslationService')->reset();
 
-        $target = service('adminAccess')->isCentralAdminHost($this->request)
-            ? site_url('admin/site')
-            : site_url('admin');
+        $returnTo = trim((string) $this->request->getPost('return_to'));
+        if ($returnTo !== '' && str_starts_with($returnTo, site_url('admin'))) {
+            $target = $returnTo;
+        } else {
+            $referer = (string) ($this->request->getHeaderLine('Referer') ?: '');
+            $adminBase = site_url('admin');
+            if ($referer !== '' && str_starts_with($referer, $adminBase)) {
+                $target = $referer;
+            } else {
+                $target = service('adminAccess')->isCentralAdminHost($this->request)
+                    ? site_url('admin/site')
+                    : site_url('admin');
+            }
+        }
 
         return redirect()->to($target)->with('message', 'Le site d’administration a été changé.');
     }

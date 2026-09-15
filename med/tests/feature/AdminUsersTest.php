@@ -114,20 +114,51 @@ final class AdminUsersTest extends CIUnitTestCase
         $this->assertTrue((bool) $reloaded->active);
     }
 
-    public function testFacultyAdminCanCreateAdminOnOwnSite(): void
+    public function testFacultyAdminCanOnlyCreateEditorOnOwnSite(): void
     {
         $actor = $this->facultyAdminUser('faculty-admin-actor@example.test', 'facultyadminactor');
         $this->actingAs($actor);
 
         $form = $this->get('/admin/users/new');
         $form->assertOK();
-        $form->assertSee('Administrateur');
-        $form->assertSee('Éditeur');
+        $form->assertSee('Éditeur de cette faculté');
+        $form->assertSee('Seul un superadministrateur peut créer un administrateur');
         $form->assertDontSee('Superadministrateur');
+        $form->assertDontSee('Administrateur de cette faculté');
 
         $create = $this->post('/admin/users', $this->withCsrf([
-            'username'   => 'nouveauadminfac',
-            'email'      => 'nouveau-admin-fac@example.test',
+            'username'   => 'nouveaueeditorfac',
+            'email'      => 'nouveau-editor-fac@example.test',
+            'password'   => 'MotDePassePhase5!2026',
+            'confirm'    => 'MotDePassePhase5!2026',
+            'active'     => '1',
+            'groups'     => ['editor'],
+            'site_roles' => [1 => 'editor'],
+        ]));
+
+        $create->assertRedirect();
+        $created = $this->userByEmail('nouveau-editor-fac@example.test');
+        $this->assertInstanceOf(User::class, $created);
+        $this->assertSame(['editor'], $created->getGroups());
+        $this->assertSame(1, $this->db->table('user_sites')
+            ->where('user_id', $created->id)
+            ->where('site_id', 1)
+            ->where('role', 'editor')
+            ->countAllResults());
+        $this->assertSame(0, $this->db->table('auth_groups_users')
+            ->where('user_id', $created->id)
+            ->where('group', 'admin')
+            ->countAllResults());
+    }
+
+    public function testFacultyAdminCannotCreateAdminOnOwnSite(): void
+    {
+        $actor = $this->facultyAdminUser('faculty-admin-deny@example.test', 'facultyadmindeny');
+        $this->actingAs($actor);
+
+        $create = $this->post('/admin/users', $this->withCsrf([
+            'username'   => 'deniedadminfac',
+            'email'      => 'denied-admin-fac@example.test',
             'password'   => 'MotDePassePhase5!2026',
             'confirm'    => 'MotDePassePhase5!2026',
             'active'     => '1',
@@ -136,18 +167,8 @@ final class AdminUsersTest extends CIUnitTestCase
         ]));
 
         $create->assertRedirect();
-        $created = $this->userByEmail('nouveau-admin-fac@example.test');
-        $this->assertInstanceOf(User::class, $created);
-        $this->assertSame(['admin'], $created->getGroups());
-        $this->assertSame(1, $this->db->table('user_sites')
-            ->where('user_id', $created->id)
-            ->where('site_id', 1)
-            ->where('role', 'site_admin')
-            ->countAllResults());
-        $this->assertSame(0, $this->db->table('auth_groups_users')
-            ->where('user_id', $created->id)
-            ->where('group', 'superadmin')
-            ->countAllResults());
+        $create->assertSessionHas('errors');
+        $this->assertNull($this->userByEmail('denied-admin-fac@example.test'));
     }
 
     public function testFacultyAdminSaveKeepsAssignmentsOnOtherSites(): void

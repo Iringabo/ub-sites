@@ -7,6 +7,8 @@ $currentActorIsSuperAdmin = (bool) ($currentActorIsSuperAdmin ?? false);
 $groupTitles = array_map(static fn (array $group): string => $group['title'], $groups);
 $siteLabelsByUserId = $siteLabelsByUserId ?? [];
 $editableUserIds = array_map('intval', $editableUserIds ?? []);
+$filterSites = $filterSites ?? [];
+$filters = $filters ?? ['q' => '', 'status' => '', 'site_id' => ''];
 ?>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
@@ -23,10 +25,23 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
 
 <form class="card-faculte mb-4" method="get" action="<?= site_url('admin/users') ?>">
     <div class="row g-3 align-items-end">
-        <div class="col-md-8">
+        <div class="<?= $currentActorIsSuperAdmin && $filterSites !== [] ? 'col-md-5' : 'col-md-8' ?>">
             <label for="q" class="form-label small fw-semibold">Recherche</label>
             <input type="search" class="form-control" id="q" name="q" value="<?= esc($filters['q'], 'attr') ?>" placeholder="Nom d’utilisateur ou adresse électronique">
         </div>
+        <?php if ($currentActorIsSuperAdmin && $filterSites !== []): ?>
+            <div class="col-md-3">
+                <label for="site_id" class="form-label small fw-semibold">Faculté</label>
+                <select class="form-select" id="site_id" name="site_id">
+                    <option value="">Toutes</option>
+                    <?php foreach ($filterSites as $site): ?>
+                        <option value="<?= esc((string) $site->id, 'attr') ?>" <?= (string) $filters['site_id'] === (string) $site->id ? 'selected' : '' ?>>
+                            <?= esc($site->name) ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+        <?php endif ?>
         <div class="col-md-2">
             <label for="status" class="form-label small fw-semibold">État</label>
             <select class="form-select" id="status" name="status">
@@ -43,14 +58,13 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
 
 <div class="card-faculte p-0 overflow-hidden">
     <div class="table-responsive">
-        <table class="table align-middle mb-0">
+        <table class="table align-middle mb-0 admin-users-table">
             <thead class="table-light">
                 <tr>
                     <th>Personne</th>
                     <th>État</th>
                     <th>Rôle</th>
                     <th>Faculté</th>
-                    <th>Dernière activité</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
@@ -59,8 +73,8 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
                     <?php $userGroups = $user->getGroups() ?? []; ?>
                     <tr>
                         <td>
-                            <div class="fw-semibold"><?= esc($user->username ?? '—') ?></div>
-                            <div class="small text-muted"><?= esc($user->getEmail() ?? '—') ?></div>
+                            <div class="fw-semibold text-break"><?= esc($user->username ?? '—') ?></div>
+                            <div class="small text-muted text-break"><?= esc($user->getEmail() ?? '—') ?></div>
                         </td>
                         <td>
                             <span class="badge <?= ! empty($user->active) ? 'text-bg-success' : 'text-bg-secondary' ?>">
@@ -87,52 +101,73 @@ $editableUserIds = array_map('intval', $editableUserIds ?? []);
                                     <?php endforeach ?>
                                 </div>
                             <?php elseif (in_array('superadmin', $userGroups, true)): ?>
-                                <span class="text-muted small">Toutes les facultés</span>
+                                <span class="text-muted small">Toutes</span>
                             <?php else: ?>
-                                <span class="text-muted small">Faculté courante</span>
+                                <span class="text-muted small">—</span>
                             <?php endif ?>
-                        </td>
-                        <td class="small text-muted">
-                            <?= esc(site_format_date($user->last_active ?? $user->updated_at ?? $user->created_at, true) ?: '—') ?>
                         </td>
                         <td class="text-end">
                             <?php
                             $canEditUser = in_array((int) $user->id, $editableUserIds, true);
                             $isProtectedSuperAdmin = in_array('superadmin', $userGroups, true) && ! $currentActorIsSuperAdmin;
+                            $actions = [];
+                            if (! $canEditUser || $isProtectedSuperAdmin) {
+                                echo '<span class="text-muted small">Hors périmètre</span>';
+                            } else {
+                                $actions[] = [
+                                    'type'  => 'link',
+                                    'href'  => site_url('admin/users/' . $user->id . '/edit'),
+                                    'icon'  => 'pencil',
+                                    'label' => 'Modifier',
+                                    'class' => 'primary',
+                                ];
+                                $actions[] = [
+                                    'type'  => 'link',
+                                    'href'  => site_url('admin/users/' . $user->id . '/password'),
+                                    'icon'  => 'key',
+                                    'label' => 'Mot de passe',
+                                    'class' => 'outline',
+                                ];
+                                if ((int) $user->id !== (int) ($currentUser?->id ?? 0)) {
+                                    if (! empty($user->active)) {
+                                        $actions[] = [
+                                            'type'    => 'form',
+                                            'action'  => site_url('admin/users/' . $user->id . '/deactivate'),
+                                            'icon'    => 'person-x',
+                                            'label'   => 'Désactiver',
+                                            'class'   => 'danger',
+                                            'confirm' => 'Voulez-vous vraiment désactiver ce compte ?',
+                                        ];
+                                    } else {
+                                        $actions[] = [
+                                            'type'    => 'form',
+                                            'action'  => site_url('admin/users/' . $user->id . '/activate'),
+                                            'icon'    => 'person-check',
+                                            'label'   => 'Activer',
+                                            'class'   => 'success',
+                                            'confirm' => 'Voulez-vous vraiment activer ce compte ?',
+                                        ];
+                                    }
+                                }
+                                if ($currentActorIsSuperAdmin && (int) $user->id !== (int) ($currentUser?->id ?? 0)) {
+                                    $actions[] = [
+                                        'type'    => 'form',
+                                        'action'  => site_url('admin/users/' . $user->id . '/delete'),
+                                        'icon'    => 'trash',
+                                        'label'   => 'Supprimer',
+                                        'class'   => 'danger',
+                                        'confirm' => 'Voulez-vous vraiment supprimer définitivement ce compte ? Cette action est irréversible.',
+                                    ];
+                                }
+                                echo view('admin/partials/row_actions', ['actions' => $actions]);
+                            }
                             ?>
-                            <div class="d-inline-flex flex-wrap justify-content-end gap-1">
-                                <?php if (! $canEditUser || $isProtectedSuperAdmin): ?>
-                                    <span class="text-muted small">Hors périmètre de modification</span>
-                                <?php else: ?>
-                                    <a href="<?= site_url('admin/users/' . $user->id . '/edit') ?>" class="btn btn-primary-green btn-sm">Modifier</a>
-                                    <a href="<?= site_url('admin/users/' . $user->id . '/password') ?>" class="btn btn-outline-green btn-sm">Mot de passe</a>
-                                <?php endif ?>
-                                <?php if ($canEditUser && ! $isProtectedSuperAdmin && (int) $user->id !== (int) ($currentUser?->id ?? 0)): ?>
-                                    <?php if (! empty($user->active)): ?>
-                                        <form method="post" action="<?= site_url('admin/users/' . $user->id . '/deactivate') ?>" data-confirm="Voulez-vous vraiment désactiver ce compte ?">
-                                            <?= csrf_field() ?>
-                                            <button type="submit" class="btn btn-outline-danger btn-sm">Désactiver</button>
-                                        </form>
-                                    <?php else: ?>
-                                        <form method="post" action="<?= site_url('admin/users/' . $user->id . '/activate') ?>" data-confirm="Voulez-vous vraiment activer ce compte ?">
-                                            <?= csrf_field() ?>
-                                            <button type="submit" class="btn btn-outline-success btn-sm">Activer</button>
-                                        </form>
-                                    <?php endif ?>
-                                <?php endif ?>
-                                <?php if ($currentActorIsSuperAdmin && (int) $user->id !== (int) ($currentUser?->id ?? 0)): ?>
-                                    <form method="post" action="<?= site_url('admin/users/' . $user->id . '/delete') ?>" data-confirm="Voulez-vous vraiment supprimer définitivement ce compte ? Cette action est irréversible.">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-danger btn-sm">Supprimer</button>
-                                    </form>
-                                <?php endif ?>
-                            </div>
                         </td>
                     </tr>
                 <?php endforeach ?>
                 <?php if ($users === []): ?>
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">Aucun compte ne correspond aux filtres. <a href="<?= site_url('admin/users/new') ?>">Créer le premier compte</a>.</td>
+                        <td colspan="5" class="text-center text-muted py-4">Aucun compte ne correspond aux filtres. <a href="<?= site_url('admin/users/new') ?>">Créer le premier compte</a>.</td>
                     </tr>
                 <?php endif ?>
             </tbody>

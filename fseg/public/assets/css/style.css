@@ -712,6 +712,51 @@ footer.site-footer .footer-contact-item {
     display: block;
 }
 
+.hero-slide-caption {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(90deg, rgba(0, 0, 0, var(--hero-overlay-opacity, 0.72)) 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%);
+    color: #fff;
+    pointer-events: none;
+}
+
+.hero-slide-caption .btn-hero-primary,
+.hero-slide-caption .btn-hero-outline,
+.hero-slide-caption a {
+    pointer-events: auto;
+}
+
+.home-sections-stack {
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-icon {
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-row-actions .btn-icon {
+    flex: 0 0 auto;
+}
+
+.home-sections-handle {
+    cursor: grab;
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.home-sections-handle:active {
+    cursor: grabbing;
+}
+
 .hero .carousel-indicators {
     z-index: 4;
     bottom: 1.25rem;

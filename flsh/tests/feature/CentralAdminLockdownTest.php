@@ -57,8 +57,8 @@ final class CentralAdminLockdownTest extends CIUnitTestCase
         $central->assertOK();
         $central->assertSee('Superadministration');
         $central->assertSee('Facultés');
-        $central->assertSee('Contenu et communication');
-        $central->assertSee('Textes de l’accueil');
+        $central->assertSee('Accueil');
+        $central->assertSee('Textes des sections');
         $central->assertDontSee('Créer une faculté');
     }
 

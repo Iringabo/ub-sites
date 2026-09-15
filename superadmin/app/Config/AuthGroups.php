@@ -46,12 +46,12 @@ class AuthGroups extends ShieldAuthGroups
             'description' => 'Accès complet au site, aux utilisateurs et aux paramètres.',
         ],
         'admin' => [
-            'title'       => 'Administrateur',
-            'description' => 'Gestion quotidienne des contenus et des messages.',
+            'title'       => 'Administrateur de faculté',
+            'description' => 'Gère les contenus, les messages et les comptes de la faculté.',
         ],
         'editor' => [
-            'title'       => 'Éditeur',
-            'description' => 'Gestion éditoriale des contenus autorisés.',
+            'title'       => 'Éditeur de faculté',
+            'description' => 'Rédige et met à jour les contenus autorisés de la faculté.',
         ],
     ];
 

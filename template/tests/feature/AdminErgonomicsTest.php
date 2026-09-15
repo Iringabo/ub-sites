@@ -257,11 +257,13 @@ final class AdminErgonomicsTest extends CIUnitTestCase
 
         $result = $this->get('/admin');
         $result->assertOK();
-        $result->assertSee('Contenu et communication');
-        $result->assertSee('Communauté et recherche');
+        $result->assertSee('Accueil');
+        $result->assertSee('Pages du site');
         $result->assertDontSee('Messages de contact');
         $result->assertDontSee('Coordonnées &amp; identité');
         $result->assertDontSee('Gérer les utilisateurs');
+        $result->assertDontSee('Pages institutionnelles');
+        $result->assertDontSee('Blocs de page');
     }
 
     public function testFacultyAdminCanOpenSettingsAndSeesAdministration(): void

@@ -84,22 +84,19 @@
                             <?php endif ?>
                         </td>
                         <td class="text-end">
-                            <div class="d-inline-flex flex-wrap justify-content-end gap-1">
-                                <a href="<?= site_url('admin/posts/' . $post->id . '/preview') ?>" class="btn btn-outline-green btn-sm">Aperçu</a>
-                                <a href="<?= site_url('admin/posts/' . $post->id . '/edit') ?>" class="btn btn-primary-green btn-sm">Modifier</a>
-                                <?php if ($post->status !== 'published'): ?>
-                                    <form method="post" action="<?= site_url('admin/posts/' . $post->id . '/publish') ?>">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-green btn-sm">Publier</button>
-                                    </form>
-                                <?php endif ?>
-                                <?php if ($post->status !== 'archived'): ?>
-                                    <form method="post" action="<?= site_url('admin/posts/' . $post->id . '/archive') ?>" data-confirm="Voulez-vous vraiment archiver ce contenu ?">
-                                        <?= csrf_field() ?>
-                                        <button type="submit" class="btn btn-outline-danger btn-sm">Archiver</button>
-                                    </form>
-                                <?php endif ?>
-                            </div>
+                            <?php
+                            $postActions = [
+                                ['type' => 'link', 'href' => site_url('admin/posts/' . $post->id . '/preview'), 'icon' => 'eye', 'label' => 'Aperçu', 'class' => 'outline'],
+                                ['type' => 'link', 'href' => site_url('admin/posts/' . $post->id . '/edit'), 'icon' => 'pencil', 'label' => 'Modifier', 'class' => 'primary'],
+                            ];
+                            if ($post->status !== 'published') {
+                                $postActions[] = ['type' => 'form', 'action' => site_url('admin/posts/' . $post->id . '/publish'), 'icon' => 'check2-circle', 'label' => 'Publier', 'class' => 'outline'];
+                            }
+                            if ($post->status !== 'archived') {
+                                $postActions[] = ['type' => 'form', 'action' => site_url('admin/posts/' . $post->id . '/archive'), 'icon' => 'archive', 'label' => 'Archiver', 'class' => 'danger', 'confirm' => 'Voulez-vous vraiment archiver ce contenu ?'];
+                            }
+                            echo view('admin/partials/row_actions', ['actions' => $postActions]);
+                            ?>
                         </td>
                     </tr>
                 <?php endforeach ?>

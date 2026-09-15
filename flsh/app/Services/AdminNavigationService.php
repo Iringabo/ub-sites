@@ -50,28 +50,27 @@ class AdminNavigationService
         }
 
         $groups[] = [
-            'id'    => 'content',
-            'label' => 'Contenu et communication',
-            'icon'  => 'bi-broadcast',
+            'id'    => 'home',
+            'label' => 'Accueil',
+            'icon'  => 'bi-house-door',
             'links' => [
-                ['key' => 'home-content', 'label' => 'Textes de l’accueil', 'permissions' => 'home.manage', 'icon' => 'bi-layout-text-window'],
-                ['key' => 'home-hero-slides', 'label' => 'Carrousel d’images', 'permissions' => 'home.manage', 'icon' => 'bi-images'],
+                ['key' => 'home-hero-slides', 'label' => 'Héros (slides)', 'permissions' => 'home.manage', 'icon' => 'bi-images'],
+                ['key' => 'home-sections', 'label' => 'Sections & ordre', 'permissions' => 'home.manage', 'icon' => 'bi-list-ol'],
                 ['key' => 'home-highlights', 'label' => 'Points forts', 'permissions' => 'home.manage', 'icon' => 'bi-stars'],
                 ['key' => 'site-stats', 'label' => 'Chiffres clés', 'permissions' => 'home.manage', 'icon' => 'bi-bar-chart'],
-                ['key' => 'posts', 'label' => 'Actualités & événements', 'permissions' => ['news.manage', 'events.manage'], 'icon' => 'bi-megaphone'],
-                ['key' => 'programmes', 'label' => 'Formations', 'permissions' => 'programmes.manage', 'icon' => 'bi-journal-bookmark'],
-                ['key' => 'faculty/profile', 'label' => 'Présentation & mot du doyen', 'permissions' => 'pages.manage', 'icon' => 'bi-person-vcard'],
-                ['key' => 'pages', 'label' => 'Pages institutionnelles', 'permissions' => 'pages.manage', 'icon' => 'bi-file-earmark-ruled'],
-                ['key' => 'content-blocks', 'label' => 'Blocs de page', 'permissions' => 'pages.manage', 'icon' => 'bi-ui-checks-grid'],
-                ['key' => 'timeline-items', 'label' => 'Historique', 'permissions' => 'pages.manage', 'icon' => 'bi-clock-history'],
+                ['key' => 'home-content', 'label' => 'Textes des sections', 'permissions' => 'home.manage', 'icon' => 'bi-layout-text-window'],
             ],
         ];
 
         $groups[] = [
-            'id'    => 'community',
-            'label' => 'Communauté et recherche',
-            'icon'  => 'bi-people',
+            'id'    => 'site-pages',
+            'label' => 'Pages du site',
+            'icon'  => 'bi-layout-text-sidebar-reverse',
             'links' => [
+                ['key' => 'posts', 'label' => 'Actualités & événements', 'permissions' => ['news.manage', 'events.manage'], 'icon' => 'bi-megaphone'],
+                ['key' => 'programmes', 'label' => 'Formations', 'permissions' => 'programmes.manage', 'icon' => 'bi-journal-bookmark'],
+                ['key' => 'faculty/profile', 'label' => 'Présentation & mot du doyen', 'permissions' => 'pages.manage', 'icon' => 'bi-person-vcard'],
+                ['key' => 'timeline-items', 'label' => 'Historique', 'permissions' => 'pages.manage', 'icon' => 'bi-clock-history'],
                 ['key' => 'staff', 'label' => 'Personnel', 'permissions' => 'staff.manage', 'icon' => 'bi-person-badge'],
                 ['key' => 'alumni-profiles', 'label' => 'Alumni', 'permissions' => 'alumni.manage', 'icon' => 'bi-award'],
                 ['key' => 'testimonials', 'label' => 'Témoignages', 'permissions' => 'alumni.manage', 'icon' => 'bi-chat-quote'],
@@ -81,23 +80,48 @@ class AdminNavigationService
             ],
         ];
 
-        $adminLinks = [
-            ['key' => 'messages', 'label' => 'Messages de contact', 'permissions' => 'messages.manage', 'icon' => 'bi-envelope-paper'],
-            ['key' => 'settings/global', 'label' => 'Coordonnées & identité', 'permissions' => 'settings.manage', 'icon' => 'bi-gear'],
+        $groups[] = [
+            'id'    => 'messages',
+            'label' => 'Messages',
+            'icon'  => 'bi-envelope',
+            'links' => [
+                ['key' => 'messages', 'label' => 'Messages de contact', 'permissions' => 'messages.manage', 'icon' => 'bi-envelope-paper'],
+            ],
         ];
 
+        $accountLinks = [];
         if (! $this->isCentral()) {
-            array_unshift($adminLinks, ['key' => 'users', 'label' => 'Comptes & accès', 'permissions' => 'users.manage', 'icon' => 'bi-people']);
+            $accountLinks[] = ['key' => 'users', 'label' => 'Comptes & accès', 'permissions' => 'users.manage', 'icon' => 'bi-people'];
+        }
+        if ($accountLinks !== []) {
+            $groups[] = [
+                'id'    => 'accounts',
+                'label' => 'Comptes & accès',
+                'icon'  => 'bi-people',
+                'links' => $accountLinks,
+            ];
         }
 
         $groups[] = [
-            'id'    => 'admin',
-            'label' => 'Administration',
-            'icon'  => 'bi-shield-lock',
-            'links' => $adminLinks,
+            'id'    => 'identity',
+            'label' => 'Identité',
+            'icon'  => 'bi-gear',
+            'links' => [
+                ['key' => 'settings/global', 'label' => 'Coordonnées & identité', 'permissions' => 'settings.manage', 'icon' => 'bi-gear'],
+            ],
         ];
 
         return $this->visibleGroups($groups, $user);
+    }
+
+    /**
+     * Resources retired from the admin UI (routes stay guarded).
+     *
+     * @return list<string>
+     */
+    public function retiredResourceKeys(): array
+    {
+        return ['pages', 'content-blocks'];
     }
 
     /**
@@ -116,6 +140,10 @@ class AdminNavigationService
     public function editingLabel(): string
     {
         if ($this->isCentral()) {
+            if (! service('siteResolver')->hasExplicitAdminSiteSelection()) {
+                return 'Choisissez une faculté pour éditer son contenu';
+            }
+
             $site = service('siteResolver')->activeSite();
             $name = trim((string) ($site->name ?? ''));
 
@@ -129,6 +157,10 @@ class AdminNavigationService
     {
         if (! $this->isCentral()) {
             return site_url('/');
+        }
+
+        if (! service('siteResolver')->hasExplicitAdminSiteSelection()) {
+            return null;
         }
 
         return $this->publicUrlForSite(service('siteResolver')->activeSite());
@@ -161,8 +193,20 @@ class AdminNavigationService
             return rtrim($override, '/') . '/';
         }
 
+        // Local multi-folder ports when hostnames are empty.
+        $localPorts = [
+            'fseg' => 8101,
+            'fsi'  => 8102,
+            'med'  => 8104,
+            'fabi' => 8105,
+            'flsh' => 8106,
+        ];
         $appBase = (string) (config('App')->baseURL ?? '');
         $isLocalApp = str_contains($appBase, 'localhost') || str_contains($appBase, '127.0.0.1');
+        if ($host === '' && $isLocalApp && isset($localPorts[$slug])) {
+            return 'http://localhost:' . $localPorts[$slug] . '/';
+        }
+
         $hostName = strtolower((string) explode(':', $host)[0]);
         $hostIsDev = in_array($hostName, ['localhost', '127.0.0.1'], true) || str_ends_with($hostName, '.test');
 

@@ -157,9 +157,16 @@ if ($remainingFields !== []) {
                     $max = isset($field['max']) ? (int) $field['max'] : null;
                     $counterId = $max !== null ? $inputId . '_counter' : null;
                     $wideTypes = ['textarea', 'json_list', 'json_text', 'image', 'icon', 'page_content', 'setting_value'];
+                    $showWhenAttrs = '';
+                    if (! empty($field['showWhen']) && is_array($field['showWhen'])) {
+                        foreach ($field['showWhen'] as $depField => $depValue) {
+                            $showWhenAttrs = ' data-show-when-field="' . esc((string) $depField, 'attr') . '" data-show-when-value="' . esc((string) $depValue, 'attr') . '"';
+                            break;
+                        }
+                    }
                     ?>
 
-                    <div class="<?= in_array($type, $wideTypes, true) ? 'col-12' : 'col-md-6' ?>">
+                    <div class="<?= in_array($type, $wideTypes, true) ? 'col-12' : 'col-md-6' ?> admin-field-wrap"<?= $showWhenAttrs ?>>
                         <?php if ($type === 'boolean'): ?>
                             <div class="form-check mt-4">
                                 <input type="hidden" name="<?= esc($name, 'attr') ?>" value="0">
@@ -438,4 +445,36 @@ if ($remainingFields !== []) {
         <a href="<?= site_url('admin/' . $resource) ?>" class="btn btn-outline-secondary">Annuler</a>
     </div>
 </form>
+<?= $this->section('scripts') ?>
+<script>
+(function () {
+    const wraps = document.querySelectorAll('.admin-field-wrap[data-show-when-field]');
+    if (!wraps.length) return;
+    const sync = () => {
+        wraps.forEach((wrap) => {
+            const field = wrap.getAttribute('data-show-when-field');
+            const expected = wrap.getAttribute('data-show-when-value') || '';
+            const control = document.getElementById('field_' + String(field).replace(/[^a-zA-Z0-9_]/g, '_'))
+                || document.querySelector('[name="' + field + '"]');
+            if (!control) return;
+            const actual = control.value || '';
+            let visible = actual === expected;
+            if (expected.startsWith('!')) {
+                visible = actual !== expected.slice(1);
+            }
+            wrap.classList.toggle('d-none', !visible);
+            wrap.querySelectorAll('input, select, textarea').forEach((el) => {
+                if (visible) {
+                    el.removeAttribute('disabled');
+                } else if (el.type !== 'hidden') {
+                    el.setAttribute('disabled', 'disabled');
+                }
+            });
+        });
+    };
+    document.querySelectorAll('select, input').forEach((el) => el.addEventListener('change', sync));
+    sync();
+})();
+</script>
+<?= $this->endSection() ?>
 <?= $this->endSection() ?>

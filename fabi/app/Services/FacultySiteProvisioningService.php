@@ -34,7 +34,7 @@ class FacultySiteProvisioningService
             'menu_config'      => json_encode([
                 'items' => ['faculte', 'formations', 'recherche', 'corps-enseignant', 'actualites', 'alumni', 'contact'],
             ], JSON_UNESCAPED_SLASHES),
-            'enabled_sections' => ['hero', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'statistics', 'contact_cta'],
+            'enabled_sections' => ['hero', 'statistics', 'about', 'highlights', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'contact_cta'],
         ];
 
         if (! isset($siteData['hostnames']) || $siteData['hostnames'] === null || $siteData['hostnames'] === []) {

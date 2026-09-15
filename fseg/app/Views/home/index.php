@@ -34,9 +34,41 @@ $configList = static function (mixed $value): array {
 };
 
 $enabledSections = $configList($activeSite->enabled_sections ?? null);
+$defaultSectionOrder = [
+    'hero',
+    'statistics',
+    'about',
+    'dean_message',
+    'programmes_preview',
+    'research_labs',
+    'staff_preview',
+    'news_preview',
+    'custom_text',
+    'image_gallery',
+    'contact_cta',
+];
 $hasConfiguredSections = $enabledSections !== [];
-$sectionEnabled = static function (string $section) use ($enabledSections): bool {
-    return $enabledSections === [] || in_array($section, $enabledSections, true);
+$sectionRenderOrder = $hasConfiguredSections
+    ? array_values(array_filter(
+        $enabledSections,
+        static fn (string $key): bool => in_array($key, $defaultSectionOrder, true) || in_array($key, ['highlights'], true),
+    ))
+    : $defaultSectionOrder;
+// highlights rides inside about; ensure about appears if only highlights was stored historically
+if (in_array('highlights', $sectionRenderOrder, true) && ! in_array('about', $sectionRenderOrder, true)) {
+    $highlightPos = array_search('highlights', $sectionRenderOrder, true);
+    array_splice($sectionRenderOrder, (int) $highlightPos, 1, ['about']);
+}
+$sectionEnabled = static function (string $section) use ($enabledSections, $hasConfiguredSections): bool {
+    if (! $hasConfiguredSections) {
+        return true;
+    }
+
+    if ($section === 'about') {
+        return in_array('about', $enabledSections, true) || in_array('highlights', $enabledSections, true);
+    }
+
+    return in_array($section, $enabledSections, true);
 };
 
 $blockValue = static function (mixed $block, string $field): mixed {
@@ -154,10 +186,31 @@ $slideValue = static function (mixed $slide, string $field): ?string {
     return isset($slide->{$field}) ? (string) $slide->{$field} : null;
 };
 
+$homePageService = service('homePageService');
+$resolveSlideCta = static function (mixed $slide, string $which) use ($slideValue, $homePageService): ?array {
+    $target = (string) ($slideValue($slide, $which . '_cta_target') ?? 'none');
+    $label = trim((string) ($slideValue($slide, $which . '_cta_label') ?? ''));
+    $url = $homePageService->resolveCtaUrl($target, $slideValue($slide, $which . '_cta_url'));
+    if ($url === null || $label === '') {
+        return null;
+    }
+
+    return ['label' => $label, 'url' => $url];
+};
+
 if ($heroSlides === []) {
     $heroSlides = [[
-        'image_path' => 'assets/images/hero/campus-walkway.jpg',
-        'alt_text'   => lang('Home.defaultHeroAlt'),
+        'image_path'           => 'assets/images/hero/campus-walkway.jpg',
+        'alt_text'             => lang('Home.defaultHeroAlt'),
+        'badge'                => $homeContent?->hero_badge,
+        'title'                => $homeContent?->hero_title,
+        'text'                 => $homeContent?->hero_text,
+        'primary_cta_target'   => 'custom',
+        'primary_cta_label'    => $homeContent?->hero_primary_label,
+        'primary_cta_url'      => $homeContent?->hero_primary_url ?? '/formations',
+        'secondary_cta_target' => 'custom',
+        'secondary_cta_label'  => $homeContent?->hero_secondary_label,
+        'secondary_cta_url'    => $homeContent?->hero_secondary_url ?? '/faculte',
     ]];
 }
 
@@ -168,9 +221,14 @@ if ($heroOverlayOpacity > 1) {
 
 $heroOverlayOpacity = max(0.35, min(0.95, $heroOverlayOpacity));
 $hasCarouselControls = count($heroSlides) > 1;
+$sectionOrderIndex = array_flip($sectionRenderOrder);
+$sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
+    return (int) ($sectionOrderIndex[$key] ?? 99);
+};
 ?>
+<div class="home-sections-stack">
 <?php if ($sectionEnabled('hero')): ?>
-<section class="hero" style="--hero-overlay-opacity: <?= esc(number_format($heroOverlayOpacity, 2, '.', ''), 'attr') ?>">
+<section class="hero" style="order: <?= $sectionCssOrder('hero') ?>; --hero-overlay-opacity: <?= esc(number_format($heroOverlayOpacity, 2, '.', ''), 'attr') ?>">
     <div
         id="homeHeroCarousel"
         class="hero-carousel carousel slide carousel-fade"
@@ -202,6 +260,11 @@ $hasCarouselControls = count($heroSlides) > 1;
                 <?php
                 $imagePath = site_media_url($slideValue($slide, 'image_path'), 'assets/images/hero/campus-walkway.jpg');
                 $altText = site_text_or_placeholder($slideValue($slide, 'alt_text'), lang('Home.heroImageFallbackAlt'));
+                $slideBadge = site_text_or_placeholder($slideValue($slide, 'badge'), $missingText);
+                $slideTitle = site_text_or_placeholder($slideValue($slide, 'title'), $missingText);
+                $slideText = site_text_or_placeholder($slideValue($slide, 'text'), $missingText);
+                $primaryCta = $resolveSlideCta($slide, 'primary');
+                $secondaryCta = $resolveSlideCta($slide, 'secondary');
                 ?>
                 <div class="carousel-item <?= $index === 0 ? 'active' : '' ?>">
                     <img
@@ -212,6 +275,27 @@ $hasCarouselControls = count($heroSlides) > 1;
                         <?= $index === 0 ? 'fetchpriority="high"' : '' ?>
                         decoding="async"
                     >
+                    <div class="hero-slide-caption">
+                        <div class="container position-relative">
+                            <div class="row">
+                                <div class="col-lg-7">
+                                    <span class="hero-badge"><?= esc($slideBadge) ?></span>
+                                    <h1><?= nl2br(esc($slideTitle)) ?></h1>
+                                    <p class="lead"><?= esc($slideText) ?></p>
+                                    <?php if ($primaryCta !== null || $secondaryCta !== null): ?>
+                                        <div class="d-flex flex-wrap gap-3">
+                                            <?php if ($primaryCta !== null): ?>
+                                                <a href="<?= esc($primaryCta['url'], 'attr') ?>" class="btn-hero-primary"><?= esc($primaryCta['label']) ?></a>
+                                            <?php endif ?>
+                                            <?php if ($secondaryCta !== null): ?>
+                                                <a href="<?= esc($secondaryCta['url'], 'attr') ?>" class="btn-hero-outline"><?= esc($secondaryCta['label']) ?></a>
+                                            <?php endif ?>
+                                        </div>
+                                    <?php endif ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             <?php endforeach ?>
         </div>
@@ -226,31 +310,13 @@ $hasCarouselControls = count($heroSlides) > 1;
             </button>
         <?php endif ?>
     </div>
-
     <div class="hero-shape hero-shape-lg"></div>
     <div class="hero-shape hero-shape-sm"></div>
-    <div class="container position-relative">
-        <div class="row">
-            <div class="col-lg-7">
-                <span class="hero-badge"><?= esc($heroBadge) ?></span>
-                <h1><?= nl2br(esc($heroTitle)) ?></h1>
-                <p class="lead"><?= esc($heroText) ?></p>
-                <div class="d-flex flex-wrap gap-3">
-                    <a href="<?= esc($heroPrimaryUrl, 'attr') ?>" class="btn-hero-primary">
-                        <?= esc($heroPrimaryLabel) ?>
-                    </a>
-                    <a href="<?= esc($heroSecondaryUrl, 'attr') ?>" class="btn-hero-outline">
-                        <?= esc($heroSecondaryLabel) ?>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
 </section>
 <?php endif ?>
 
 <?php if ($sectionEnabled('statistics') && $mainStats !== []): ?>
-    <section class="stats-bar">
+    <section class="stats-bar" style="order: <?= $sectionCssOrder('statistics') ?>">
         <div class="container">
             <div class="row text-center">
                 <?php foreach ($mainStats as $index => $stat): ?>
@@ -272,7 +338,7 @@ $hasCarouselControls = count($heroSlides) > 1;
 <?php endif ?>
 
 <?php if (! $hasConfiguredSections || $sectionEnabled('about')): ?>
-<section class="section-pad bg-white">
+<section id="presentation" class="section-pad bg-white" style="order: <?= $sectionCssOrder('about') ?>">
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
@@ -311,7 +377,7 @@ $hasCarouselControls = count($heroSlides) > 1;
 <?php endif ?>
 
 <?php if ($optionalSectionEnabled('dean_message', 'dean_message')): ?>
-<section class="section-pad section-alt">
+<section class="section-pad section-alt" style="order: <?= $sectionCssOrder('dean_message') ?>">
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-4 text-center">
@@ -344,7 +410,7 @@ $hasCarouselControls = count($heroSlides) > 1;
 <?php endif ?>
 
 <?php if ($sectionEnabled('programmes_preview') && $programmeGroups !== []): ?>
-<section class="section-pad section-alt">
+<section class="section-pad section-alt" style="order: <?= $sectionCssOrder('programmes_preview') ?>">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px">
             <span class="section-label"><?= esc($programmesLabel) ?></span>
@@ -379,7 +445,7 @@ $hasCarouselControls = count($heroSlides) > 1;
 <?php endif ?>
 
 <?php if ($sectionEnabled('research_labs')): ?>
-<section class="section-pad bg-white">
+<section class="section-pad bg-white" style="order: <?= $sectionCssOrder('research_labs') ?>">
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-5">
@@ -423,7 +489,7 @@ $hasCarouselControls = count($heroSlides) > 1;
 <?php endif ?>
 
 <?php if ($optionalSectionEnabled('staff_preview', 'staff_preview') && ($featuredStaff ?? []) !== []): ?>
-<section class="section-pad section-alt">
+<section class="section-pad section-alt" style="order: <?= $sectionCssOrder('staff_preview') ?>">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px">
             <span class="section-label"><?= esc(lang('Site.pageTitles.staff')) ?></span>
@@ -455,7 +521,7 @@ $hasCarouselControls = count($heroSlides) > 1;
 <?php endif ?>
 
 <?php if ($sectionEnabled('news_preview') && $featuredPosts !== []): ?>
-<section class="section-pad section-alt">
+<section class="section-pad section-alt" style="order: <?= $sectionCssOrder('news_preview') ?>">
     <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-end mb-5 gap-3">
             <div>
@@ -495,7 +561,7 @@ $hasCarouselControls = count($heroSlides) > 1;
 
 <?php $customTextBlocks = array_values($blocksByType['custom_text'] ?? []); ?>
 <?php if ($sectionEnabled('custom_text') && $customTextBlocks !== []): ?>
-<section class="section-pad bg-white">
+<section class="section-pad bg-white" style="order: <?= $sectionCssOrder('custom_text') ?>">
     <div class="container">
         <div class="row g-4">
             <?php foreach ($customTextBlocks as $block): ?>
@@ -546,7 +612,7 @@ $hasCarouselControls = count($heroSlides) > 1;
 <?php endif ?>
 
 <?php if ($optionalSectionEnabled('contact_cta', 'contact_cta')): ?>
-<section class="section-pad bg-white">
+<section class="section-pad bg-white" style="order: <?= $sectionCssOrder('contact_cta') ?>">
     <div class="container">
         <div class="row justify-content-center text-center">
             <div class="col-lg-8">
@@ -563,4 +629,5 @@ $hasCarouselControls = count($heroSlides) > 1;
     </div>
 </section>
 <?php endif ?>
+</div>
 <?= $this->endSection() ?>
