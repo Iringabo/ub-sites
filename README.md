@@ -41,11 +41,6 @@ Ou dans un dossier : `./scripts/dev-serve.sh` (lit `app.baseURL` du `.env`).
 | `update-faculty-maps.php` | Iframes Google Maps + adresses campus |
 | `ensure-faculty-admins.php` | Créer / réinitialiser les admins locaux |
 
-## Identifiants locaux
-
-Les mots de passe et comptes de connexion sont dans **`LOCAL_CREDENTIALS.md`**
-à la racine. Ce fichier est **ignoré par Git** (voir `.gitignore`). Créez-le
-à partir de vos `.env` et des commandes admin CLI si besoin.
 
 ## Synchroniser le code
 
