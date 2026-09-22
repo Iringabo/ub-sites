@@ -718,7 +718,7 @@ footer.site-footer .footer-contact-item {
     z-index: 2;
     display: flex;
     align-items: center;
-    background: linear-gradient(90deg, rgba(0, 0, 0, var(--hero-overlay-opacity, 0.72)) 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%);
+    background: linear-gradient(90deg, rgba(0, 0, 0, var(--hero-overlay-opacity, 0.30)) 0%, rgba(0, 0, 0, 0.15) 55%, transparent 100%);
     color: #fff;
     pointer-events: none;
 }
@@ -764,8 +764,8 @@ footer.site-footer .footer-contact-item {
 }
 
 .hero .carousel-indicators [data-bs-target] {
-    width: 0.75rem;
-    height: 0.75rem;
+    width: var(--hero-indicator-size, 1rem);
+    height: var(--hero-indicator-size, 1rem);
     border-radius: 50%;
     border: 1px solid rgba(255, 255, 255, 0.85);
     background-color: transparent;
@@ -774,6 +774,7 @@ footer.site-footer .footer-contact-item {
 
 .hero .carousel-indicators .active {
     background-color: var(--white);
+    transform: scale(1.15);
 }
 
 .hero .carousel-control-prev,
@@ -798,7 +799,7 @@ footer.site-footer .footer-contact-item {
     z-index: 1;
     background-image:
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23ffffff' fill-opacity='0.04'/%3E%3C/svg%3E"),
-        linear-gradient(135deg, rgba(10, 61, 34, var(--hero-overlay-opacity, 0.88)) 0%, rgba(13, 155, 73, var(--hero-overlay-opacity, 0.88)) 100%);
+        linear-gradient(135deg, rgba(10, 61, 34, var(--hero-overlay-opacity, 0.30)) 0%, rgba(13, 155, 73, var(--hero-overlay-opacity, 0.30)) 100%);
     pointer-events: none;
 }
 
@@ -1194,6 +1195,38 @@ footer.site-footer hr {
 
 .admin-site-switcher .form-select {
     max-width: min(34vw, 18rem);
+}
+
+.admin-site-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(7, 32, 20, 0.45);
+    backdrop-filter: blur(2px);
+}
+
+.admin-site-loading[hidden] {
+    display: none !important;
+}
+
+.admin-site-loading-card {
+    display: grid;
+    gap: 0.65rem;
+    justify-items: center;
+    text-align: center;
+    min-width: min(100%, 18rem);
+    padding: 1.5rem 1.75rem;
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.18);
+}
+
+body.admin-site-loading-active {
+    overflow: hidden;
 }
 
 .admin-content {

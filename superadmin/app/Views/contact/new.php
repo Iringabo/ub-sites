@@ -20,7 +20,7 @@
                         <div class="card-icon mb-0"><i class="bi bi-geo-alt"></i></div>
                         <div>
                             <p class="fw-bold mb-0"><?= esc(lang('Site.contact.address')) ?></p>
-                            <p class="text-muted small mb-0"><?= esc(site_text_or_placeholder($siteSettings['contact.address'] ?? null)) ?></p>
+                            <p class="text-muted small mb-0"><?= esc(site_text_or_placeholder(site_contact_address($siteSettings))) ?></p>
                         </div>
                     </div>
                     <div class="d-flex gap-3 mb-4">

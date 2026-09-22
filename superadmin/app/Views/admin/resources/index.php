@@ -40,13 +40,28 @@ $orderable = ! $trash
     && empty($filters['q'])
     && $orderBy !== null
     && array_key_first($orderBy) === 'display_order';
+$heroIndicatorSize = $heroIndicatorSize ?? '1';
+$heroIndicatorOptions = $heroIndicatorOptions ?? [
+    '0.75' => 'Petite (0,75 rem)',
+    '1'    => 'Moyenne (1 rem)',
+    '1.25' => 'Grande (1,25 rem)',
+    '1.5'  => 'Très grande (1,5 rem)',
+];
 ?>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
         <span class="section-label"><?= $trash ? 'Corbeille' : 'Administration' ?></span>
         <h1 class="h3 mb-1"><?= esc($config['title']) ?></h1>
-        <p class="text-muted mb-0"><?= $trash ? 'Restaurez un contenu archivé ou confirmez sa suppression définitive.' : 'Créez, modifiez et ordonnez les contenus affichés sur le site public.' ?></p>
+        <p class="text-muted mb-0">
+            <?php if ($trash): ?>
+                Restaurez un contenu archivé ou confirmez sa suppression définitive.
+            <?php elseif ($orderable): ?>
+                Créez et modifiez les contenus. Glissez les lignes pour changer l’ordre d’affichage — les numéros se mettent à jour automatiquement.
+            <?php else: ?>
+                Créez, modifiez et ordonnez les contenus affichés sur le site public.
+            <?php endif ?>
+        </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <?php if (! ($config['creationDisabled'] ?? false) && (! ($config['singleton'] ?? false) || $items === [])): ?>
@@ -68,6 +83,30 @@ $orderable = ! $trash
         <a href="<?= site_url('admin') ?>" class="btn btn-outline-secondary">Tableau de bord</a>
     </div>
 </div>
+
+<?php if ($resource === 'home-hero-slides' && ! $trash): ?>
+    <form method="post" action="<?= site_url('admin/home-hero-slides/indicator-size') ?>" class="card-faculte mb-4">
+        <?= csrf_field() ?>
+        <div class="row g-3 align-items-end">
+            <div class="col-md-8">
+                <label for="heroIndicatorSize" class="form-label small fw-semibold">Taille des pastilles du carrousel</label>
+                <select class="form-select" id="heroIndicatorSize" name="indicator_size" required>
+                    <?php foreach ($heroIndicatorOptions as $value => $label): ?>
+                        <option value="<?= esc((string) $value, 'attr') ?>" <?= (string) $heroIndicatorSize === (string) $value ? 'selected' : '' ?>>
+                            <?= esc($label) ?>
+                        </option>
+                    <?php endforeach ?>
+                </select>
+                <p class="form-text mb-0">Ces pastilles indiquent quelle carte du héros est affichée sur la page d’accueil.</p>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-green w-100">
+                    <i class="bi bi-check2 me-1" aria-hidden="true"></i>Enregistrer la taille
+                </button>
+            </div>
+        </div>
+    </form>
+<?php endif ?>
 
 <form class="card-faculte mb-4" method="get" action="<?= site_url('admin/' . $resource) ?>">
     <?php if ($trash): ?>
@@ -131,7 +170,7 @@ $orderable = ! $trash
                         <?php endif ?>
                         <?php foreach ($listFields as $field): ?>
                             <?php $value = $itemValue($item, $field['name']); ?>
-                            <td>
+                            <td<?= ($field['name'] ?? '') === 'display_order' ? ' data-order-cell' : '' ?>>
                                 <?php if (($field['type'] ?? null) === 'boolean'): ?>
                                     <span class="badge <?= ! empty($value) ? 'text-bg-success' : 'text-bg-secondary' ?>">
                                         <?= esc($displayValue($value, $field, $fieldOptions[$field['name']] ?? [])) ?>

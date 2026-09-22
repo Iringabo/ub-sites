@@ -86,6 +86,20 @@ document.querySelectorAll('[data-range-output]').forEach((field) => {
     update();
 });
 
+document.querySelectorAll('input[type="color"][id]').forEach((field) => {
+    const hex = document.querySelector(`[data-color-hex-for="${field.id}"]`);
+    if (!hex) {
+        return;
+    }
+
+    const update = () => {
+        hex.textContent = field.value.toUpperCase();
+    };
+
+    field.addEventListener('input', update);
+    update();
+});
+
 document.querySelectorAll('.admin-preview-toggle').forEach((toggle) => {
     toggle.addEventListener('click', () => {
         const row = document.getElementById(toggle.getAttribute('data-target'));
@@ -163,6 +177,16 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
     const form = document.getElementById('adminReorderForm');
     let saving = false;
 
+    const renumberOrderCells = () => {
+        const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        rows.forEach((row, index) => {
+            const cell = row.querySelector('[data-order-cell]');
+            if (cell) {
+                cell.textContent = String(index + 1);
+            }
+        });
+    };
+
     new window.Sortable(tbody, {
         handle: '.admin-drag-handle',
         animation: 150,
@@ -172,6 +196,7 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
                 return;
             }
             saving = true;
+            renumberOrderCells();
             const ids = Array.from(tbody.querySelectorAll('tr[data-id]'))
                 .map((row) => row.getAttribute('data-id'))
                 .join(',');
@@ -201,6 +226,58 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
         },
     });
 });
+
+(() => {
+    const overlay = document.getElementById('adminSiteLoading');
+    const switcher = document.querySelector('[data-admin-site-switcher]');
+
+    if (!overlay || !switcher) {
+        return;
+    }
+
+    const select = switcher.querySelector('select[name="site_id"]');
+
+    const showLoading = () => {
+        overlay.hidden = false;
+        overlay.setAttribute('aria-busy', 'true');
+        document.body.classList.add('admin-site-loading-active');
+        if (select) {
+            select.disabled = true;
+        }
+    };
+
+    const hideLoading = () => {
+        overlay.hidden = true;
+        overlay.setAttribute('aria-busy', 'false');
+        document.body.classList.remove('admin-site-loading-active');
+        if (select) {
+            select.disabled = false;
+        }
+    };
+
+    // CSP script-src-attr is 'none': never use inline onchange= handlers.
+    if (select) {
+        select.addEventListener('change', () => {
+            if (typeof switcher.requestSubmit === 'function') {
+                switcher.requestSubmit();
+            } else {
+                switcher.submit();
+            }
+        });
+    }
+
+    switcher.addEventListener('htmx:beforeRequest', showLoading);
+    switcher.addEventListener('htmx:responseError', hideLoading);
+    switcher.addEventListener('htmx:sendError', hideLoading);
+    switcher.addEventListener('htmx:timeout', hideLoading);
+
+    // Full-page HX-Redirect keeps the overlay visible until navigation completes.
+    switcher.addEventListener('submit', () => {
+        if (!window.htmx) {
+            showLoading();
+        }
+    });
+})();
 
 (() => {
     const openPalette = () => {

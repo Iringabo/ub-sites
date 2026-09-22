@@ -167,7 +167,20 @@ if ($remainingFields !== []) {
                     ?>
 
                     <div class="<?= in_array($type, $wideTypes, true) ? 'col-12' : 'col-md-6' ?> admin-field-wrap"<?= $showWhenAttrs ?>>
-                        <?php if ($type === 'boolean'): ?>
+                        <?php if (! empty($field['managedByDrag'])): ?>
+                            <div class="form-label fw-semibold"><?= esc($label) ?></div>
+                            <p class="form-text mb-0">
+                                <?php if ($isNew): ?>
+                                    L’ordre est attribué automatiquement à la création. Réordonnez ensuite la liste par glisser-déposer.
+                                <?php else: ?>
+                                    Ordre actuel : <strong><?= esc($value !== '' ? $value : '0') ?></strong>.
+                                    Modifiez-le en glissant les lignes dans la liste du module.
+                                <?php endif ?>
+                            </p>
+                            <?php if (! $isNew && $value !== ''): ?>
+                                <input type="hidden" name="<?= esc($name, 'attr') ?>" value="<?= esc($value, 'attr') ?>">
+                            <?php endif ?>
+                        <?php elseif ($type === 'boolean'): ?>
                             <div class="form-check mt-4">
                                 <input type="hidden" name="<?= esc($name, 'attr') ?>" value="0">
                                 <input class="form-check-input" type="checkbox" value="1" id="<?= esc($inputId, 'attr') ?>" name="<?= esc($name, 'attr') ?>" <?= $isChecked($item, $field) ? 'checked' : '' ?>>
@@ -189,6 +202,23 @@ if ($remainingFields !== []) {
                             <?php elseif ($type === 'json_text'): ?>
                                 <p class="form-text">JSON contrôlé par l’application. N’ajoutez ni CSS ni code exécutable.</p>
                             <?php endif ?>
+                            <?php if (isset($errors[$name])): ?>
+                                <div class="invalid-feedback d-block"><?= esc($errors[$name]) ?></div>
+                            <?php endif ?>
+                        <?php elseif ($type === 'color'): ?>
+                            <label for="<?= esc($inputId, 'attr') ?>" class="form-label fw-semibold"><?= esc($label) ?><?= $required ? ' *' : '' ?></label>
+                            <div class="d-flex align-items-center gap-3">
+                                <input
+                                    type="color"
+                                    class="form-control form-control-color<?= isset($errors[$name]) ? ' is-invalid' : '' ?>"
+                                    id="<?= esc($inputId, 'attr') ?>"
+                                    name="<?= esc($name, 'attr') ?>"
+                                    value="<?= esc($value !== '' ? $value : '#0D9B49', 'attr') ?>"
+                                    <?= $required ? 'required' : '' ?>
+                                    title="<?= esc($label, 'attr') ?>"
+                                >
+                                <span class="text-muted small font-monospace" data-color-hex-for="<?= esc($inputId, 'attr') ?>"><?= esc($value !== '' ? $value : '#0D9B49') ?></span>
+                            </div>
                             <?php if (isset($errors[$name])): ?>
                                 <div class="invalid-feedback d-block"><?= esc($errors[$name]) ?></div>
                             <?php endif ?>
@@ -318,11 +348,6 @@ if ($remainingFields !== []) {
                                 <input type="hidden" name="value" value="<?= esc($value, 'attr') ?>">
                                 <input type="file" class="form-control<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="setting_value_file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                                 <p class="form-text">JPG, PNG ou WebP, 2 Mo maximum.</p>
-                            <?php elseif ($settingKey === 'home.hero_overlay_opacity'): ?>
-                                <div class="d-flex align-items-center gap-3">
-                                    <input type="range" class="form-range flex-grow-1<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="value" min="0.45" max="0.95" step="0.01" value="<?= esc($value !== '' ? $value : '0.88', 'attr') ?>" data-range-output="<?= esc($inputId . '_output', 'attr') ?>">
-                                    <output id="<?= esc($inputId . '_output', 'attr') ?>" class="fw-semibold"></output>
-                                </div>
                             <?php elseif ($settingType === 'text'): ?>
                                 <textarea class="form-control<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="value" rows="5"><?= esc($value) ?></textarea>
                             <?php else: ?>

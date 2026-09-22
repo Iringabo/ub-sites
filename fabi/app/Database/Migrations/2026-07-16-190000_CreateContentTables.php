@@ -172,16 +172,19 @@ class CreateContentTables extends Migration
             'specialty'     => $this->nullableStringField(),
             'role'          => $this->nullableStringField(),
             'email'         => $this->nullableStringField(),
-            'biography'     => $this->nullableTextField(),
-            'display_order' => $this->intField(false, 0),
-            'is_published'  => $this->boolField(true),
-            'created_at'    => $this->datetimeField(),
-            'updated_at'    => $this->datetimeField(),
-            'deleted_at'    => $this->datetimeField(),
+            'biography'        => $this->nullableTextField(),
+            'display_order'    => $this->intField(false, 0),
+            'featured_on_home' => $this->boolField(false),
+            'home_order'       => $this->intField(true),
+            'is_published'     => $this->boolField(true),
+            'created_at'       => $this->datetimeField(),
+            'updated_at'       => $this->datetimeField(),
+            'deleted_at'       => $this->datetimeField(),
         ]);
         $this->forge->addKey('id', true);
         $this->forge->addUniqueKey('slug');
         $this->forge->addKey(['category', 'is_published', 'display_order']);
+        $this->forge->addKey(['featured_on_home', 'home_order']);
         $this->forge->createTable('staff', true, $this->tableAttributes());
     }
 

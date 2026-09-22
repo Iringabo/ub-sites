@@ -90,7 +90,7 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
     $adminResources = [
         'home-content'      => 'home.manage',
         'home-hero-slides'  => 'home.manage',
-        'home-highlights'   => 'home.manage',
+        'home-highlights'   => 'home.manage', // retired from UI; route kept & guarded
         'site-stats'        => 'home.manage',
         'programmes'        => 'programmes.manage',
         'staff'             => 'staff.manage',
@@ -113,6 +113,9 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
             $routes->post('/', 'ResourceController::create/' . $segment);
             $routes->post('bulk', 'ResourceController::bulk/' . $segment);
             $routes->post('reorder', 'ResourceController::reorder/' . $segment);
+            if ($segment === 'home-hero-slides') {
+                $routes->post('indicator-size', 'ResourceController::saveHeroIndicatorSize');
+            }
             $routes->get('(:num)/edit', 'ResourceController::edit/' . $segment . '/$1');
             $routes->post('(:num)', 'ResourceController::update/' . $segment . '/$1');
             $routes->post('(:num)/duplicate', 'ResourceController::duplicate/' . $segment . '/$1');

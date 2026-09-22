@@ -7,7 +7,28 @@ guides d’installation génériques. Exécuter depuis la **racine** du dépôt
 Les mots de passe réels ne sont **pas** dans ce document : voir
 `LOCAL_CREDENTIALS.md` (gitignored) à la racine.
 
-## Contenu facultaire (UB)
+## Contenu démo « site terminé » (recommandé)
+
+Remplit chaque faculté avec un volume de contenu public crédible (formations,
+personnel, actualités, labs, etc.) et des **images propres au site** sous
+`public/uploads/sites/{slug}/` uniquement — sans cloner les photos des autres
+facultés dans chaque dossier.
+
+Pack source (non synchronisé) : [`template/demo-media/`](../demo-media/README.md).
+
+Depuis **superadmin** (pour que `app.uploadMirrors` recopie vers chaque faculté) :
+
+```bash
+cd superadmin
+php spark site:seed-demo --force
+# ou une seule faculté :
+php spark site:seed-demo --slug=fseg --force
+```
+
+Après sync du code : `cd template && ./scripts/sync-instances.sh` (ne copie plus
+`assets/images/faculties/` ; le pack reste dans `template/demo-media/`).
+
+## Contenu facultaire UB (script legacy)
 
 Remplace le contenu neutre de démarrage par des textes / programmes / contacts
 alignés sur les sources UB pour **fseg, fsi, med, fabi, flsh** :
@@ -18,8 +39,8 @@ php scripts/seed-ub-faculty-content.php
 
 - Lit la connexion MySQL depuis `fseg/.env` (`database.default.*`).
 - Payloads FSEG/FSI : [`scripts/seed-ub-faculty-data-fseg-fsi.php`](../../scripts/seed-ub-faculty-data-fseg-fsi.php).
-- Images locales référencées : `public/assets/images/faculties/{slug}/hero-1.jpg` … `banner.jpg`
-  (présentes sous `template/` puis synchronisées vers les instances).
+- Les photos facultaires pour le seed démo Spark sont dans
+  `template/demo-media/faculties/{slug}/` (plus dans `public/assets/images/faculties/`).
 
 Le seeder CI `TemplateStarterSeeder` reste **neutre** (tests / nouveau site) :
 ne pas y coller le contenu UB réel.
@@ -60,9 +81,10 @@ PLATFORM_ADMIN_PASSWORD='…' php scripts/ensure-faculty-admins.php
 
 ## Images offline
 
-Sous chaque instance : `public/assets/images/faculties/{fseg,fsi,med,fabi,flsh}/`.
-Source de vérité des binaires : `template/public/assets/images/faculties/`.
-Après ajout : `cd template && ./scripts/sync-instances.sh`.
+Pack source (non synchronisé) : `template/demo-media/faculties/{slug}/`.
+Images runtime : `public/uploads/sites/{slug}/` sur chaque instance (et miroir
+depuis superadmin via `app.uploadMirrors`).
+Chrome partagé uniquement : `public/assets/images/logo-placeholder.*`.
 
 ## Accueil (héros & sections)
 

@@ -48,7 +48,7 @@ class AdminDashboardService
         $settings = service('settingsService')->all();
         $contactDone = isset($settings['contact.email'])
             && $settings['contact.email'] !== 'contact@example.test'
-            && ! str_contains(strtolower((string) ($settings['contact.address'] ?? '')), 'compléter');
+            && ! str_contains(strtolower(site_contact_address($settings)), 'compléter');
         $items[] = [
             'label'      => 'Renseigner les coordonnées de la faculté',
             'url'        => site_url('admin/settings/global'),

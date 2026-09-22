@@ -89,6 +89,8 @@ Une ancienne migration ajoute des colonnes `_en` aux posts pour transition. L'ar
 
 `programmes`, `staff`, `laboratories`, `research_projects`, `alumni_profiles` utilisent des slugs propres au site et des champs de publication/ordre.
 
+`programmes`, `staff` et `laboratories` exposent aussi `featured_on_home` et `home_order` pour choisir ce qui apparaît dans les aperçus de la page d’accueil.
+
 `testimonials` peut référencer facultativement `alumni_profiles` par `alumni_profile_id`, avec suppression `SET NULL`.
 
 `pages` contient les pages publiques prédéfinies. Pour la page Faculté (`key=faculty`), la section "Mot du doyen" est stockée dans `content.dean` : photo, nom, fonction, domaine, libellé, titre, paragraphes et signature. Il n'existe pas de table séparée pour ce profil.

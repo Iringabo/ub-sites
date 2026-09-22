@@ -51,13 +51,12 @@ $hasConfiguredSections = $enabledSections !== [];
 $sectionRenderOrder = $hasConfiguredSections
     ? array_values(array_filter(
         $enabledSections,
-        static fn (string $key): bool => in_array($key, $defaultSectionOrder, true) || in_array($key, ['highlights'], true),
+        static fn (string $key): bool => in_array($key, $defaultSectionOrder, true),
     ))
     : $defaultSectionOrder;
-// highlights rides inside about; ensure about appears if only highlights was stored historically
-if (in_array('highlights', $sectionRenderOrder, true) && ! in_array('about', $sectionRenderOrder, true)) {
-    $highlightPos = array_search('highlights', $sectionRenderOrder, true);
-    array_splice($sectionRenderOrder, (int) $highlightPos, 1, ['about']);
+// Legacy: highlights used to ride inside about — treat as about if stored alone.
+if (in_array('highlights', $enabledSections, true) && ! in_array('about', $sectionRenderOrder, true)) {
+    $sectionRenderOrder[] = 'about';
 }
 $sectionEnabled = static function (string $section) use ($enabledSections, $hasConfiguredSections): bool {
     if (! $hasConfiguredSections) {
@@ -178,6 +177,10 @@ $contactCtaUrl = site_public_url((string) ($contactCtaSettings['url'] ?? $contac
 $staffPreviewTitle = $blockText('staff_preview', 'title', lang('Site.pageTitles.staff'));
 $staffPreviewText = $blockText('staff_preview', 'content', '');
 $heroSlides = array_values($heroSlides ?? []);
+$heroIndicatorSize = (string) ($siteSettings['home.hero_indicator_size'] ?? service('settingsService')->get('home.hero_indicator_size', '1'));
+if (! in_array($heroIndicatorSize, ['0.75', '1', '1.25', '1.5'], true)) {
+    $heroIndicatorSize = '1';
+}
 $slideValue = static function (mixed $slide, string $field): ?string {
     if (is_array($slide)) {
         return isset($slide[$field]) ? (string) $slide[$field] : null;
@@ -200,7 +203,7 @@ $resolveSlideCta = static function (mixed $slide, string $which) use ($slideValu
 
 if ($heroSlides === []) {
     $heroSlides = [[
-        'image_path'           => 'assets/images/hero/campus-walkway.jpg',
+        'image_path'           => 'assets/images/logo-placeholder.png',
         'alt_text'             => lang('Home.defaultHeroAlt'),
         'badge'                => $homeContent?->hero_badge,
         'title'                => $homeContent?->hero_title,
@@ -214,12 +217,6 @@ if ($heroSlides === []) {
     ]];
 }
 
-$heroOverlayOpacity = (float) ($siteSettings['home.hero_overlay_opacity'] ?? 0.88);
-if ($heroOverlayOpacity > 1) {
-    $heroOverlayOpacity /= 100;
-}
-
-$heroOverlayOpacity = max(0.35, min(0.95, $heroOverlayOpacity));
 $hasCarouselControls = count($heroSlides) > 1;
 $sectionOrderIndex = array_flip($sectionRenderOrder);
 $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
@@ -228,7 +225,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 ?>
 <div class="home-sections-stack">
 <?php if ($sectionEnabled('hero')): ?>
-<section class="hero" style="order: <?= $sectionCssOrder('hero') ?>; --hero-overlay-opacity: <?= esc(number_format($heroOverlayOpacity, 2, '.', ''), 'attr') ?>">
+<section class="hero" style="order: <?= $sectionCssOrder('hero') ?>; --hero-overlay-opacity: 0.30; --hero-indicator-size: <?= esc($heroIndicatorSize, 'attr') ?>rem">
     <div
         id="homeHeroCarousel"
         class="hero-carousel carousel slide carousel-fade"
@@ -258,7 +255,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
         <div class="carousel-inner">
             <?php foreach ($heroSlides as $index => $slide): ?>
                 <?php
-                $imagePath = site_media_url($slideValue($slide, 'image_path'), 'assets/images/hero/campus-walkway.jpg');
+                $imagePath = site_media_url($slideValue($slide, 'image_path'), 'assets/images/logo-placeholder.png');
                 $altText = site_text_or_placeholder($slideValue($slide, 'alt_text'), lang('Home.heroImageFallbackAlt'));
                 $slideBadge = site_text_or_placeholder($slideValue($slide, 'badge'), $missingText);
                 $slideTitle = site_text_or_placeholder($slideValue($slide, 'title'), $missingText);
@@ -340,8 +337,8 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 <?php if (! $hasConfiguredSections || $sectionEnabled('about')): ?>
 <section id="presentation" class="section-pad bg-white" style="order: <?= $sectionCssOrder('about') ?>">
     <div class="container">
-        <div class="row align-items-center g-5">
-            <div class="col-lg-6">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
                 <span class="section-label"><?= esc($aboutLabel) ?></span>
                 <h2 class="section-title"><?= esc($aboutTitle) ?></h2>
                 <div class="divider-green"></div>
@@ -353,23 +350,6 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
                         <?= esc($aboutButtonLabel) ?>
                     </a>
                 <?php endif ?>
-            </div>
-            <div class="col-lg-6">
-                <div class="row g-3">
-                    <?php foreach ($highlights as $highlight): ?>
-                        <div class="col-6">
-                            <article class="card-faculte text-center p-3 h-100">
-                                <div class="card-icon mx-auto">
-                                    <i class="bi <?= esc($highlight->icon, 'attr') ?>"></i>
-                                </div>
-                                <p class="mb-0 fw-semibold small"><?= esc($highlight->title) ?></p>
-                                <?php if ($highlight->description): ?>
-                                    <p class="small text-muted mb-0 mt-2"><?= esc($highlight->description) ?></p>
-                                <?php endif ?>
-                            </article>
-                        </div>
-                    <?php endforeach ?>
-                </div>
             </div>
         </div>
     </div>

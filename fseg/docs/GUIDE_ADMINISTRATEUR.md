@@ -8,17 +8,21 @@ l’onglet « Version anglaise » lorsqu’il est proposé.
 
 ## Menu admin (architecture actuelle)
 
-Zones : **Accueil** (héros / sections & ordre / points forts / chiffres /
-textes des sections), **Pages du site**, **Messages**, **Comptes**,
-**Identité**, et **Plateforme** (superadmin uniquement). Les modules
-« Pages institutionnelles » et « Blocs de page » sont retirés de l’UI.
+Zones : **Accueil** (héros / sections & ordre / chiffres / textes des
+sections), **Pages du site**, **Messages**, **Comptes**, **Identité**, et
+**Plateforme** (superadmin uniquement). Les modules « Pages
+institutionnelles », « Blocs de page » et « Points forts » sont retirés de
+l’UI.
 
 Sur l’accueil, chaque slide du héros porte badge, titre, texte et boutons
 (lien via liste déroulante). L’ordre et la visibilité des sections se
-gèrent dans **Sections & ordre** (glisser-déposer).
+gèrent dans **Sections & ordre** (glisser-déposer). Le voile du carrousel
+est fixe (30 %) — plus de réglage admin.
 
-Sur l’instance centrale, choisissez une faculté dans le sélecteur avant
-d’éditer le contenu — aucun site n’est imposé silencieusement.
+Sur l’instance centrale, choisissez une faculté dans le sélecteur : le
+contenu se recharge pour cette faculté (jamais un formulaire d’édition
+d’un autre site). Les domaines autorisés ne s’éditent pas depuis
+superadmin ; les couleurs se choisissent avec un sélecteur de couleur.
 
 ## Connexion
 

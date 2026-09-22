@@ -2,7 +2,7 @@
 $pageTitle       = site_text_or_placeholder($pageTitle ?? null, lang('Site.pageTitles.default'));
 $breadcrumbTitle = site_text_or_placeholder($breadcrumbTitle ?? null, $pageTitle);
 $pageSubtitle    = trim((string) ($pageSubtitle ?? ''));
-$defaultImage    = 'assets/images/hero/campus-walkway.jpg';
+$defaultImage    = 'assets/images/logo-placeholder.png';
 $bannerImage     = site_text_or_placeholder($bannerImage ?? null, $defaultImage);
 $breadcrumbs     = $breadcrumbs ?? [
     ['label' => lang('Site.common.home'), 'url' => site_url('/')],

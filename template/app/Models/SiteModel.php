@@ -10,7 +10,7 @@ class SiteModel extends Model
     /**
      * @var list<string>
      */
-    public const THEMES = ['default', 'institutional', 'modern', 'research'];
+    public const THEMES = ['default'];
     protected $table            = 'sites';
     protected $primaryKey       = 'id';
     protected $returnType       = Site::class;
@@ -47,7 +47,7 @@ class SiteModel extends Model
         'default_locale'  => 'required|in_list[fr,en]',
         'primary_color'   => 'permit_empty|regex_match[/^#[0-9a-fA-F]{6}$/]',
         'secondary_color' => 'permit_empty|regex_match[/^#[0-9a-fA-F]{6}$/]',
-        'theme'           => 'permit_empty|in_list[default,institutional,modern,research]',
+        'theme'           => 'permit_empty|in_list[default]',
         'contact_email'   => 'permit_empty|valid_email|max_length[255]',
     ];
 }

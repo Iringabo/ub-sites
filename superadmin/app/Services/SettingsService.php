@@ -69,7 +69,10 @@ class SettingsService
             'institution.faculty_name' => $siteName,
             'institution.short_name'   => $siteShortName,
             'institution.university'   => 'Université du Burundi',
-            'contact.address'          => trim((string) ($site->address ?? '')) ?: $missing,
+            'contact.address_line'     => trim((string) ($site->address ?? '')) ?: $missing,
+            'contact.address_commune'  => $missing,
+            'contact.address_province' => $missing,
+            'contact.address_country'  => 'Burundi',
             'contact.phone'            => trim((string) ($site->phone ?? '')) ?: $missing,
             'contact.email'            => trim((string) ($site->contact_email ?? '')) ?: $missing,
             'contact.hours'            => $missing,
@@ -80,6 +83,7 @@ class SettingsService
             'seo.default_description'  => $missing,
             'seo.theme_color'          => trim((string) ($site->primary_color ?? '')) ?: '#0D9B49',
             'seo.og_image'             => 'assets/images/logo-placeholder.png',
+            'home.hero_indicator_size' => '1',
             'social.links'             => [],
         ];
     }

@@ -50,17 +50,20 @@ $oldValue = static function (string $key, ?string $current) use ($errors, $input
                             <?php endif ?>
                             <input type="file" class="form-control" name="setting_file_<?= esc(preg_replace('/[^a-zA-Z0-9_]+/', '_', $key), 'attr') ?>" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                             <p class="form-text">JPG, PNG ou WebP, 2 Mo maximum.</p>
-                        <?php elseif ($key === 'home.hero_overlay_opacity'): ?>
-                            <div class="d-flex align-items-center gap-3">
-                                <input type="range" class="form-range flex-grow-1" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>" min="0.45" max="0.95" step="0.01" value="<?= esc($value !== '' ? $value : '0.88', 'attr') ?>" data-range-output="<?= esc($id . '_output', 'attr') ?>">
-                                <output id="<?= esc($id . '_output', 'attr') ?>" class="fw-semibold"></output>
-                            </div>
                         <?php elseif ($type === 'text'): ?>
                             <textarea class="form-control<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>" rows="4"><?= esc($value) ?></textarea>
                         <?php elseif ($type === 'email'): ?>
                             <input type="email" class="form-control<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>" value="<?= esc($value, 'attr') ?>">
                         <?php elseif ($type === 'color'): ?>
                             <input type="color" class="form-control form-control-color<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>" value="<?= esc($value !== '' ? $value : '#0D9B49', 'attr') ?>">
+                        <?php elseif ($type === 'select'): ?>
+                            <select class="form-select<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>">
+                                <?php foreach (($field['options'] ?? []) as $optionValue => $optionLabel): ?>
+                                    <option value="<?= esc((string) $optionValue, 'attr') ?>" <?= (string) $value === (string) $optionValue ? 'selected' : '' ?>>
+                                        <?= esc($optionLabel) ?>
+                                    </option>
+                                <?php endforeach ?>
+                            </select>
                         <?php else: ?>
                             <input type="text" class="form-control<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>" value="<?= esc($value, 'attr') ?>">
                         <?php endif ?>

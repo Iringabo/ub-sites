@@ -23,6 +23,13 @@ $brandSubtitle = $brand['subtitle'];
 ?>
 <body class="bg-light admin-body<?= $isCentralAdmin ? ' admin-central' : '' ?>">
     <a class="skip-link" href="#contenu">Aller au contenu principal</a>
+    <div id="adminSiteLoading" class="admin-site-loading" hidden aria-live="assertive" aria-busy="false">
+        <div class="admin-site-loading-card" role="status">
+            <div class="spinner-border text-success" aria-hidden="true"></div>
+            <p class="mb-0 fw-semibold">Chargement de la faculté…</p>
+            <p class="mb-0 small text-muted">Les contenus sont mis à jour pour le site sélectionné.</p>
+        </div>
+    </div>
     <div class="admin-shell">
         <aside class="admin-sidebar collapse d-lg-flex" id="adminSidebar" aria-label="Navigation d’administration">
             <div class="admin-sidebar-inner">
@@ -98,11 +105,18 @@ $brandSubtitle = $brand['subtitle'];
                         $hasExplicitSite = service('siteResolver')->hasExplicitAdminSiteSelection();
                         $currentPath = site_url(uri_string());
                         ?>
-                        <form class="admin-site-switcher" method="post" action="<?= site_url('admin/site-selection') ?>">
+                        <form
+                            class="admin-site-switcher"
+                            method="post"
+                            action="<?= site_url('admin/site-selection') ?>"
+                            hx-post="<?= site_url('admin/site-selection') ?>"
+                            hx-swap="none"
+                            data-admin-site-switcher
+                        >
                             <?= csrf_field() ?>
                             <input type="hidden" name="return_to" value="<?= esc($currentPath, 'attr') ?>">
                             <label class="visually-hidden" for="adminSiteSwitcher">Site à administrer</label>
-                            <select class="form-select form-select-sm" id="adminSiteSwitcher" name="site_id" onchange="this.form.requestSubmit()" required>
+                            <select class="form-select form-select-sm" id="adminSiteSwitcher" name="site_id" required>
                                 <?php if ($isCentralAdmin && ! $hasExplicitSite): ?>
                                     <option value="" selected disabled>Choisir une faculté…</option>
                                 <?php endif ?>
@@ -134,6 +148,7 @@ $brandSubtitle = $brand['subtitle'];
     </div>
 
     <script src="<?= site_asset_url('assets/vendor/bootstrap/bootstrap.bundle.min.js') ?>"></script>
+    <script src="<?= site_asset_url('assets/vendor/htmx/htmx.min.js') ?>"></script>
     <?= $this->renderSection('scripts') ?>
     <script src="<?= site_asset_url('assets/js/admin.js') ?>"></script>
 </body>

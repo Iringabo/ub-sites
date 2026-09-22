@@ -71,10 +71,11 @@ class SettingsController extends BaseController
             $fields = [];
             foreach ($this->definitionsByContext()[$context] as $item) {
                 $fields[] = [
-                    'key'  => $item['key'],
-                    'label' => $item['label'],
-                    'type' => $item['type'],
-                    'value' => $values[$item['key']] ?? '',
+                    'key'     => $item['key'],
+                    'label'   => $item['label'],
+                    'type'    => $item['type'],
+                    'value'   => $values[$item['key']] ?? '',
+                    'options' => $item['options'] ?? [],
                 ];
             }
 
@@ -122,16 +123,19 @@ class SettingsController extends BaseController
                 continue;
             }
 
-            if ($key === 'home.hero_overlay_opacity' && $raw !== '') {
-                $opacity = filter_var($raw, FILTER_VALIDATE_FLOAT);
-                if ($opacity === false || $opacity < 0.45 || $opacity > 0.95) {
-                    $errors[$key] = 'L’opacité doit être comprise entre 0,45 et 0,95.';
+            if ($type === 'select') {
+                $options = $definition['options'] ?? [];
+                if ($raw === '') {
+                    $raw = array_key_first($options) ?? '';
+                }
+                if ($raw === '' || ! array_key_exists($raw, $options)) {
+                    $errors[$key] = $definition['label'] . ' contient une valeur non autorisée.';
                     $hasError = true;
                     continue;
                 }
             }
 
-            $this->upsert($model, $siteId, $key, $raw, $type, $definition['context'], $errors, $hasError);
+            $this->upsert($model, $siteId, $key, $raw, $type === 'select' ? 'string' : $type, $definition['context'], $errors, $hasError);
         }
 
         foreach ([['key' => 'assets.logo', 'file' => 'setting_file_assets_logo'], ['key' => 'seo.og_image', 'file' => 'setting_file_og_image']] as $pathDef) {
@@ -207,7 +211,10 @@ class SettingsController extends BaseController
             'institution.faculty_name' => ['label' => 'Nom complet de la faculté', 'type' => 'string', 'context' => 'institution'],
             'institution.short_name'   => ['label' => 'Sigle de la faculté', 'type' => 'string', 'context' => 'institution'],
             'institution.university'   => ['label' => 'Université', 'type' => 'string', 'context' => 'institution'],
-            'contact.address'          => ['label' => 'Adresse', 'type' => 'string', 'context' => 'contact'],
+            'contact.address_line'     => ['label' => 'Avenue / quartier', 'type' => 'string', 'context' => 'contact'],
+            'contact.address_commune'  => ['label' => 'Commune', 'type' => 'string', 'context' => 'contact'],
+            'contact.address_province' => ['label' => 'Province', 'type' => 'string', 'context' => 'contact'],
+            'contact.address_country'  => ['label' => 'Pays', 'type' => 'string', 'context' => 'contact'],
             'contact.phone'            => ['label' => 'Téléphone', 'type' => 'string', 'context' => 'contact'],
             'contact.email'            => ['label' => 'Adresse électronique', 'type' => 'email', 'context' => 'contact'],
             'contact.hours'            => ['label' => 'Horaires', 'type' => 'string', 'context' => 'contact'],
@@ -218,7 +225,12 @@ class SettingsController extends BaseController
             'seo.default_description'  => ['label' => 'Description SEO par défaut', 'type' => 'text', 'context' => 'seo'],
             'seo.theme_color'          => ['label' => 'Couleur du thème', 'type' => 'color', 'context' => 'seo'],
             'seo.og_image'             => ['label' => 'Image de partage par défaut', 'type' => 'path', 'context' => 'seo'],
-            'home.hero_overlay_opacity' => ['label' => 'Opacité du voile du carrousel', 'type' => 'string', 'context' => 'home'],
+            'home.hero_indicator_size' => ['label' => 'Taille des pastilles du carrousel d’accueil', 'type' => 'select', 'context' => 'home', 'options' => [
+                '0.75' => 'Petite (0,75 rem)',
+                '1'    => 'Moyenne (1 rem)',
+                '1.25' => 'Grande (1,25 rem)',
+                '1.5'  => 'Très grande (1,5 rem)',
+            ]],
         ];
     }
 

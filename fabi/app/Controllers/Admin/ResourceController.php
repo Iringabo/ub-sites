@@ -87,7 +87,59 @@ class ResourceController extends BaseController
             ],
             'supportsTrash' => $supportsTrash,
             'trash'         => $trash,
+            ...($resource === 'home-hero-slides' ? [
+                'heroIndicatorSize'    => $this->heroIndicatorSizeValue(),
+                'heroIndicatorOptions' => $this->heroIndicatorSizeOptions(),
+            ] : []),
         ]);
+    }
+
+    public function saveHeroIndicatorSize(): RedirectResponse|ResponseInterface
+    {
+        if ($redirect = $this->centralContentGuard('home-hero-slides')) {
+            return $redirect;
+        }
+
+        $size = trim((string) $this->request->getPost('indicator_size'));
+        $options = $this->heroIndicatorSizeOptions();
+
+        if (! array_key_exists($size, $options)) {
+            return redirect()->to('/admin/home-hero-slides')->with('error', 'Taille de pastille non autorisée.');
+        }
+
+        $siteId = (int) service('siteResolver')->activeSiteId();
+        $model = model(SettingModel::class);
+        $existing = $model->forSite($siteId)->where('key', 'home.hero_indicator_size')->first();
+        $saved = false;
+
+        try {
+            if ($existing === null) {
+                $saved = $model->skipValidation(true)->insert([
+                    'site_id' => $siteId,
+                    'class'   => 'App\\Settings\\Site',
+                    'key'     => 'home.hero_indicator_size',
+                    'value'   => $size,
+                    'type'    => 'string',
+                    'context' => 'home',
+                ]);
+            } else {
+                $saved = $model->skipValidation(true)->update((int) $existing->id, ['value' => $size]);
+            }
+        } catch (Throwable) {
+            $model->skipValidation(false);
+
+            return redirect()->to('/admin/home-hero-slides')->with('error', 'Impossible d’enregistrer la taille des pastilles.');
+        } finally {
+            $model->skipValidation(false);
+        }
+
+        if ($saved === false) {
+            return redirect()->to('/admin/home-hero-slides')->with('error', 'Impossible d’enregistrer la taille des pastilles.');
+        }
+
+        service('settingsService')->reset();
+
+        return redirect()->to('/admin/home-hero-slides')->with('message', 'La taille des pastilles du carrousel a été enregistrée.');
     }
 
     public function new(string $resource): string|RedirectResponse|ResponseInterface
@@ -559,6 +611,61 @@ class ResourceController extends BaseController
     }
 
     /**
+     * When display_order is drag-managed, assign the next order on create and
+     * keep the existing value on update if the form omits it.
+     *
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $raw
+     * @param array<string, mixed> $current
+     */
+    private function applyManagedDisplayOrder(array $config, Model $model, array &$data, array &$raw, array $current, ?int $id): void
+    {
+        foreach ($config['fields'] as $field) {
+            if (($field['name'] ?? null) !== 'display_order' || empty($field['managedByDrag'])) {
+                continue;
+            }
+
+            $posted = $data['display_order'] ?? null;
+            if ($posted !== null && $posted !== '') {
+                continue;
+            }
+
+            if ($id !== null) {
+                $data['display_order'] = (int) ($current['display_order'] ?? 0);
+                $raw['display_order'] = (string) $data['display_order'];
+                continue;
+            }
+
+            $builder = $this->siteScopedBuilder($model, $config);
+            $max = $builder->selectMax('display_order')->get()->getRowArray();
+            $next = (int) ($max['display_order'] ?? 0) + 1;
+            $data['display_order'] = $next;
+            $raw['display_order'] = (string) $next;
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function heroIndicatorSizeOptions(): array
+    {
+        return [
+            '0.75' => 'Petite (0,75 rem)',
+            '1'    => 'Moyenne (1 rem)',
+            '1.25' => 'Grande (1,25 rem)',
+            '1.5'  => 'Très grande (1,5 rem)',
+        ];
+    }
+
+    private function heroIndicatorSizeValue(): string
+    {
+        $value = (string) service('settingsService')->get('home.hero_indicator_size', '1');
+
+        return array_key_exists($value, $this->heroIndicatorSizeOptions()) ? $value : '1';
+    }
+
+    /**
      * @param array<string, mixed> $config
      */
     private function save(string $resource, array $config, ?int $id = null): RedirectResponse|ResponseInterface
@@ -568,6 +675,7 @@ class ResourceController extends BaseController
         $current = $item === null ? [] : $this->itemData($item);
 
         [$data, $raw] = $this->dataFromRequest($config, $model, $id);
+        $this->applyManagedDisplayOrder($config, $model, $data, $raw, $current, $id);
         $this->applyDerivedData($resource, $data, $raw);
         $translationFields = $this->translationFields($config);
         $translations = $this->translationsFromRequest($resource, $config, $translationFields, $data);
@@ -647,7 +755,7 @@ class ResourceController extends BaseController
 
             if ($id === null) {
                 $data['hero_media_type'] = 'image';
-                $data['hero_media_path'] = 'assets/images/hero/campus-walkway.jpg';
+                $data['hero_media_path'] = 'assets/images/logo-placeholder.png';
                 $data['hero_badge'] ??= 'Faculté';
                 $data['hero_title'] ??= 'Titre à personnaliser';
                 $data['hero_text'] ??= 'Texte à personnaliser via les slides du héros.';
@@ -704,7 +812,7 @@ class ResourceController extends BaseController
         service('contentTranslationService')->reset();
 
         return redirect()
-            ->to('/admin/' . $resource . '/' . $targetId . '/edit')
+            ->to('/admin/' . $resource)
             ->with('message', $successMessage);
     }
 
@@ -777,8 +885,21 @@ class ResourceController extends BaseController
 
         foreach ($config['defaults'] ?? [] as $name => $value) {
             if (! array_key_exists($name, $data)) {
+                // Do not reset site design/menu/sections on update when those fields are hidden from the form.
+                if ($id !== null && in_array($name, ['theme', 'theme_config', 'menu_config', 'enabled_sections'], true)) {
+                    continue;
+                }
+
                 $data[$name] = $value;
-                $raw[$name] = (string) $value;
+                $raw[$name] = is_array($value) ? json_encode($value) : (string) $value;
+            }
+        }
+
+        if (($config['key'] ?? '') === 'sites') {
+            $data['theme'] = 'default';
+            $raw['theme'] = 'default';
+            if ($id === null && empty($data['theme_config'])) {
+                $data['theme_config'] = '{"layout":"classic","hero_image":"assets/images/logo-placeholder.png"}';
             }
         }
 
@@ -934,13 +1055,6 @@ class ResourceController extends BaseController
 
                 if (($definition['type'] ?? '') === 'path' && preg_match('#^(assets|uploads)/[-a-zA-Z0-9_./]+\\.(jpg|jpeg|png|webp)$#', $value) !== 1) {
                     $errors['value'] = 'L’image doit provenir des médias publics autorisés.';
-                }
-
-                if ($key === 'home.hero_overlay_opacity') {
-                    $opacity = filter_var($value, FILTER_VALIDATE_FLOAT);
-                    if ($opacity === false || $opacity < 0.45 || $opacity > 0.95) {
-                        $errors['value'] = 'L’opacité doit être comprise entre 0,45 et 0,95.';
-                    }
                 }
             }
         }
@@ -1412,10 +1526,7 @@ class ResourceController extends BaseController
     private function themeOptions(): array
     {
         return [
-            'default'       => 'Défaut',
-            'institutional' => 'Institutionnel',
-            'modern'        => 'Moderne',
-            'research'      => 'Recherche',
+            'default' => 'Défaut',
         ];
     }
 
@@ -1466,7 +1577,10 @@ class ResourceController extends BaseController
             'institution.faculty_name' => ['label' => 'Nom complet de la faculté', 'type' => 'string', 'context' => 'institution'],
             'institution.short_name'   => ['label' => 'Sigle de la faculté', 'type' => 'string', 'context' => 'institution'],
             'institution.university'   => ['label' => 'Université', 'type' => 'string', 'context' => 'institution'],
-            'contact.address'          => ['label' => 'Adresse', 'type' => 'string', 'context' => 'contact'],
+            'contact.address_line'     => ['label' => 'Avenue / quartier', 'type' => 'string', 'context' => 'contact'],
+            'contact.address_commune'  => ['label' => 'Commune', 'type' => 'string', 'context' => 'contact'],
+            'contact.address_province' => ['label' => 'Province', 'type' => 'string', 'context' => 'contact'],
+            'contact.address_country'  => ['label' => 'Pays', 'type' => 'string', 'context' => 'contact'],
             'contact.phone'            => ['label' => 'Téléphone', 'type' => 'string', 'context' => 'contact'],
             'contact.email'            => ['label' => 'Adresse électronique', 'type' => 'email', 'context' => 'contact'],
             'contact.hours'            => ['label' => 'Horaires', 'type' => 'string', 'context' => 'contact'],
@@ -1477,7 +1591,7 @@ class ResourceController extends BaseController
             'seo.default_description'  => ['label' => 'Description SEO par défaut', 'type' => 'text', 'context' => 'seo'],
             'seo.theme_color'          => ['label' => 'Couleur du thème', 'type' => 'color', 'context' => 'seo'],
             'seo.og_image'             => ['label' => 'Image de partage par défaut', 'type' => 'path', 'context' => 'seo'],
-            'home.hero_overlay_opacity' => ['label' => 'Opacité du voile du carrousel', 'type' => 'string', 'context' => 'home'],
+            'home.hero_indicator_size' => ['label' => 'Taille des pastilles du carrousel d’accueil', 'type' => 'string', 'context' => 'home'],
         ];
     }
 
@@ -1643,10 +1757,48 @@ class ResourceController extends BaseController
             return null;
         }
 
-        $resources[$resource]['key'] = $resource;
-        $resources[$resource]['iconOptions'] = $this->iconOptions();
+        $config = $resources[$resource];
+        $config['key'] = $resource;
+        $config['iconOptions'] = $this->iconOptions();
 
-        return $resources[$resource];
+        if ($resource === 'sites') {
+            $config = $this->normalizeSitesAdminConfig($config);
+        }
+
+        return $config;
+    }
+
+    /**
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeSitesAdminConfig(array $config): array
+    {
+        $hideHostnames = service('adminAccess')->isCentralAdminInstance();
+        $hidden = ['theme', 'theme_config', 'menu_config', 'enabled_sections', 'address'];
+        if ($hideHostnames) {
+            $hidden[] = 'hostnames';
+        }
+
+        $config['sections'] = array_values(array_filter(array_map(
+            static function (array $section) use ($hidden): ?array {
+                $section['fields'] = array_values(array_filter(
+                    $section['fields'],
+                    static fn (string $field): bool => ! in_array($field, $hidden, true),
+                ));
+
+                return $section['fields'] === [] ? null : $section;
+            },
+            $config['sections'] ?? [],
+        )));
+
+        $config['fields'] = array_values(array_filter(
+            $config['fields'] ?? [],
+            static fn (array $field): bool => ! in_array((string) ($field['name'] ?? ''), $hidden, true),
+        ));
+
+        return $config;
     }
 
     /**
@@ -1784,7 +1936,7 @@ class ResourceController extends BaseController
                     ['name' => 'role', 'label' => 'Rôle', 'type' => 'text', 'nullable' => true, 'max' => 255],
                     ['name' => 'email', 'label' => 'Adresse électronique', 'type' => 'email', 'nullable' => true, 'max' => 255],
                     ['name' => 'biography', 'label' => 'Biographie', 'type' => 'textarea', 'nullable' => true],
-                    ...$this->orderedPublishedFields(),
+                    ...$this->homeFeaturedFields(),
                 ],
             ],
             'laboratories' => [
@@ -1908,7 +2060,7 @@ class ResourceController extends BaseController
                 'permission'     => 'home.manage',
                 'publishedField' => 'is_published',
                 'search'         => ['section', 'label'],
-                'orderBy'        => ['section' => 'ASC', 'display_order' => 'ASC'],
+                'orderBy'        => ['display_order' => 'ASC', 'section' => 'ASC', 'id' => 'ASC'],
                 'fields'         => [
                     ['name' => 'section', 'label' => 'Section', 'type' => 'text', 'required' => true, 'max' => 80, 'list' => true],
                     ['name' => 'label', 'label' => 'Libellé', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
@@ -1959,8 +2111,8 @@ class ResourceController extends BaseController
                 'sections'         => [
                     ['title' => 'Identification', 'fields' => ['identifier', 'name', 'slug', 'status', 'default_locale']],
                     ['title' => 'Domaines', 'fields' => ['hostnames']],
-                    ['title' => 'Thème et design', 'fields' => ['logo', 'primary_color', 'secondary_color', 'theme', 'theme_config', 'menu_config', 'enabled_sections']],
-                    ['title' => 'Coordonnées', 'fields' => ['contact_email', 'phone', 'address']],
+                    ['title' => 'Identité visuelle', 'fields' => ['logo', 'primary_color', 'secondary_color']],
+                    ['title' => 'Coordonnées', 'fields' => ['contact_email', 'phone']],
                 ],
                 'defaults'         => [
                     'status'           => 'active',
@@ -1968,9 +2120,9 @@ class ResourceController extends BaseController
                     'primary_color'    => '#0D9B49',
                     'secondary_color'  => '#0B6F38',
                     'theme'            => 'default',
-                    'theme_config'     => '{"layout":"classic","hero_image":"assets/images/hero/campus-walkway.jpg"}',
+                    'theme_config'     => '{"layout":"classic","hero_image":"assets/images/logo-placeholder.png"}',
                     'menu_config'      => '{"items":["faculte","formations","recherche","corps-enseignant","actualites","alumni","contact"]}',
-                    'enabled_sections' => ['hero', 'statistics', 'about', 'highlights', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'contact_cta'],
+                    'enabled_sections' => ['hero', 'statistics', 'about', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'contact_cta'],
                 ],
                 'fields'           => [
                     ['name' => 'identifier', 'label' => 'Identifiant interne', 'type' => 'text', 'required' => true, 'max' => 80, 'pattern' => '/^[a-z0-9_.-]+$/', 'patternMessage' => 'L’identifiant contient uniquement minuscules, chiffres, points, tirets et underscores.', 'list' => true],
@@ -1980,15 +2132,10 @@ class ResourceController extends BaseController
                     ['name' => 'status', 'label' => 'État', 'type' => 'select', 'required' => true, 'options' => ['active' => 'Actif', 'inactive' => 'Inactif'], 'default' => 'active', 'list' => true],
                     ['name' => 'default_locale', 'label' => 'Langue par défaut', 'type' => 'select', 'required' => true, 'options' => ['fr' => 'Français', 'en' => 'Anglais'], 'default' => 'fr'],
                     ['name' => 'logo', 'label' => 'Logo', 'type' => 'image', 'folder' => 'sites', 'nullable' => true],
-                    ['name' => 'primary_color', 'label' => 'Couleur principale', 'type' => 'text', 'nullable' => true, 'max' => 7, 'pattern' => '/^#[0-9a-fA-F]{6}$/', 'patternMessage' => 'La couleur principale doit utiliser le format #RRGGBB.'],
-                    ['name' => 'secondary_color', 'label' => 'Couleur secondaire', 'type' => 'text', 'nullable' => true, 'max' => 7, 'pattern' => '/^#[0-9a-fA-F]{6}$/', 'patternMessage' => 'La couleur secondaire doit utiliser le format #RRGGBB.'],
-                    ['name' => 'theme', 'label' => 'Thème', 'type' => 'select', 'required' => true, 'options' => $this->themeOptions(), 'default' => 'default', 'list' => true],
-                    ['name' => 'theme_config', 'label' => 'Configuration du thème', 'type' => 'json_text', 'nullable' => true],
-                    ['name' => 'menu_config', 'label' => 'Configuration du menu', 'type' => 'json_text', 'nullable' => true],
-                    ['name' => 'enabled_sections', 'label' => 'Sections activées', 'type' => 'json_list', 'nullable' => true],
+                    ['name' => 'primary_color', 'label' => 'Couleur principale', 'type' => 'color', 'nullable' => true, 'max' => 7, 'pattern' => '/^#[0-9a-fA-F]{6}$/', 'patternMessage' => 'La couleur principale doit utiliser le format #RRGGBB.'],
+                    ['name' => 'secondary_color', 'label' => 'Couleur secondaire', 'type' => 'color', 'nullable' => true, 'max' => 7, 'pattern' => '/^#[0-9a-fA-F]{6}$/', 'patternMessage' => 'La couleur secondaire doit utiliser le format #RRGGBB.'],
                     ['name' => 'contact_email', 'label' => 'Adresse électronique', 'type' => 'email', 'nullable' => true, 'max' => 255],
                     ['name' => 'phone', 'label' => 'Téléphone', 'type' => 'text', 'nullable' => true, 'max' => 80],
-                    ['name' => 'address', 'label' => 'Adresse', 'type' => 'text', 'nullable' => true, 'max' => 500],
                 ],
             ],
             'settings' => [
@@ -2042,7 +2189,7 @@ class ResourceController extends BaseController
     {
         return [
             ...$extra,
-            ['name' => 'display_order', 'label' => 'Ordre d’affichage', 'type' => 'integer', 'required' => true, 'default' => 0, 'list' => true],
+            ['name' => 'display_order', 'label' => 'Ordre d’affichage', 'type' => 'integer', 'required' => true, 'default' => 0, 'list' => true, 'managedByDrag' => true],
             ['name' => 'is_published', 'label' => 'Publié', 'type' => 'boolean', 'default' => 1, 'list' => true],
         ];
     }
@@ -2053,7 +2200,7 @@ class ResourceController extends BaseController
     private function homeFeaturedFields(): array
     {
         return [
-            ['name' => 'display_order', 'label' => 'Ordre d’affichage', 'type' => 'integer', 'required' => true, 'default' => 0, 'list' => true],
+            ['name' => 'display_order', 'label' => 'Ordre d’affichage', 'type' => 'integer', 'required' => true, 'default' => 0, 'list' => true, 'managedByDrag' => true],
             ['name' => 'featured_on_home', 'label' => 'Mis en avant sur l’accueil', 'type' => 'boolean', 'default' => 0, 'list' => true],
             ['name' => 'home_order', 'label' => 'Ordre sur l’accueil', 'type' => 'integer', 'nullable' => true, 'list' => true],
             ['name' => 'is_published', 'label' => 'Publié', 'type' => 'boolean', 'default' => 1, 'list' => true],

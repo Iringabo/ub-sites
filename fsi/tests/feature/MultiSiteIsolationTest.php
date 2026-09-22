@@ -407,8 +407,8 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
             'default_locale'   => 'fr',
             'primary_color'    => '#14532D',
             'secondary_color'  => '#0F766E',
-            'theme'            => 'research',
-            'theme_config'     => '{"layout":"research","hero_image":"assets/images/hero/research-team.jpg"}',
+            'theme'            => 'default',
+            'theme_config'     => '{"layout":"classic","hero_image":"assets/images/hero/research-team.jpg"}',
             'menu_config'      => '{"items":["faculte","formations","recherche","contact"]}',
             'enabled_sections' => ['hero', 'programmes_preview', 'research_labs', 'contact_cta'],
             'contact_email'    => 'fsi-platform@example.test',
@@ -419,7 +419,7 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $site = $this->db->table('sites')->where('id', $siteId)->get()->getRowArray();
         $this->assertIsArray($site);
 
-        $this->assertSame('research', $site['theme']);
+        $this->assertSame('default', $site['theme']);
         $this->assertSame(1, $this->db->table('home_content')->where('site_id', $siteId)->countAllResults());
         $this->assertGreaterThanOrEqual(7, $this->db->table('pages')->where('site_id', $siteId)->countAllResults());
         $this->assertGreaterThanOrEqual(5, $this->db->table('content_blocks')->where('site_id', $siteId)->countAllResults());
@@ -435,7 +435,7 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $public->assertOK();
         $public->assertSee('Bienvenue sur le site de FSI_PLATFORM');
         $publicBody = (string) $public->response()->getBody();
-        $this->assertStringContainsString('theme-research', $publicBody);
+        $this->assertStringContainsString('theme-default', $publicBody);
         $this->assertStringContainsString('--green: #14532D', $publicBody);
     }
 
@@ -462,10 +462,10 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $droitSiteId = $this->createSecondSite();
 
         model(SiteModel::class, false)->update($droitSiteId, [
-            'theme'           => 'modern',
+            'theme'           => 'default',
             'primary_color'   => '#1D4ED8',
             'secondary_color' => '#7C3AED',
-            'theme_config'    => '{"layout":"compact"}',
+            'theme_config'    => '{"layout":"classic"}',
         ]);
 
         $this->db->table('content_blocks')->insert([
@@ -488,7 +488,7 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
 
         $droit->assertOK();
         $droitBody = (string) $droit->response()->getBody();
-        $this->assertStringContainsString('theme-modern', $droitBody);
+        $this->assertStringContainsString('theme-default', $droitBody);
         $this->assertStringContainsString('--green: #1D4ED8', $droitBody);
         $this->assertStringContainsString('Bloc droit isolé', $droitBody);
         $this->assertStringContainsString('Contenu visible uniquement sur le site droit.', $droitBody);
@@ -512,11 +512,12 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
     {
         $foreignSiteId = $this->createSecondSite();
         $now = date('Y-m-d H:i:s');
-        $this->db->table('home_highlights')->insert([
+        $this->db->table('site_stats')->insert([
             'site_id'       => $foreignSiteId,
-            'icon'          => 'bi-shield',
-            'title'         => 'Atout isolé réordre',
-            'description'   => 'Ne doit pas changer.',
+            'section'       => 'home_main',
+            'label'         => 'Stat isolée réordre',
+            'value'         => '9',
+            'suffix'        => '',
             'display_order' => 77,
             'is_published'  => 1,
             'created_at'    => $now,
@@ -525,7 +526,7 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $foreignId = (int) $this->db->insertID();
         $this->assertGreaterThan(0, $foreignId);
 
-        $own = $this->db->table('home_highlights')
+        $own = $this->db->table('site_stats')
             ->select('id')
             ->where('site_id', 1)
             ->orderBy('display_order', 'ASC')
@@ -536,11 +537,11 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $this->assertCount(2, $ownIds);
 
         $this->actingAs($this->superAdminUser());
-        $this->post('/admin/home-highlights/reorder', $this->withCsrf([
+        $this->post('/admin/site-stats/reorder', $this->withCsrf([
             'ids' => array_merge([$ownIds[1], $foreignId, $ownIds[0]]),
         ]))->assertJSONExact(['ok' => true]);
 
-        $foreign = $this->db->table('home_highlights')->where('id', $foreignId)->get()->getRowArray();
+        $foreign = $this->db->table('site_stats')->where('id', $foreignId)->get()->getRowArray();
         $this->assertSame('77', (string) $foreign['display_order']);
     }
 

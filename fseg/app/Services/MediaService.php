@@ -127,6 +127,60 @@ class MediaService
         return $relativePath;
     }
 
+    /**
+     * Write raw image bytes under uploads/sites/{slug}/{folder}/ and mirror to the faculty instance.
+     */
+    public function storeBinaryForSite(string $siteSlug, string $folder, string $binary, string $extension = 'jpg'): ?string
+    {
+        $siteSlug = trim(preg_replace('/[^a-z0-9-]/', '-', strtolower($siteSlug)) ?? '', '-');
+        $folder   = trim($folder, '/');
+        $extension = strtolower($extension) === 'jpeg' ? 'jpg' : strtolower($extension);
+
+        if ($siteSlug === '' || preg_match('/^[a-z0-9_-]+$/', $folder) !== 1) {
+            return null;
+        }
+
+        if (! in_array($extension, $this->allowedExtensions, true)) {
+            return null;
+        }
+
+        $fileName = bin2hex(random_bytes(16)) . '.' . $extension;
+        $relativeDirectory = 'uploads/sites/' . $siteSlug . '/' . $folder;
+        $relativePath = $relativeDirectory . '/' . $fileName;
+        $primaryDirectory = $this->primaryPublicRoot() . $relativeDirectory;
+
+        if (! is_dir($primaryDirectory) && ! mkdir($primaryDirectory, 0755, true) && ! is_dir($primaryDirectory)) {
+            return null;
+        }
+
+        $fullPath = $primaryDirectory . '/' . $fileName;
+        if (@file_put_contents($fullPath, $binary) === false) {
+            return null;
+        }
+
+        $this->mirrorRelativeFile($relativePath, $siteSlug);
+
+        return $relativePath;
+    }
+
+    /**
+     * Copy an existing local image file into uploads/sites/{slug}/{folder}/.
+     */
+    public function storeLocalFileForSite(string $siteSlug, string $folder, string $absoluteSourcePath): ?string
+    {
+        if (! is_file($absoluteSourcePath)) {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo($absoluteSourcePath, PATHINFO_EXTENSION) ?: 'jpg');
+        $binary = (string) file_get_contents($absoluteSourcePath);
+        if ($binary === '') {
+            return null;
+        }
+
+        return $this->storeBinaryForSite($siteSlug, $folder, $binary, $extension);
+    }
+
     public function deletePublicPath(?string $path): void
     {
         $path = trim((string) $path);

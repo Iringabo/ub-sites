@@ -72,7 +72,12 @@ final class SuperadminFacultySelectorTest extends CIUnitTestCase
 
         // Le formulaire de sélection est bien présent et cible la route dédiée.
         $result->assertSee('admin-site-switcher');
+        $result->assertSee('data-admin-site-switcher');
+        $result->assertSee('adminSiteLoading');
+        $result->assertSee('Chargement de la faculté');
         $result->assertSee('action="' . site_url('admin/site-selection') . '"');
+        // CSP script-src-attr is 'none': inline onchange would never run in the browser.
+        $this->assertStringNotContainsString('onchange=', $result->getBody());
         // Les deux facultés sont proposées comme options (valeur = id du site).
         $result->assertSee('value="' . $this->defaultSiteId . '"');
         $result->assertSee('value="' . $this->secondSiteId . '"');
@@ -414,6 +419,38 @@ final class SuperadminFacultySelectorTest extends CIUnitTestCase
 
         $result->assertRedirect();
         $this->assertStringContainsString('/admin/users', (string) $result->response()->getHeaderLine('Location'));
+    }
+
+    public function testSiteSelectionFromEditUrlLandsOnModuleIndex(): void
+    {
+        $this->actingAs($this->superAdminUser());
+        $returnTo = site_url('admin/programmes/12/edit');
+
+        $result = $this->post('/admin/site-selection', $this->withCsrf([
+            'site_id'   => (string) $this->secondSiteId,
+            'return_to' => $returnTo,
+        ]));
+
+        $result->assertRedirect();
+        $location = (string) $result->response()->getHeaderLine('Location');
+        $this->assertSame(site_url('admin/programmes'), $location);
+    }
+
+    public function testSiteSelectionHtmxSetsRedirectHeader(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $result = $this->withHeaders([
+            'HX-Request' => 'true',
+        ])->post('/admin/site-selection', $this->withCsrf([
+            'site_id'   => (string) $this->secondSiteId,
+            'return_to' => site_url('admin/home-hero-slides/3/edit'),
+        ]));
+
+        $this->assertSame(204, $result->response()->getStatusCode());
+        $location = (string) $result->response()->getHeaderLine('HX-Redirect');
+        $this->assertStringContainsString('/admin/home-hero-slides', $location);
+        $this->assertStringNotContainsString('/edit', $location);
     }
 
     public function testRetiredPagesModuleRedirectsAway(): void

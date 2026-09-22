@@ -46,7 +46,7 @@ $footerItems = [
             <div class="col-lg-3 col-6">
                 <h6><?= esc(lang('Site.footer.contact')) ?></h6>
                 <address>
-                    <div class="footer-contact-item"><i class="bi bi-geo-alt"></i><span><?= esc(site_text_or_placeholder($siteSettings['contact.address'] ?? null)) ?></span></div>
+                    <div class="footer-contact-item"><i class="bi bi-geo-alt"></i><span><?= esc(site_text_or_placeholder(site_contact_address($siteSettings))) ?></span></div>
                     <div class="footer-contact-item"><i class="bi bi-telephone"></i><span><?= esc(site_text_or_placeholder($siteSettings['contact.phone'] ?? null)) ?></span></div>
                     <div class="footer-contact-item"><i class="bi bi-envelope"></i><span><?= esc(site_text_or_placeholder($siteSettings['contact.email'] ?? null)) ?></span></div>
                     <div class="footer-contact-item"><i class="bi bi-clock"></i><span><?= esc(site_text_or_placeholder($siteSettings['contact.hours'] ?? null)) ?></span></div>

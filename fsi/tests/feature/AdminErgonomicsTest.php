@@ -46,10 +46,11 @@ final class AdminErgonomicsTest extends CIUnitTestCase
 
         $result->assertOK();
         $result->assertSee('Coordonnées &amp; identité');
-        foreach (['Institution', 'Coordonnées', 'Pied de page', 'Identité visuelle', 'Référencement (SEO)'] as $section) {
+        foreach (['Institution', 'Coordonnées', 'Pied de page', 'Identité visuelle', 'Référencement (SEO)', 'Accueil'] as $section) {
             $result->assertSee($section);
         }
         $result->assertSee('Titre SEO par défaut');
+        $result->assertSee('Taille des pastilles du carrousel');
     }
 
     public function testSettingsUpdatePersistsAValue(): void
@@ -60,7 +61,10 @@ final class AdminErgonomicsTest extends CIUnitTestCase
             'setting_institution_faculty_name' => 'Faculté de test des coordonnées',
             'setting_institution_short_name'   => 'FT',
             'setting_institution_university'   => 'Université du Burundi',
-            'setting_contact_address'          => 'Bujumbura',
+            'setting_contact_address_line'     => 'Avenue de la Révolution',
+            'setting_contact_address_commune'  => 'Mukaza',
+            'setting_contact_address_province' => 'Bujumbura Mairie',
+            'setting_contact_address_country'  => 'Burundi',
             'setting_contact_phone'            => '+257 00 00 00 00',
             'setting_contact_email'            => 'contact@example.test',
             'setting_contact_hours'            => 'Lun-Ven 8h-17h',
@@ -69,7 +73,6 @@ final class AdminErgonomicsTest extends CIUnitTestCase
             'setting_seo_default_title'        => 'Titre SEO de test',
             'setting_seo_default_description'  => 'Description SEO de test.',
             'setting_seo_theme_color'          => '#0D9B49',
-            'setting_home_hero_overlay_opacity'=> '0.80',
         ]))->assertRedirect();
 
         $row = $this->db->table('settings')
@@ -118,7 +121,10 @@ final class AdminErgonomicsTest extends CIUnitTestCase
                 'setting_institution_faculty_name' => 'Faculté de test des coordonnées',
                 'setting_institution_short_name'   => 'FT',
                 'setting_institution_university'   => 'Université du Burundi',
-                'setting_contact_address'          => 'Bujumbura',
+                'setting_contact_address_line'     => 'Avenue de la Révolution',
+                'setting_contact_address_commune'  => 'Mukaza',
+                'setting_contact_address_province' => 'Bujumbura Mairie',
+                'setting_contact_address_country'  => 'Burundi',
                 'setting_contact_phone'            => '+257 00 00 00 00',
                 'setting_contact_email'            => 'contact@example.test',
                 'setting_contact_hours'            => 'Lun-Ven 8h-17h',
@@ -127,7 +133,6 @@ final class AdminErgonomicsTest extends CIUnitTestCase
                 'setting_seo_default_title'        => 'Titre SEO de test',
                 'setting_seo_default_description'  => 'Description SEO de test.',
                 'setting_seo_theme_color'          => '#0D9B49',
-                'setting_home_hero_overlay_opacity'=> '0.80',
             ]));
 
             $response->assertRedirect();
@@ -166,18 +171,18 @@ final class AdminErgonomicsTest extends CIUnitTestCase
         $this->actingAs($this->superAdminUser());
 
         $ids = array_map('intval', array_column(
-            $this->db->table('home_highlights')->select('id')->orderBy('id', 'ASC')->limit(2)->get()->getResultArray(),
+            $this->db->table('programmes')->select('id')->orderBy('id', 'ASC')->limit(2)->get()->getResultArray(),
             'id',
         ));
         $this->assertNotEmpty($ids);
 
-        $this->post('/admin/home-highlights/bulk', $this->withCsrf([
+        $this->post('/admin/programmes/bulk', $this->withCsrf([
             'bulk_action' => 'delete',
             'ids'         => $ids,
         ]))->assertRedirect();
 
         foreach ($ids as $id) {
-            $row = $this->db->table('home_highlights')->where('id', $id)->get()->getRowArray();
+            $row = $this->db->table('programmes')->where('id', $id)->get()->getRowArray();
             $this->assertNotEmpty($row['deleted_at']);
         }
     }
@@ -187,7 +192,13 @@ final class AdminErgonomicsTest extends CIUnitTestCase
         $this->actingAs($this->superAdminUser());
 
         $ids = array_map('intval', array_column(
-            $this->db->table('programmes')->select('id')->orderBy('id', 'ASC')->limit(1)->get()->getResultArray(),
+            $this->db->table('programmes')
+                ->select('id')
+                ->where('deleted_at', null)
+                ->orderBy('id', 'ASC')
+                ->limit(1)
+                ->get()
+                ->getResultArray(),
             'id',
         ));
         $this->assertNotEmpty($ids);
@@ -199,6 +210,7 @@ final class AdminErgonomicsTest extends CIUnitTestCase
         $copies = $this->db->table('programmes')
             ->where('title', $source['title'])
             ->where('id !=', $sourceId)
+            ->where('deleted_at', null)
             ->get()
             ->getResultArray();
         $this->assertNotEmpty($copies);
@@ -212,16 +224,16 @@ final class AdminErgonomicsTest extends CIUnitTestCase
     {
         $this->actingAs($this->superAdminUser());
 
-        $rows = $this->db->table('home_highlights')->select('id')->orderBy('display_order', 'ASC')->limit(3)->get()->getResultArray();
+        $rows = $this->db->table('site_stats')->select('id')->orderBy('display_order', 'ASC')->limit(3)->get()->getResultArray();
         $ids = array_map('intval', array_column($rows, 'id'));
         $this->assertCount(3, $ids);
 
         $reversed = array_reverse($ids);
-        $result = $this->post('/admin/home-highlights/reorder', $this->withCsrf(['ids' => $reversed]));
+        $result = $this->post('/admin/site-stats/reorder', $this->withCsrf(['ids' => $reversed]));
         $result->assertJSONExact(['ok' => true]);
 
         foreach ($reversed as $index => $id) {
-            $row = $this->db->table('home_highlights')->where('id', $id)->get()->getRowArray();
+            $row = $this->db->table('site_stats')->where('id', $id)->get()->getRowArray();
             $this->assertSame((string) ($index + 1), (string) $row['display_order']);
         }
     }
@@ -230,7 +242,7 @@ final class AdminErgonomicsTest extends CIUnitTestCase
     {
         $this->actingAs($this->superAdminUser());
 
-        $result = $this->get('/admin/home-highlights');
+        $result = $this->get('/admin/programmes');
 
         $result->assertOK();
         $body = (string) $result->response()->getBody();
@@ -238,6 +250,20 @@ final class AdminErgonomicsTest extends CIUnitTestCase
         $this->assertStringContainsString('form="adminBulkForm"', $body);
         $this->assertStringContainsString('data-sortable', $body);
         $this->assertStringContainsString('data-sortable-url', $body);
+        $this->assertStringContainsString('data-order-cell', $body);
+        $this->assertStringContainsString('Glissez les lignes', $body);
+    }
+
+    public function testSiteStatsIndexIsDragOrderable(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $result = $this->get('/admin/site-stats');
+        $result->assertOK();
+        $body = html_entity_decode((string) $result->response()->getBody(), ENT_QUOTES | ENT_HTML5);
+        $this->assertStringContainsString('data-sortable', $body);
+        $this->assertStringContainsString('admin/site-stats/reorder', $body);
+        $this->assertStringContainsString('data-order-cell', $body);
     }
 
     public function testSettingsOverviewRequiresPermission(): void

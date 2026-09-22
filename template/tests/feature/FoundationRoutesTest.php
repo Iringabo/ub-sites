@@ -67,8 +67,7 @@ final class FoundationRoutesTest extends CIUnitTestCase
         $body = (string) $result->response()->getBody();
         $this->assertStringContainsString('id="homeHeroCarousel"', $body);
         $this->assertStringContainsString('data-site-hero-carousel', $body);
-        $this->assertStringContainsString('campus-walkway.jpg', $body);
-        $this->assertStringContainsString('economics-classroom.jpg', $body);
+        $this->assertStringContainsString('logo-placeholder.png', $body);
         $this->assertStringContainsString('Image précédente', $body);
         $this->assertStringContainsString('Image suivante', $body);
         $this->assertStringNotContainsString('<video class="hero-video"', $body);

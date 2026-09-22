@@ -181,6 +181,8 @@ class HomePageService
         return service('contentTranslationService')->records('staff', model(StaffModel::class, false)
             ->forSite()
             ->where('is_published', 1)
+            ->where('featured_on_home', 1)
+            ->orderBy('home_order', 'ASC')
             ->orderBy('display_order', 'ASC')
             ->orderBy('id', 'ASC')
             ->findAll(4));

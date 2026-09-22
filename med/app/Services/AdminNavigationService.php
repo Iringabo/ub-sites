@@ -56,7 +56,6 @@ class AdminNavigationService
             'links' => [
                 ['key' => 'home-hero-slides', 'label' => 'Héros (slides)', 'permissions' => 'home.manage', 'icon' => 'bi-images'],
                 ['key' => 'home-sections', 'label' => 'Sections & ordre', 'permissions' => 'home.manage', 'icon' => 'bi-list-ol'],
-                ['key' => 'home-highlights', 'label' => 'Points forts', 'permissions' => 'home.manage', 'icon' => 'bi-stars'],
                 ['key' => 'site-stats', 'label' => 'Chiffres clés', 'permissions' => 'home.manage', 'icon' => 'bi-bar-chart'],
                 ['key' => 'home-content', 'label' => 'Textes des sections', 'permissions' => 'home.manage', 'icon' => 'bi-layout-text-window'],
             ],
@@ -121,7 +120,7 @@ class AdminNavigationService
      */
     public function retiredResourceKeys(): array
     {
-        return ['pages', 'content-blocks'];
+        return ['pages', 'content-blocks', 'home-highlights'];
     }
 
     /**

@@ -8,17 +8,21 @@ l’onglet « Version anglaise » lorsqu’il est proposé.
 
 ## Menu admin (architecture actuelle)
 
-Zones : **Accueil** (héros / sections & ordre / points forts / chiffres /
-textes des sections), **Pages du site**, **Messages**, **Comptes**,
-**Identité**, et **Plateforme** (superadmin uniquement). Les modules
-« Pages institutionnelles » et « Blocs de page » sont retirés de l’UI.
+Zones : **Accueil** (héros / sections & ordre / chiffres / textes des
+sections), **Pages du site**, **Messages**, **Comptes**, **Identité**, et
+**Plateforme** (superadmin uniquement). Les modules « Pages
+institutionnelles », « Blocs de page » et « Points forts » sont retirés de
+l’UI.
 
 Sur l’accueil, chaque slide du héros porte badge, titre, texte et boutons
 (lien via liste déroulante). L’ordre et la visibilité des sections se
-gèrent dans **Sections & ordre** (glisser-déposer).
+gèrent dans **Sections & ordre** (glisser-déposer). Le voile du carrousel
+est fixe (30 %) — plus de réglage admin.
 
-Sur l’instance centrale, choisissez une faculté dans le sélecteur avant
-d’éditer le contenu — aucun site n’est imposé silencieusement.
+Sur l’instance centrale, choisissez une faculté dans le sélecteur : le
+contenu se recharge pour cette faculté (jamais un formulaire d’édition
+d’un autre site). Les domaines autorisés ne s’éditent pas depuis
+superadmin ; les couleurs se choisissent avec un sélecteur de couleur.
 
 ## Connexion
 
@@ -61,6 +65,16 @@ institutionnelles, blocs de page, historique.
 ### Communauté et recherche
 
 Personnel, alumni, témoignages, laboratoires, publications, projets.
+
+Pour peupler localement une faculté « comme terminée » (contenu + images
+isolées par site) : depuis `superadmin/`, `php spark site:seed-demo --force`
+(voir `docs/LOCAL_OPERATIONS.md`).
+
+Pour l’aperçu sur l’accueil : cochez **Mis en avant sur l’accueil** (et
+éventuellement **Ordre sur l’accueil**) sur les formations, laboratoires et
+membres du personnel concernés. Pour les actualités / événements, utilisez
+**Mettre en avant sur l’accueil**. L’accueil affiche au plus quatre personnes
+et trois actualités/événements mis en avant.
 
 Les projets et laboratoires sont indépendants. Les formations ne sont pas
 liées obligatoirement au personnel. Un témoignage peut, ou non, pointer vers

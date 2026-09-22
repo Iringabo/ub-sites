@@ -1,6 +1,7 @@
 <?php
 
 use App\Database\Seeds\TemplateStarterSeeder;
+use App\Services\HomePageService;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
@@ -42,7 +43,6 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         foreach ([
             '/admin/home-content'      => 'Textes des sections',
             '/admin/home-hero-slides'  => 'Héros (slides)',
-            '/admin/home-highlights'   => 'Atouts de l’accueil',
             '/admin/site-stats'        => 'Statistiques',
             '/admin/programmes'        => 'Formations',
             '/admin/staff'             => 'Personnel',
@@ -52,7 +52,6 @@ final class AdminResourceCrudTest extends CIUnitTestCase
             '/admin/timeline-items'    => 'Historique',
             '/admin/alumni-profiles'   => 'Profils alumni',
             '/admin/testimonials'      => 'Témoignages',
-            '/admin/pages'             => 'Pages modifiables',
             '/admin/settings'          => 'Paramètres',
         ] as $uri => $expectedText) {
             $result = $this->get($uri);
@@ -243,14 +242,7 @@ final class AdminResourceCrudTest extends CIUnitTestCase
             'display_order' => '25',
             'is_published'  => '1',
         ]))->assertRedirect();
-        $highlight = $this->db->table('home_highlights')->where('title', 'Atout Phase 5')->get()->getRowArray();
-        $this->assertIsArray($highlight);
-
-        $highlightEdit = $this->get('/admin/home-highlights/' . $highlight['id'] . '/edit');
-        $highlightEdit->assertOK();
-        $highlightEdit->assertSee('admin-icon-picker');
-        $highlightEdit->assertSee('Atout');
-        $highlightEdit->assertDontSee('Icône Bootstrap');
+        $this->assertSame(0, $this->db->table('home_highlights')->where('title', 'Atout Phase 5')->countAllResults());
 
         $this->post('/admin/site-stats', $this->withCsrf([
             'section'       => 'home_main',
@@ -306,39 +298,8 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         $this->assertIsArray($page);
 
         $edit = $this->get('/admin/pages/' . $page['id'] . '/edit');
-        $edit->assertOK();
-        $edit->assertSee('Sous-titre du bandeau');
-        $edit->assertDontSee('{&quot;banner_subtitle&quot;');
-
-        $this->post('/admin/pages/' . $page['id'], $this->withCsrf([
-            'key'                                            => 'posts',
-            'title'                                          => 'Actualités et événements Phase 5',
-            'slug'                                           => 'actualites',
-            'page_content_banner_subtitle'                   => 'Nouvelles vérifiées de la faculté',
-            'seo_title'                                      => 'Actualités Phase 5',
-            'seo_description'                                => 'Description Phase 5',
-            'is_published'                                   => '1',
-            'translation_en_page_content_banner_subtitle'    => 'Verified faculty updates',
-            'translation_en_title'                           => 'News and events',
-            'translation_en_seo_title'                       => 'News Phase 5',
-            'translation_en_seo_description'                 => 'Phase 5 description',
-        ]))->assertRedirect();
-
-        $updated = $this->db->table('pages')->where('id', $page['id'])->get()->getRowArray();
-        $content = json_decode((string) $updated['content'], true);
-        $this->assertSame('Nouvelles vérifiées de la faculté', $content['banner_subtitle'] ?? null);
-
-        $translation = $this->db->table('content_translations')
-            ->where('resource_type', 'pages')
-            ->where('resource_id', $page['id'])
-            ->where('locale', 'en')
-            ->where('field', 'content')
-            ->get()
-            ->getRowArray();
-
-        $this->assertIsArray($translation);
-        $translatedContent = json_decode((string) $translation['value'], true);
-        $this->assertSame('Verified faculty updates', $translatedContent['banner_subtitle'] ?? null);
+        $edit->assertRedirect();
+        $edit->assertSessionHas('error');
     }
 
     public function testAdminRejectsUnsafeExternalPublicationUrl(): void
@@ -358,6 +319,59 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         $result->assertRedirect();
         $result->assertSessionHas('errors');
         $this->assertSame(0, $this->db->table('publications')->where('title', 'Publication URL dangereuse')->countAllResults());
+    }
+
+    public function testStaffHomeFeatureFieldsControlHomepagePreview(): void
+    {
+        $this->actingAs($this->superAdminUser('phase5-staff-home@example.test', 'phase5staffhome'));
+
+        $form = $this->get('/admin/staff/new');
+        $form->assertOK();
+        $form->assertSee('Mis en avant sur l’accueil');
+        $form->assertSee('Ordre sur l’accueil');
+
+        $this->post('/admin/staff', $this->withCsrf([
+            'category'         => 'enseignant',
+            'name'             => 'Personne mise en avant',
+            'slug'             => '',
+            'grade'            => 'Professeur',
+            'specialty'        => 'Économie',
+            'role'             => '',
+            'email'            => '',
+            'biography'        => 'Bio mise en avant.',
+            'display_order'    => '10',
+            'featured_on_home' => '1',
+            'home_order'       => '1',
+            'is_published'     => '1',
+        ]))->assertRedirect();
+
+        $this->post('/admin/staff', $this->withCsrf([
+            'category'         => 'enseignant',
+            'name'             => 'Personne hors accueil',
+            'slug'             => '',
+            'grade'            => 'Assistant',
+            'specialty'        => 'Gestion',
+            'role'             => '',
+            'email'            => '',
+            'biography'        => 'Bio hors accueil.',
+            'display_order'    => '1',
+            'featured_on_home' => '0',
+            'home_order'       => '',
+            'is_published'     => '1',
+        ]))->assertRedirect();
+
+        $featured = $this->db->table('staff')->where('name', 'Personne mise en avant')->get()->getRowArray();
+        $hidden   = $this->db->table('staff')->where('name', 'Personne hors accueil')->get()->getRowArray();
+        $this->assertIsArray($featured);
+        $this->assertIsArray($hidden);
+        $this->assertSame('1', (string) $featured['featured_on_home']);
+        $this->assertSame('0', (string) $hidden['featured_on_home']);
+
+        $preview = (new HomePageService())->data()['featuredStaff'];
+        $names   = array_map(static fn (object $member): string => (string) $member->name, $preview);
+
+        $this->assertContains('Personne mise en avant', $names);
+        $this->assertNotContains('Personne hors accueil', $names);
     }
 
     private function resetAuthState(): void

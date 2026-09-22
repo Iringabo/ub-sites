@@ -187,7 +187,7 @@ class UserController extends BaseController
                 return redirect()->to(site_url('admin/users/new'))->withInput()->with('errors', ['form' => 'La création a échoué.']);
             }
 
-            return redirect()->to('/admin/users/' . $created->id . '/edit')->with('message', 'L’utilisateur a été créé.');
+            return redirect()->to('/admin/users')->with('message', 'L’utilisateur a été créé.');
         } catch (Throwable $exception) {
             $this->db->transRollback();
             return redirect()->to(site_url('admin/users/new'))->withInput()->with('errors', ['form' => 'La création a échoué.']);
@@ -286,7 +286,7 @@ class UserController extends BaseController
             return redirect()->to(site_url('admin/users/' . $id . '/edit'))->withInput()->with('errors', ['form' => 'La mise à jour a échoué.']);
         }
 
-        return redirect()->to('/admin/users/' . $user->id . '/edit')->with('message', 'L’utilisateur a été mis à jour.');
+        return redirect()->to('/admin/users')->with('message', 'L’utilisateur a été mis à jour.');
     }
 
     public function activate(int $id): RedirectResponse|ResponseInterface

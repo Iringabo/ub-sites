@@ -66,7 +66,7 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
 
         $this->db->table('home_hero_slides')->insert([
             'site_id'              => $siteId,
-            'image_path'           => 'assets/images/hero/campus-walkway.jpg',
+            'image_path'           => 'assets/images/logo-placeholder.png',
             'alt_text'             => 'Campus test',
             'badge'                => null,
             'title'                => null,
@@ -85,6 +85,10 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
         $form->assertSee('Textes du slide');
         $form->assertSee('name="primary_cta_target"');
         $form->assertSee('name="badge"');
+        $form->assertSee('Modifiez-le en glissant les lignes');
+        $formBody = (string) $form->response()->getBody();
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]+type="number"[^>]+name="display_order"/', $formBody);
+        $this->assertDoesNotMatchRegularExpression('/<input[^>]+name="display_order"[^>]+type="number"/', $formBody);
 
         $update = $this->post('/admin/home-hero-slides/' . $slideId, $this->withCsrf([
             'alt_text'             => 'Campus test',
@@ -154,6 +158,35 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
         );
     }
 
+    public function testHeroIndicatorSizeCanBeSavedFromSlidesIndex(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $index = $this->get('/admin/home-hero-slides');
+        $index->assertOK();
+        $index->assertSee('Taille des pastilles du carrousel');
+        $index->assertSee('name="indicator_size"');
+
+        $save = $this->post('/admin/home-hero-slides/indicator-size', $this->withCsrf([
+            'indicator_size' => '1.25',
+        ]));
+        $save->assertRedirect();
+
+        $siteId = service('siteResolver')->activeSiteId();
+        $row = $this->db->table('settings')
+            ->where('site_id', $siteId)
+            ->where('key', 'home.hero_indicator_size')
+            ->get()
+            ->getRowArray();
+        $this->assertIsArray($row);
+        $this->assertSame('1.25', $row['value']);
+
+        service('settingsService')->reset();
+        $home = $this->get('/');
+        $home->assertOK();
+        $this->assertStringContainsString('--hero-indicator-size: 1.25rem', $home->response()->getBody());
+    }
+
     public function testUsersIndexUsesIconActionsAndFacultyFilter(): void
     {
         $this->actingAs($this->superAdminUser());
@@ -174,6 +207,7 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
         $this->assertContains('dean_message', $available);
         $this->assertContains('contact_cta', $available);
         $this->assertNotContains('pages', $available);
+        $this->assertNotContains('highlights', $available);
     }
 
     private function adminUser(): User

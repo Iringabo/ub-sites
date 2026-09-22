@@ -230,6 +230,29 @@ if (! function_exists('site_decode_page_content')) {
     }
 }
 
+if (! function_exists('site_contact_address')) {
+    /**
+     * Build a display address from segmented contact settings (with legacy fallback).
+     *
+     * @param array<string, mixed> $settings
+     */
+    function site_contact_address(array $settings): string
+    {
+        $parts = array_values(array_filter([
+            trim((string) ($settings['contact.address_line'] ?? '')),
+            trim((string) ($settings['contact.address_commune'] ?? '')),
+            trim((string) ($settings['contact.address_province'] ?? '')),
+            trim((string) ($settings['contact.address_country'] ?? '')),
+        ], static fn (string $part): bool => $part !== ''));
+
+        if ($parts !== []) {
+            return implode(', ', $parts);
+        }
+
+        return trim((string) ($settings['contact.address'] ?? ''));
+    }
+}
+
 if (! function_exists('site_text_or_placeholder')) {
     function site_text_or_placeholder(?string $value, ?string $placeholder = null): string
     {

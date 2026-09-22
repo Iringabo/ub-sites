@@ -29,13 +29,22 @@ class FacultySiteProvisioningService
             'theme'            => 'default',
             'theme_config'     => json_encode([
                 'layout'     => 'classic',
-                'hero_image' => 'assets/images/hero/campus-walkway.jpg',
+                'hero_image' => 'assets/images/logo-placeholder.png',
             ], JSON_UNESCAPED_SLASHES),
             'menu_config'      => json_encode([
                 'items' => ['faculte', 'formations', 'recherche', 'corps-enseignant', 'actualites', 'alumni', 'contact'],
             ], JSON_UNESCAPED_SLASHES),
-            'enabled_sections' => ['hero', 'statistics', 'about', 'highlights', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'contact_cta'],
+            'enabled_sections' => ['hero', 'statistics', 'about', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'contact_cta'],
         ];
+
+        // Single public theme; ignore any legacy theme key from callers.
+        $siteData['theme'] = 'default';
+        if (empty($siteData['theme_config'])) {
+            $siteData['theme_config'] = json_encode([
+                'layout'     => 'classic',
+                'hero_image' => 'assets/images/logo-placeholder.png',
+            ], JSON_UNESCAPED_SLASHES);
+        }
 
         if (! isset($siteData['hostnames']) || $siteData['hostnames'] === null || $siteData['hostnames'] === []) {
             $siteData['hostnames'] = [$siteData['slug'] . '.test'];
@@ -125,7 +134,7 @@ class FacultySiteProvisioningService
             'hero_title'               => 'Bienvenue sur le site de ' . $short,
             'hero_text'                => 'Texte de présentation à remplacer par l’équipe de la faculté.',
             'hero_media_type'          => 'image',
-            'hero_media_path'          => 'assets/images/hero/campus-walkway.jpg',
+            'hero_media_path'          => 'assets/images/logo-placeholder.png',
             'hero_primary_label'       => 'Découvrir les formations',
             'hero_primary_url'         => '/formations',
             'hero_secondary_label'     => 'Contacter la faculté',
@@ -160,10 +169,9 @@ class FacultySiteProvisioningService
 
     private function heroSlides(int $siteId): void
     {
+        // Minimal starter until `php spark site:seed-demo --force` materializes site-owned uploads.
         foreach ([
-            ['assets/images/hero/campus-walkway.jpg', 'Image de départ à remplacer', 1],
-            ['assets/images/hero/economics-classroom.jpg', 'Salle de cours à remplacer', 2],
-            ['assets/images/hero/research-team.jpg', 'Équipe de recherche à remplacer', 3],
+            ['assets/images/logo-placeholder.png', 'Image de départ (remplacée par le seed démo)', 1],
         ] as [$image, $alt, $order]) {
             $this->insertIfMissing('home_hero_slides', $siteId, ['image_path' => $image], [
                 'image_path' => $image,
@@ -200,7 +208,10 @@ class FacultySiteProvisioningService
             ['institution.faculty_name', $name, 'string', 'institution'],
             ['institution.short_name', $short, 'string', 'institution'],
             ['institution.university', 'Université du Burundi', 'string', 'institution'],
-            ['contact.address', (string) ($site['address'] ?? 'Adresse à compléter'), 'string', 'contact'],
+            ['contact.address_line', (string) ($site['address'] ?? 'Adresse à compléter'), 'string', 'contact'],
+            ['contact.address_commune', 'Commune à compléter', 'string', 'contact'],
+            ['contact.address_province', 'Province à compléter', 'string', 'contact'],
+            ['contact.address_country', 'Burundi', 'string', 'contact'],
             ['contact.phone', (string) ($site['phone'] ?? 'Téléphone à compléter'), 'string', 'contact'],
             ['contact.email', (string) ($site['contact_email'] ?? 'contact@example.test'), 'email', 'contact'],
             ['contact.hours', 'Horaires à compléter', 'string', 'contact'],
@@ -211,7 +222,6 @@ class FacultySiteProvisioningService
             ['seo.default_description', 'Description SEO à compléter pour ' . $name . '.', 'text', 'seo'],
             ['seo.theme_color', (string) ($site['primary_color'] ?? '#0D9B49'), 'color', 'seo'],
             ['seo.og_image', 'assets/images/logo-placeholder.png', 'path', 'seo'],
-            ['home.hero_overlay_opacity', '0.82', 'string', 'home'],
             ['social.links', json_encode([], JSON_UNESCAPED_UNICODE), 'json', 'social'],
         ] as [$key, $value, $type, $context]) {
             $this->insertIfMissing('settings', $siteId, ['key' => $key], [
@@ -286,6 +296,8 @@ class FacultySiteProvisioningService
                 'email' => null,
                 'biography' => 'Biographie à compléter.',
                 'display_order' => $order,
+                'featured_on_home' => 1,
+                'home_order' => $order,
                 'is_published' => 1,
             ]);
         }

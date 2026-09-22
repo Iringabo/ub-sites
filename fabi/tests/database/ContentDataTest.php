@@ -146,7 +146,7 @@ final class ContentDataTest extends CIUnitTestCase
         $this->assertSame('Actualités et événements', $home['posts_title']);
         $this->assertSame('Voir tout', $home['posts_button_label']);
         $this->assertSame('image', $home['hero_media_type']);
-        $this->assertSame('assets/images/hero/campus-walkway.jpg', $home['hero_media_path']);
+        $this->assertSame('assets/images/logo-placeholder.png', $home['hero_media_path']);
         $this->assertStringContainsString('à compléter', $home['seo_description']);
     }
 
@@ -158,11 +158,9 @@ final class ContentDataTest extends CIUnitTestCase
             ->get()
             ->getResultArray();
 
-        $this->assertCount(3, $slides);
+        $this->assertCount(1, $slides);
         $this->assertSame([
-            'assets/images/hero/campus-walkway.jpg',
-            'assets/images/hero/economics-classroom.jpg',
-            'assets/images/hero/research-team.jpg',
+            'assets/images/logo-placeholder.png',
         ], array_column($slides, 'image_path'));
 
         foreach ($slides as $index => $slide) {

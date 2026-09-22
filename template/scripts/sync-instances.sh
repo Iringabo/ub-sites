@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Copy template app/, tests/, and public/assets/ into the live instances
-# (fseg, fsi, superadmin). Never copies .env, writable/, or instance docs/.
+# Copy template app/, tests/, and public/assets/ into the live instances.
+# Never copies .env, writable/, instance docs/, or demo-media/ (faculty photo pack).
 #
 # Usage (from the template folder or this scripts/ directory):
 #   ./scripts/sync-instances.sh
@@ -27,7 +27,12 @@ for dest_name in fseg fsi superadmin med fabi flsh; do
   echo "Synchronise $dest_name …"
   rsync -a --delete "$TEMPLATE/app/" "$dest/app/"
   rsync -a --delete "$TEMPLATE/tests/" "$dest/tests/"
-  rsync -a --delete "$TEMPLATE/public/assets/" "$dest/public/assets/"
+  # Shared chrome only (vendor, CSS/JS, logo placeholders). Faculty photos live in
+  # demo-media/ + public/uploads/sites/{slug}/ — never cloned across instances.
+  rsync -a --delete \
+    --exclude 'images/faculties/' \
+    "$TEMPLATE/public/assets/" "$dest/public/assets/"
+  rm -rf "$dest/public/assets/images/faculties"
   copied=$((copied + 1))
 done
 
@@ -36,4 +41,4 @@ if [ "$copied" -eq 0 ]; then
   exit 1
 fi
 
-echo "Terminé ($copied instance(s)). .env, writable/ et docs/ d'instance n'ont pas été touchés."
+echo "Terminé ($copied instance(s)). .env, writable/, docs/ d'instance et demo-media/ n'ont pas été touchés."
