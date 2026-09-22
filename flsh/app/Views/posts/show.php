@@ -15,8 +15,9 @@
     <div class="container">
         <article class="row justify-content-center">
             <div class="col-lg-9">
-                <?php if ($post->cover_image): ?>
-                    <img src="<?= esc(site_media_url($post->cover_image), 'attr') ?>" alt="<?= esc($post->title, 'attr') ?>" class="rounded mb-4 w-100" style="max-height: 420px; object-fit: cover;">
+                <?php $cover = site_person_media($post->cover_image ?? null); ?>
+                <?php if ($cover !== null): ?>
+                    <img src="<?= esc(site_media_url($cover), 'attr') ?>" alt="<?= esc($post->title, 'attr') ?>" class="rounded mb-4 w-100" style="max-height: 420px; object-fit: cover;">
                 <?php endif ?>
 
                 <div class="d-flex flex-wrap align-items-center gap-3 mb-4">

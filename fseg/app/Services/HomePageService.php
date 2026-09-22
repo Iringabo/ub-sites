@@ -158,19 +158,20 @@ class HomePageService
     private function featuredPosts(): array
     {
         $now = date('Y-m-d H:i:s');
-
-        return service('contentTranslationService')->records('posts', $this->visiblePosts()
+        $translator = service('contentTranslationService');
+        $events = $translator->records('posts', $this->visiblePosts()
+            ->where('type', 'event')
+            ->where('event_starts_at >=', $now)
+            ->orderBy('event_starts_at', 'ASC')
+            ->findAll(2));
+        $news = $translator->records('posts', $this->visiblePosts()
             ->where('featured', 1)
-            ->groupStart()
-                ->where('type', 'news')
-                ->orGroupStart()
-                    ->where('type', 'event')
-                    ->where('event_starts_at >=', $now)
-                ->groupEnd()
-            ->groupEnd()
+            ->where('type', 'news')
             ->orderBy('home_order', 'ASC')
             ->orderBy('published_at', 'DESC')
             ->findAll(3));
+
+        return array_merge($events, $news);
     }
 
     /**

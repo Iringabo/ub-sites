@@ -7,9 +7,6 @@ $ogImage      = site_media_url($ogImage ?? ($siteSettings['seo.og_image'] ?? 'as
 $canonical    = current_url();
 $locale       = site_current_locale();
 $activeSite   = service('siteResolver')->activeSite();
-$validHex     = static fn (mixed $value, string $fallback): string => is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1 ? $value : $fallback;
-$primaryColor = $validHex($activeSite->primary_color ?? null, '#0D9B49');
-$secondaryColor = $validHex($activeSite->secondary_color ?? null, '#0B6F38');
 $themeName    = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($activeSite->theme ?? 'default'))) ?: 'default';
 $themeConfig  = json_decode((string) ($activeSite->theme_config ?? ''), true);
 $themeLayout  = is_array($themeConfig) ? preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($themeConfig['layout'] ?? 'classic'))) : 'classic';
@@ -37,8 +34,8 @@ $themeLayout  = $themeLayout ?: 'classic';
     <link href="<?= site_asset_url('assets/css/style.css') ?>" rel="stylesheet">
     <style nonce="{csp-style-nonce}">
         :root {
-            --green: <?= esc($primaryColor) ?>;
-            --green-dark: <?= esc($secondaryColor) ?>;
+            --green: #0D9B49;
+            --green-dark: #0B6F38;
         }
     </style>
 </head>

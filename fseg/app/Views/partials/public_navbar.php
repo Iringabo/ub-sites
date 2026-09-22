@@ -39,6 +39,12 @@ $items = [
                         </li>
                     <?php endforeach ?>
                     <li class="nav-item ms-xl-2">
+                        <form class="d-flex" action="<?= site_url('trouver') ?>" method="get" role="search">
+                            <label class="visually-hidden" for="siteSearch"><?= esc(lang('Site.common.search'), 'attr') ?></label>
+                            <input class="form-control form-control-sm" type="search" id="siteSearch" name="q" value="<?= esc((string) (service('request')->getGet('q') ?? ''), 'attr') ?>" placeholder="<?= esc(lang('Site.common.search'), 'attr') ?>">
+                        </form>
+                    </li>
+                    <li class="nav-item ms-xl-2">
                         <div class="language-switcher" aria-label="<?= esc(lang('Site.language.switcherLabel'), 'attr') ?>">
                             <?php foreach (['fr', 'en'] as $locale): ?>
                                 <a

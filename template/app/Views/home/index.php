@@ -38,11 +38,11 @@ $defaultSectionOrder = [
     'hero',
     'statistics',
     'about',
-    'dean_message',
     'programmes_preview',
     'research_labs',
-    'staff_preview',
     'news_preview',
+    'dean_message',
+    'staff_preview',
     'custom_text',
     'image_gallery',
     'contact_cta',
@@ -222,6 +222,10 @@ $sectionOrderIndex = array_flip($sectionRenderOrder);
 $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
     return (int) ($sectionOrderIndex[$key] ?? 99);
 };
+$sectionBand = static function (string $key) use ($sectionCssOrder): string {
+    return ($sectionCssOrder($key) % 2) === 0 ? 'bg-white' : 'section-alt';
+};
+$highlights = array_values($highlights ?? []);
 ?>
 <div class="home-sections-stack">
 <?php if ($sectionEnabled('hero')): ?>
@@ -257,9 +261,9 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
                 <?php
                 $imagePath = site_media_url($slideValue($slide, 'image_path'), 'assets/images/logo-placeholder.png');
                 $altText = site_text_or_placeholder($slideValue($slide, 'alt_text'), lang('Home.heroImageFallbackAlt'));
-                $slideBadge = site_text_or_placeholder($slideValue($slide, 'badge'), $missingText);
-                $slideTitle = site_text_or_placeholder($slideValue($slide, 'title'), $missingText);
-                $slideText = site_text_or_placeholder($slideValue($slide, 'text'), $missingText);
+                $slideBadge = site_text_or_placeholder($slideValue($slide, 'badge'), site_text_or_placeholder($homeContent?->hero_badge ?? null, $missingText));
+                $slideTitle = site_text_or_placeholder($slideValue($slide, 'title'), site_text_or_placeholder($homeContent?->hero_title ?? null, $missingText));
+                $slideText = site_text_or_placeholder($slideValue($slide, 'text'), site_text_or_placeholder($homeContent?->hero_text ?? null, $missingText));
                 $primaryCta = $resolveSlideCta($slide, 'primary');
                 $secondaryCta = $resolveSlideCta($slide, 'secondary');
                 ?>
@@ -335,10 +339,10 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 <?php endif ?>
 
 <?php if (! $hasConfiguredSections || $sectionEnabled('about')): ?>
-<section id="presentation" class="section-pad bg-white" style="order: <?= $sectionCssOrder('about') ?>">
+<section id="presentation" class="section-pad <?= esc($sectionBand('about'), 'attr') ?>" style="order: <?= $sectionCssOrder('about') ?>">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
+        <div class="row align-items-center g-5">
+            <div class="<?= $highlights === [] ? 'col-lg-8 mx-auto' : 'col-lg-6' ?>">
                 <span class="section-label"><?= esc($aboutLabel) ?></span>
                 <h2 class="section-title"><?= esc($aboutTitle) ?></h2>
                 <div class="divider-green"></div>
@@ -351,13 +355,27 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
                     </a>
                 <?php endif ?>
             </div>
+            <?php if ($highlights !== []): ?>
+                <div class="col-lg-6">
+                    <div class="row g-3">
+                        <?php foreach ($highlights as $highlight): ?>
+                            <div class="col-6">
+                                <article class="card-faculte text-center p-3 h-100">
+                                    <div class="card-icon mx-auto"><i class="bi <?= esc((string) ($highlight->icon ?? 'bi-star'), 'attr') ?>"></i></div>
+                                    <p class="mb-0 fw-semibold small"><?= esc((string) ($highlight->title ?? '')) ?></p>
+                                </article>
+                            </div>
+                        <?php endforeach ?>
+                    </div>
+                </div>
+            <?php endif ?>
         </div>
     </div>
 </section>
 <?php endif ?>
 
 <?php if ($optionalSectionEnabled('dean_message', 'dean_message')): ?>
-<section class="section-pad section-alt" style="order: <?= $sectionCssOrder('dean_message') ?>">
+<section class="section-pad <?= esc($sectionBand('dean_message'), 'attr') ?>" style="order: <?= $sectionCssOrder('dean_message') ?>">
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-4 text-center">
@@ -390,7 +408,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 <?php endif ?>
 
 <?php if ($sectionEnabled('programmes_preview') && $programmeGroups !== []): ?>
-<section class="section-pad section-alt" style="order: <?= $sectionCssOrder('programmes_preview') ?>">
+<section class="section-pad <?= esc($sectionBand('programmes_preview'), 'attr') ?>" style="order: <?= $sectionCssOrder('programmes_preview') ?>">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px">
             <span class="section-label"><?= esc($programmesLabel) ?></span>
@@ -425,7 +443,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 <?php endif ?>
 
 <?php if ($sectionEnabled('research_labs')): ?>
-<section class="section-pad bg-white" style="order: <?= $sectionCssOrder('research_labs') ?>">
+<section class="section-pad <?= esc($sectionBand('research_labs'), 'attr') ?>" style="order: <?= $sectionCssOrder('research_labs') ?>">
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-5">
@@ -469,7 +487,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 <?php endif ?>
 
 <?php if ($optionalSectionEnabled('staff_preview', 'staff_preview') && ($featuredStaff ?? []) !== []): ?>
-<section class="section-pad section-alt" style="order: <?= $sectionCssOrder('staff_preview') ?>">
+<section class="section-pad <?= esc($sectionBand('staff_preview'), 'attr') ?>" style="order: <?= $sectionCssOrder('staff_preview') ?>">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px">
             <span class="section-label"><?= esc(lang('Site.pageTitles.staff')) ?></span>
@@ -482,10 +500,11 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
             <?php foreach ($featuredStaff as $member): ?>
                 <div class="col-md-6 col-xl-3">
                     <article class="staff-card h-100">
-                        <?php if ($member->photo): ?>
-                            <img src="<?= esc(site_media_url($member->photo), 'attr') ?>" alt="<?= esc($member->name, 'attr') ?>" class="staff-photo">
+                        <?php $staffPhoto = site_person_media($member->photo ?? null); ?>
+                        <?php if ($staffPhoto !== null): ?>
+                            <img src="<?= esc(site_media_url($staffPhoto), 'attr') ?>" alt="<?= esc($member->name, 'attr') ?>" class="staff-photo">
                         <?php else: ?>
-                            <div class="card-icon mx-auto"><i class="bi bi-person-badge"></i></div>
+                            <div class="card-icon mx-auto" aria-hidden="true"><?= esc(site_initials($member->name)) ?></div>
                         <?php endif ?>
                         <h3 class="staff-name"><?= esc($member->name) ?></h3>
                         <p class="staff-grade mb-1"><?= esc($member->grade ?? site_staff_category_label($member->category)) ?></p>
@@ -501,7 +520,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 <?php endif ?>
 
 <?php if ($sectionEnabled('news_preview') && $featuredPosts !== []): ?>
-<section class="section-pad section-alt" style="order: <?= $sectionCssOrder('news_preview') ?>">
+<section class="section-pad <?= esc($sectionBand('news_preview'), 'attr') ?>" style="order: <?= $sectionCssOrder('news_preview') ?>">
     <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-end mb-5 gap-3">
             <div>
@@ -516,16 +535,28 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
             </a>
         </div>
         <div class="row g-4">
-            <?php foreach ($featuredPosts as $post): ?>
+            <?php
+            $homeEvents = [];
+            $homeNews = [];
+            foreach ($featuredPosts as $post) {
+                if (($post->type ?? '') === 'event') {
+                    $homeEvents[] = $post;
+                } else {
+                    $homeNews[] = $post;
+                }
+            }
+            $renderHomePost = static function (object $post): void {
+                $cover = site_person_media($post->cover_image ?? null);
+                ?>
                 <div class="col-lg-4">
                     <article class="news-card h-100">
-                        <?php if ($post->cover_image): ?>
-                            <img src="<?= esc(site_media_url($post->cover_image), 'attr') ?>" class="news-card-cover" alt="<?= esc($post->title, 'attr') ?>">
+                        <?php if ($cover !== null): ?>
+                            <img src="<?= esc(site_media_url($cover), 'attr') ?>" class="news-card-cover" alt="<?= esc($post->title, 'attr') ?>">
                         <?php endif ?>
                         <div class="news-card-body">
                             <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
                                 <span class="badge-news badge-<?= esc(site_post_category($post->type), 'attr') ?>"><?= esc(site_post_type_label($post->type)) ?></span>
-                                <span class="small text-muted"><?= esc(site_format_date($post->published_at)) ?></span>
+                                <span class="small text-muted"><?= esc(site_format_date($post->type === 'event' ? ($post->event_starts_at ?? $post->published_at) : $post->published_at, $post->type === 'event')) ?></span>
                             </div>
                             <h3 class="h6 fw-bold"><?= esc($post->title) ?></h3>
                             <p class="small text-muted"><?= esc($post->excerpt) ?></p>
@@ -533,7 +564,17 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
                         </div>
                     </article>
                 </div>
-            <?php endforeach ?>
+                <?php
+            };
+            ?>
+            <?php if ($homeEvents !== []): ?>
+                <div class="col-12"><h3 class="h5 mb-0"><?= esc(lang('Site.posts.upcoming')) ?></h3></div>
+                <?php foreach ($homeEvents as $post) { $renderHomePost($post); } ?>
+            <?php endif ?>
+            <?php if ($homeNews !== []): ?>
+                <div class="col-12"><h3 class="h5 mb-0"><?= esc(lang('Site.posts.news')) ?></h3></div>
+                <?php foreach ($homeNews as $post) { $renderHomePost($post); } ?>
+            <?php endif ?>
         </div>
     </div>
 </section>
@@ -541,7 +582,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 
 <?php $customTextBlocks = array_values($blocksByType['custom_text'] ?? []); ?>
 <?php if ($sectionEnabled('custom_text') && $customTextBlocks !== []): ?>
-<section class="section-pad bg-white" style="order: <?= $sectionCssOrder('custom_text') ?>">
+<section class="section-pad <?= esc($sectionBand('custom_text'), 'attr') ?>" style="order: <?= $sectionCssOrder('custom_text') ?>">
     <div class="container">
         <div class="row g-4">
             <?php foreach ($customTextBlocks as $block): ?>
@@ -571,7 +612,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
     <?php foreach ($galleryBlocks as $block): ?>
         <?php $images = $galleryImages($block); ?>
         <?php if ($images !== []): ?>
-            <section class="section-pad section-alt">
+            <section class="section-pad <?= esc($sectionBand('image_gallery'), 'attr') ?>" style="order: <?= $sectionCssOrder('image_gallery') ?>">
                 <div class="container">
                     <?php $galleryTitle = site_text_or_placeholder(is_scalar($blockValue($block, 'title')) ? (string) $blockValue($block, 'title') : null, lang('Site.home.gallery')); ?>
                     <div class="text-center mx-auto mb-5" style="max-width: 640px">
@@ -592,7 +633,7 @@ $sectionCssOrder = static function (string $key) use ($sectionOrderIndex): int {
 <?php endif ?>
 
 <?php if ($optionalSectionEnabled('contact_cta', 'contact_cta')): ?>
-<section class="section-pad bg-white" style="order: <?= $sectionCssOrder('contact_cta') ?>">
+<section class="section-pad <?= esc($sectionBand('contact_cta'), 'attr') ?>" style="order: <?= $sectionCssOrder('contact_cta') ?>">
     <div class="container">
         <div class="row justify-content-center text-center">
             <div class="col-lg-8">

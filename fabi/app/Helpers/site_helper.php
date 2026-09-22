@@ -96,6 +96,49 @@ if (! function_exists('site_css_url')) {
     }
 }
 
+if (! function_exists('site_person_media')) {
+    /**
+     * Portrait or news cover. Campus heroes, banners, and the crest are not people or article art.
+     */
+    function site_person_media(?string $path): ?string
+    {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return null;
+        }
+
+        $lower = strtolower($path);
+        if (
+            str_contains($lower, 'logo-placeholder')
+            || str_contains($lower, '/hero/')
+            || str_contains($lower, '/banners/')
+        ) {
+            return null;
+        }
+
+        return $path;
+    }
+}
+
+if (! function_exists('site_initials')) {
+    function site_initials(?string $name): string
+    {
+        $parts = preg_split('/\s+/u', trim((string) $name)) ?: [];
+        $letters = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            $letters .= mb_strtoupper(mb_substr($part, 0, 1));
+            if (mb_strlen($letters) >= 2) {
+                break;
+            }
+        }
+
+        return $letters !== '' ? $letters : '?';
+    }
+}
+
 if (! function_exists('site_paragraphs')) {
     /**
      * @return list<string>

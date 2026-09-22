@@ -20,11 +20,13 @@ class HomeSectionsController extends BaseController
             'hero',
             'statistics',
             'about',
-            'dean_message',
             'programmes_preview',
             'research_labs',
-            'staff_preview',
             'news_preview',
+            'dean_message',
+            'staff_preview',
+            'custom_text',
+            'image_gallery',
             'contact_cta',
         ];
     }
@@ -38,11 +40,13 @@ class HomeSectionsController extends BaseController
             'hero'                => 'Héros (carrousel)',
             'statistics'          => 'Chiffres clés',
             'about'               => 'Présentation',
-            'dean_message'        => 'Mot du doyen',
             'programmes_preview'  => 'Aperçu des formations',
             'research_labs'       => 'Recherche & laboratoires',
-            'staff_preview'       => 'Aperçu du personnel',
             'news_preview'        => 'Actualités',
+            'dean_message'        => 'Mot du doyen',
+            'staff_preview'       => 'Aperçu du personnel',
+            'custom_text'         => 'Mot d’accueil',
+            'image_gallery'       => 'Galerie d’images',
             'contact_cta'         => 'Appel à l’action contact',
         ];
     }

@@ -20,7 +20,7 @@ class PublicPageController extends BaseController
     public function faculty(): string
     {
         $page    = $this->page('faculty');
-        $content = $this->pageContent($page, $this->facultyFallback());
+        $content = $this->withSharedBanner($this->pageContent($page, $this->facultyFallback()));
 
         return view('faculty/index', [
             'title'        => site_text_or_placeholder($page?->seo_title ?? null),
@@ -41,7 +41,7 @@ class PublicPageController extends BaseController
     public function programmes(): string
     {
         $page    = $this->page('formations');
-        $content = $this->pageContent($page, $this->programmesFallback());
+        $content = $this->withSharedBanner($this->pageContent($page, $this->programmesFallback()));
         $grouped = ['licence' => [], 'master' => [], 'doctorat' => []];
 
         $programmes = service('contentTranslationService')->records('programmes', model(ProgrammeModel::class, false)
@@ -100,7 +100,7 @@ class PublicPageController extends BaseController
     public function research(): string
     {
         $page    = $this->page('research');
-        $content = $this->pageContent($page, $this->researchFallback());
+        $content = $this->withSharedBanner($this->pageContent($page, $this->researchFallback()));
 
         return view('research/index', [
             'title'        => site_text_or_placeholder($page?->seo_title ?? null),
@@ -181,34 +181,45 @@ class PublicPageController extends BaseController
     public function posts(): string
     {
         $page    = $this->page('posts');
-        $content = $this->pageContent($page, $this->postsFallback());
+        $content = $this->withSharedBanner($this->pageContent($page, $this->postsFallback()));
         $type    = $this->postTypeFromRequest((string) $this->request->getGet('type'));
         $query   = trim((string) $this->request->getGet('q'));
-        $model   = $this->visiblePosts();
+        $now     = date('Y-m-d H:i:s');
+        $translator = service('contentTranslationService');
+        $upcoming = [];
 
-        if ($type !== null) {
-            $model->where('type', $type);
+        if ($type === null) {
+            $upcomingModel = $this->visiblePosts()
+                ->where('type', 'event')
+                ->where('event_starts_at >=', $now);
+            $this->applyPostSearch($upcomingModel, $query);
+            $upcoming = $translator->records('posts', $upcomingModel
+                ->orderBy('event_starts_at', 'ASC')
+                ->findAll(12));
         }
 
+        $model = $this->visiblePosts();
+        if ($type === 'event') {
+            $model->where('type', 'event')->orderBy('event_starts_at', 'ASC');
+        } else {
+            $model->where('type', $type ?? 'news')->orderBy('published_at', 'DESC')->orderBy('id', 'DESC');
+        }
         $this->applyPostSearch($model, $query);
 
-        $posts = $model
-            ->orderBy('published_at', 'DESC')
-            ->orderBy('id', 'DESC')
-            ->paginate(6, 'posts');
-        $posts = service('contentTranslationService')->records('posts', $posts);
+        $posts = $translator->records('posts', $model->paginate(6, 'posts'));
 
         return view('posts/index', [
-            'title'        => site_text_or_placeholder($page?->seo_title ?? null),
-            'description'  => site_text_or_placeholder($page?->seo_description ?? null),
-            'activePage'   => 'posts',
-            'pageTitle'    => lang('Site.pageTitles.posts'),
-            'siteSettings' => $this->siteSettings,
-            'content'      => $content,
-            'posts'        => $posts,
-            'pager'        => $model->pager,
-            'selectedType' => $type,
-            'query'        => $query,
+            'title'          => site_text_or_placeholder($page?->seo_title ?? null),
+            'description'    => site_text_or_placeholder($page?->seo_description ?? null),
+            'activePage'     => 'posts',
+            'pageTitle'      => lang('Site.pageTitles.posts'),
+            'siteSettings'   => $this->siteSettings,
+            'content'        => $content,
+            'posts'          => $posts,
+            'upcomingPosts'  => $upcoming,
+            'pager'          => $model->pager,
+            'selectedType'   => $type,
+            'query'          => $query,
         ]);
     }
 
@@ -237,7 +248,7 @@ class PublicPageController extends BaseController
     public function alumni(): string
     {
         $page    = $this->page('alumni');
-        $content = $this->pageContent($page, $this->alumniFallback());
+        $content = $this->withSharedBanner($this->pageContent($page, $this->alumniFallback()));
 
         return view('alumni/index', [
             'title'        => site_text_or_placeholder($page?->seo_title ?? null),
@@ -268,6 +279,38 @@ class PublicPageController extends BaseController
     private function visiblePosts(): PostModel
     {
         return model(PostModel::class, false)->visible();
+    }
+
+    /**
+     * @param array<string, mixed> $content
+     * @return array<string, mixed>
+     */
+    private function withSharedBanner(array $content): array
+    {
+        $current = trim((string) ($content['banner_image'] ?? ''));
+        if ($this->isUploadBanner($current)) {
+            return $content;
+        }
+
+        $staff = $this->page('staff');
+        $staffContent = $this->pageContent($staff, []);
+        $shared = trim((string) ($staffContent['banner_image'] ?? ''));
+        if ($this->isUploadBanner($shared)) {
+            $content['banner_image'] = $shared;
+        }
+
+        return $content;
+    }
+
+    private function isUploadBanner(string $path): bool
+    {
+        if ($path === '') {
+            return false;
+        }
+
+        $lower = strtolower($path);
+
+        return ! str_contains($lower, 'logo-placeholder') && str_starts_with($lower, 'uploads/');
     }
 
     private function postTypeFromRequest(string $type): ?string
@@ -361,6 +404,7 @@ class PublicPageController extends BaseController
     {
         return [
             'banner_subtitle' => lang('Home.configurationMissing'),
+            'banner_image'    => null,
             'dean'            => ['paragraphs' => [lang('Home.configurationMissing')]],
             'mission'         => ['title' => lang('Home.configurationMissing'), 'paragraphs' => [lang('Home.configurationMissing')]],
             'vision'          => ['title' => lang('Home.configurationMissing'), 'paragraphs' => [lang('Home.configurationMissing')]],
@@ -390,6 +434,7 @@ class PublicPageController extends BaseController
     {
         return [
             'banner_subtitle'      => lang('Home.configurationMissing'),
+            'banner_image'         => null,
             'labs_label'           => lang('Home.configurationMissing'),
             'labs_title'           => lang('Home.configurationMissing'),
             'labs_text'            => lang('Home.configurationMissing'),
@@ -419,6 +464,7 @@ class PublicPageController extends BaseController
     {
         return [
             'banner_subtitle' => lang('Home.configurationMissing'),
+            'banner_image'    => null,
         ];
     }
 

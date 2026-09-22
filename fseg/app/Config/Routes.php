@@ -29,6 +29,7 @@ $routes->get('actualites/(:segment)', 'PublicPageController::postDetail/$1');
 $routes->get('alumni', 'PublicPageController::alumni');
 $routes->get('contact', 'ContactController::new');
 $routes->post('contact', 'ContactController::create');
+$routes->get('trouver', 'SearchController::index');
 
 $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['session', 'permission:admin.access', 'adminAccess']], static function (RouteCollection $routes): void {
     $routes->get('', 'DashboardController::index');

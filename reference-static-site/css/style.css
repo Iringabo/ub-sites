@@ -1,0 +1,828 @@
+/* =========================================================
+   FSEG — Université du Burundi — Design System
+   ========================================================= */
+
+:root {
+    --green:      #0D9B49;
+    --green-dark: #108545;
+    --red:        #EF1924;
+    --red-dark:   #DE1A26;
+    --bg-page:    #FBFDFD;
+    --bg-mint:    #F3F9F7;
+    --bg-card:    #FAF8F6;
+    --white:      #FFFFFF;
+    --text-dark:  #1C1C1E;
+    --text-body:  #3D3D3D;
+    --text-muted: #6C757D;
+    --border:     #e0ede8;
+    --font:       'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+address { font-style: normal; margin: 0; }
+
+body {
+    font-family: var(--font);
+    background: var(--bg-page);
+    color: var(--text-body);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+a { text-decoration: none; }
+
+img { max-width: 100%; }
+
+/* =========================================================
+   Navbar
+   ========================================================= */
+
+.navbar {
+    background: var(--white);
+    padding: 0.75rem 0;
+    transition: box-shadow 0.25s ease;
+}
+
+.navbar.shadow {
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06) !important;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.navbar-brand img {
+    height: 60px;
+}
+
+.navbar-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.navbar-brand-text .brand-title {
+    color: var(--green);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.navbar-brand-text .brand-subtitle {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.navbar-nav .nav-link {
+    text-transform: uppercase;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-dark);
+    margin: 0 0.6rem;
+    padding: 0.5rem 0.1rem !important;
+    position: relative;
+}
+
+.navbar-nav .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 0;
+    background: var(--green);
+    transition: width 0.25s ease;
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
+    color: var(--green);
+}
+
+.navbar-nav .nav-link:hover::after,
+.navbar-nav .nav-link.active::after {
+    width: 100%;
+}
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+
+.btn-primary-green {
+    background: var(--green);
+    color: var(--white);
+    border: none;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.6rem 1.4rem;
+    transition: background 0.2s ease;
+}
+
+.btn-primary-green:hover {
+    background: var(--green-dark);
+    color: var(--white);
+}
+
+.btn-outline-green {
+    background: transparent;
+    border: 2px solid var(--green);
+    color: var(--green);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.55rem 1.4rem;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-green:hover,
+.btn-outline-green.active {
+    background: var(--green);
+    color: var(--white);
+    border-color: var(--green);
+}
+
+.btn-hero-primary {
+    background: var(--white);
+    color: var(--green);
+    border: 2px solid var(--white);
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.75rem 1.75rem;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.btn-hero-primary:hover {
+    background: transparent;
+    color: var(--white);
+}
+
+.btn-hero-outline {
+    background: transparent;
+    color: var(--white);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.75rem 1.75rem;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.btn-hero-outline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--white);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* =========================================================
+   Section utilities
+   ========================================================= */
+
+.section-alt { background: var(--bg-mint); }
+
+.section-pad { padding: 5rem 0; }
+
+.section-pad-sm { padding: 3.5rem 0; }
+
+.section-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--green);
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+
+.section-title {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.section-title span { color: var(--green); }
+
+.section-subtitle {
+    color: var(--text-muted);
+    max-width: 580px;
+}
+
+.divider-green {
+    width: 50px;
+    height: 3px;
+    background: var(--green);
+    margin: 1rem 0 1.5rem;
+}
+
+/* =========================================================
+   Cards
+   ========================================================= */
+
+.card-fseg {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    border-top: 3px solid var(--green);
+    padding: 1.75rem;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card-fseg:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(13, 155, 73, 0.15);
+}
+
+.card-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--bg-mint);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: var(--green);
+    margin-bottom: 1rem;
+}
+
+.mv-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    border-top: 4px solid var(--green);
+    padding: 2rem;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.mv-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(13, 155, 73, 0.15);
+}
+
+.lab-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--green);
+    border-radius: 0 8px 8px 0;
+    padding: 1.5rem;
+}
+
+.formation-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    border-left: 4px solid var(--green);
+    padding: 1.5rem;
+}
+
+.staff-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.staff-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(13, 155, 73, 0.15);
+}
+
+.news-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.news-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(13, 155, 73, 0.15);
+}
+
+.news-card-cover {
+    width: 100%;
+    height: 185px;
+    object-fit: cover;
+}
+
+.news-card-thumb {
+    width: 160px;
+    min-width: 160px;
+    height: 100%;
+    min-height: 140px;
+    object-fit: cover;
+}
+
+.news-card-body { padding: 1.25rem; }
+
+.badge-news {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-radius: 50px;
+    padding: 0.3rem 0.7rem;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.badge-actualite { background: var(--bg-mint); color: var(--green); }
+
+.badge-evenement { background: #fdecea; color: var(--red); }
+
+/* =========================================================
+   Staff
+   ========================================================= */
+
+.staff-photo {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--bg-mint);
+    display: block;
+    margin: 0 auto 1rem;
+}
+
+.staff-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.staff-grade {
+    font-size: 0.8rem;
+    color: var(--green);
+    font-weight: 600;
+}
+
+.staff-specialty {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.staff-email {
+    font-size: 0.78rem;
+    color: var(--green-dark);
+}
+
+/* =========================================================
+   Timeline
+   ========================================================= */
+
+.timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 2px;
+    background: var(--green);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.timeline-item:last-child { margin-bottom: 0; }
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -2.4rem;
+    top: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--green);
+    border: 3px solid var(--white);
+    box-shadow: 0 0 0 2px var(--green);
+}
+
+.timeline-year {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* =========================================================
+   Publications
+   ========================================================= */
+
+.publication-item {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.publication-item:last-child { border-bottom: none; }
+
+.pub-year {
+    background: var(--bg-mint);
+    color: var(--green);
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 0.2rem 0.55rem;
+    display: inline-block;
+}
+
+/* =========================================================
+   Formation tabs
+   ========================================================= */
+
+.nav-pills-green .nav-link {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dark);
+    text-transform: uppercase;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 0.6rem 1.5rem;
+    margin: 0 0.4rem 0.5rem;
+}
+
+.nav-pills-green .nav-link::after { display: none; }
+
+.nav-pills-green .nav-link:hover,
+.nav-pills-green .nav-link.active {
+    background: var(--green);
+    color: var(--white);
+    border-color: var(--green);
+}
+
+/* =========================================================
+   Dean photo
+   ========================================================= */
+
+.dean-photo {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid var(--bg-mint);
+    box-shadow: 0 0 0 8px rgba(13, 155, 73, 0.08);
+    margin: 0 auto 1.25rem;
+}
+
+/* =========================================================
+   Page banner
+   ========================================================= */
+
+.page-banner {
+    background: linear-gradient(135deg, var(--bg-mint) 0%, var(--border) 100%);
+    padding: 3.5rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-banner .breadcrumb a {
+    color: var(--green);
+}
+
+.page-banner .breadcrumb-item.active {
+    color: var(--text-muted);
+}
+
+.page-banner h1 {
+    margin-bottom: 0.4rem;
+}
+
+.page-banner .subtitle {
+    color: var(--text-muted);
+}
+
+/* Modifier: page banner with a photo background instead of the plain
+   gradient. Set the actual image per-page via inline style="background-image:
+   url(...)" so this class stays reusable across any inner page. */
+.page-banner-photo {
+    position: relative;
+    background-color: var(--green-dark);
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+}
+
+.page-banner-photo::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(10, 61, 34, 0.92) 0%, rgba(13, 155, 73, 0.88) 100%);
+}
+
+.page-banner-photo .container {
+    position: relative;
+    z-index: 1;
+}
+
+.page-banner-photo .breadcrumb {
+    --bs-breadcrumb-divider-color: rgba(255, 255, 255, 0.6);
+}
+
+.page-banner-photo .breadcrumb a {
+    color: var(--white);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.page-banner-photo .breadcrumb-item.active {
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.page-banner-photo h1 {
+    color: var(--white);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.page-banner-photo .subtitle {
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+/* =========================================================
+   Hero (home)
+   ========================================================= */
+
+.hero {
+    position: relative;
+    min-height: 88vh;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #0a3d22 0%, #0D9B49 100%);
+    overflow: hidden;
+}
+
+.hero-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    z-index: 0;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='2' cy='2' r='1.5' fill='%23ffffff' fill-opacity='0.04'/%3E%3C/svg%3E"),
+        linear-gradient(135deg, rgba(10, 61, 34, 0.92) 0%, rgba(13, 155, 73, 0.88) 100%);
+    pointer-events: none;
+}
+
+.hero-shape {
+    position: absolute;
+    z-index: 2;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    right: -100px;
+    pointer-events: none;
+}
+
+.hero .container {
+    position: relative;
+    z-index: 3;
+}
+
+.hero-shape-lg { width: 500px; height: 500px; top: -80px; }
+
+.hero-shape-sm { width: 350px; height: 350px; bottom: -100px; right: 60px; }
+
+.hero-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    color: var(--white);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.5rem 1.2rem;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.hero h1 {
+    color: var(--white);
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    line-height: 1.2;
+    margin-bottom: 1.25rem;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.hero p.lead {
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 1.05rem;
+    max-width: 560px;
+    margin-bottom: 2rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+/* =========================================================
+   Stats bar
+   ========================================================= */
+
+.stats-bar {
+    background: var(--green);
+    padding: 2.5rem 0;
+}
+
+.stat-divider {
+    width: 1px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.25);
+    margin: 0 auto;
+}
+
+.stat-number {
+    font-size: 2.4rem;
+    color: var(--white);
+    font-weight: 700;
+}
+
+.stat-label {
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* =========================================================
+   Footer
+   ========================================================= */
+
+footer.site-footer {
+    background: var(--green-dark);
+    padding: 4rem 0 2rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+footer.site-footer .footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+}
+
+footer.site-footer .footer-logo img {
+    height: 50px;
+    filter: brightness(0) invert(1);
+}
+
+footer.site-footer .footer-brand-title {
+    color: var(--white);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+footer.site-footer .footer-brand-subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.78rem;
+}
+
+footer.site-footer h6 {
+    color: var(--white);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.25rem;
+}
+
+footer.site-footer a {
+    color: rgba(255, 255, 255, 0.75);
+    transition: color 0.2s ease;
+}
+
+footer.site-footer a:hover {
+    color: var(--white);
+}
+
+footer.site-footer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+footer.site-footer ul li {
+    margin-bottom: 0.7rem;
+    font-size: 0.9rem;
+}
+
+footer.site-footer .footer-contact-item {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 0.9rem;
+    font-size: 0.9rem;
+    align-items: flex-start;
+}
+
+footer.site-footer .footer-contact-item i {
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 0.2rem;
+}
+
+.footer-social {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.footer-social a {
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    transition: background 0.2s ease;
+}
+
+.footer-social a:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+footer.site-footer hr {
+    border-color: rgba(255, 255, 255, 0.15);
+    margin: 2rem 0 1.5rem;
+}
+
+.footer-bottom {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.65);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* =========================================================
+   Contact form
+   ========================================================= */
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 0.2rem rgba(13, 155, 73, 0.15);
+}
+
+/* =========================================================
+   Responsive breakpoints
+   ========================================================= */
+
+@media (max-width: 991px) {
+    .hero {
+        min-height: auto;
+        padding: 5rem 0 4rem;
+    }
+
+    .hero-shape { display: none; }
+
+    .stat-divider { display: none; }
+}
+
+@media (max-width: 767px) {
+    .news-card-thumb {
+        width: 100%;
+        height: 160px;
+    }
+
+    .news-card.d-flex {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 576px) {
+    .section-pad { padding: 3rem 0; }
+
+    .hero h1 { font-size: 1.8rem; }
+
+    .stats-bar [class*="col-"] { margin-bottom: 1.5rem; }
+
+    .stats-bar [class*="col-"]:last-child { margin-bottom: 0; }
+}

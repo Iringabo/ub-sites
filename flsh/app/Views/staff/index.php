@@ -4,6 +4,7 @@
 <?= view('partials/page_banner', [
     'pageTitle'    => $pageTitle ?? lang('Site.pageTitles.staff'),
     'pageSubtitle' => $content['banner_subtitle'] ?? '',
+    'bannerImage'  => $content['banner_image'] ?? '',
 ]) ?>
 
 <section class="section-pad bg-white">
@@ -18,8 +19,11 @@
             <?php foreach ($staff as $member): ?>
                 <div class="col-lg-3 col-md-4 col-6">
                     <article class="staff-card h-100" data-category="<?= esc($member->category, 'attr') ?>">
-                        <?php if ($member->photo): ?>
-                            <img src="<?= esc(site_media_url($member->photo), 'attr') ?>" alt="<?= esc($member->name, 'attr') ?>" class="staff-photo">
+                        <?php $staffPhoto = site_person_media($member->photo ?? null); ?>
+                        <?php if ($staffPhoto !== null): ?>
+                            <img src="<?= esc(site_media_url($staffPhoto), 'attr') ?>" alt="<?= esc($member->name, 'attr') ?>" class="staff-photo">
+                        <?php else: ?>
+                            <div class="card-icon mx-auto" aria-hidden="true"><?= esc(site_initials($member->name)) ?></div>
                         <?php endif ?>
                         <h2 class="staff-name mb-0"><?= esc($member->name) ?></h2>
                         <p class="staff-grade mb-1"><?= esc($member->grade ?? site_staff_category_label($member->category)) ?></p>

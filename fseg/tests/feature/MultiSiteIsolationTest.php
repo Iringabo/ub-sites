@@ -436,7 +436,7 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $public->assertSee('Bienvenue sur le site de FSI_PLATFORM');
         $publicBody = (string) $public->response()->getBody();
         $this->assertStringContainsString('theme-default', $publicBody);
-        $this->assertStringContainsString('--green: #14532D', $publicBody);
+        $this->assertStringContainsString('--green: #0D9B49', $publicBody);
     }
 
     public function testUiCannotCreateANewFacultySite(): void
@@ -489,7 +489,7 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $droit->assertOK();
         $droitBody = (string) $droit->response()->getBody();
         $this->assertStringContainsString('theme-default', $droitBody);
-        $this->assertStringContainsString('--green: #1D4ED8', $droitBody);
+        $this->assertStringContainsString('--green: #0D9B49', $droitBody);
         $this->assertStringContainsString('Bloc droit isolé', $droitBody);
         $this->assertStringContainsString('Contenu visible uniquement sur le site droit.', $droitBody);
 

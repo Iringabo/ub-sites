@@ -1,0 +1,18 @@
+{
+  "stats": [
+    { "count": 15000, "label": "Diplômés actifs" },
+    { "count": 30, "label": "Pays représentés" },
+    { "count": 85, "label": "Taux d'insertion pro. (%)" }
+  ],
+  "notable": [
+    { "photo": "https://i.pravatar.cc/160?img=33", "name": "Emmanuel Nzeyimana", "promotion": "Promotion 2008", "role": "Directeur Financier", "organization": "Banque de Crédit de Bujumbura (BCB)" },
+    { "photo": "https://i.pravatar.cc/160?img=25", "name": "Claudine Irakoze", "promotion": "Promotion 2012", "role": "Économiste principale", "organization": "Banque Africaine de Développement" },
+    { "photo": "https://i.pravatar.cc/160?img=15", "name": "Désiré Ntibonera", "promotion": "Promotion 2005", "role": "Fondateur & CEO", "organization": "AgriBurundi SA" },
+    { "photo": "https://i.pravatar.cc/160?img=29", "name": "Chantal Nizigiyimana", "promotion": "Promotion 2015", "role": "Responsable Audit", "organization": "PwC Rwanda-Burundi" }
+  ],
+  "testimonials": [
+    { "photo": "https://i.pravatar.cc/80?img=33", "quote": "La FSEG m'a donné les bases analytiques et la rigueur qui font aujourd'hui ma force dans le secteur bancaire international.", "name": "Emmanuel Nzeyimana", "promotion": "Promotion 2008" },
+    { "photo": "https://i.pravatar.cc/80?img=25", "quote": "Grâce aux enseignants de la FSEG et à leur exigence, j'ai pu intégrer une institution panafricaine de premier plan.", "name": "Claudine Irakoze", "promotion": "Promotion 2012" },
+    { "photo": "https://i.pravatar.cc/80?img=15", "quote": "Entreprendre après la FSEG a été naturel : la formation en gestion m'a préparé à structurer et faire grandir mon entreprise.", "name": "Désiré Ntibonera", "promotion": "Promotion 2005" }
+  ]
+}

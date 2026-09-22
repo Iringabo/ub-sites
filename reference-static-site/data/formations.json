@@ -1,0 +1,64 @@
+{
+  "licence": [
+    {
+      "title": "Économie",
+      "duration": "3 ans",
+      "description": "Formation solide en théorie économique, microéconomie, macroéconomie, économétrie et politique économique.",
+      "debouches": ["Analyste économique", "Conseiller en politiques publiques", "Chargé d'études", "Poursuite en Master"],
+      "conditions": "Baccalauréat série scientifique, économique ou technique. Concours d'entrée ou dossier de candidature."
+    },
+    {
+      "title": "Gestion des Entreprises",
+      "duration": "3 ans",
+      "description": "Formation axée sur les fondamentaux du management, marketing, ressources humaines, organisation et stratégie d'entreprise.",
+      "debouches": ["Responsable RH", "Chargé de marketing", "Chef de projet", "Manager opérationnel"],
+      "conditions": "Baccalauréat toutes séries. Priorité aux candidats avec mention."
+    },
+    {
+      "title": "Finance & Comptabilité",
+      "duration": "3 ans",
+      "description": "Cursus orienté vers la comptabilité générale et analytique, la fiscalité, la gestion financière, et l'analyse des états financiers.",
+      "debouches": ["Comptable", "Contrôleur de gestion", "Analyste financier", "Auditeur junior"],
+      "conditions": "Baccalauréat série scientifique ou économique. Tests d'aptitude mathématique."
+    }
+  ],
+  "master": [
+    {
+      "title": "Économie du Développement",
+      "duration": "2 ans",
+      "description": "Spécialisation en économie du développement, financement du développement, économie internationale et évaluation des politiques publiques.",
+      "debouches": ["Économiste senior", "Expert en développement", "Consultant international", "Chercheur"],
+      "conditions": "Licence en économie ou équivalent. Dossier académique + entretien."
+    },
+    {
+      "title": "Management des Organisations",
+      "duration": "2 ans",
+      "description": "Formation de haut niveau en stratégie d'entreprise, leadership, gestion du changement, gouvernance et management interculturel.",
+      "debouches": ["Directeur général", "Manager stratégique", "Consultant en management", "DRH"],
+      "conditions": "Licence en gestion, économie ou ingénierie. Expérience professionnelle appréciée."
+    },
+    {
+      "title": "Audit & Contrôle de Gestion",
+      "duration": "2 ans",
+      "description": "Spécialisation en audit interne et externe, contrôle de gestion avancé, normes IFRS et gouvernance des organisations.",
+      "debouches": ["Auditeur senior", "Contrôleur de gestion", "Expert-comptable", "Directeur financier"],
+      "conditions": "Licence en finance, comptabilité ou gestion."
+    }
+  ],
+  "doctorat": [
+    {
+      "title": "Sciences Économiques",
+      "duration": "3–5 ans",
+      "description": "Programme doctoral en sciences économiques orienté vers la production d'une thèse originale. Domaines : économie du développement, économétrie, économie internationale et politiques économiques.",
+      "debouches": ["Enseignant-chercheur", "Expert international", "Conseiller économique de haut niveau"],
+      "conditions": "Master en économie avec mention. Projet de recherche + lettre de motivation + encadreur pressenti."
+    },
+    {
+      "title": "Sciences de Gestion",
+      "duration": "3–5 ans",
+      "description": "Doctorat en sciences de gestion permettant des recherches dans les domaines du management, de la finance, de la comptabilité et du marketing.",
+      "debouches": ["Professeur d'université", "Directeur de recherche", "Expert conseil senior"],
+      "conditions": "Master en gestion, finance ou management. Dossier complet + soutenance devant jury."
+    }
+  ]
+}

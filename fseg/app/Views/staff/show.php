@@ -16,8 +16,11 @@
         <div class="row g-5 align-items-start">
             <aside class="col-lg-4 text-center">
                 <article class="card-faculte">
-                    <?php if ($member->photo): ?>
-                        <img src="<?= esc(site_media_url($member->photo), 'attr') ?>" alt="<?= esc($member->name, 'attr') ?>" class="dean-photo">
+                    <?php $staffPhoto = site_person_media($member->photo ?? null); ?>
+                    <?php if ($staffPhoto !== null): ?>
+                        <img src="<?= esc(site_media_url($staffPhoto), 'attr') ?>" alt="<?= esc($member->name, 'attr') ?>" class="dean-photo">
+                    <?php else: ?>
+                        <div class="card-icon mx-auto" aria-hidden="true"><?= esc(site_initials($member->name)) ?></div>
                     <?php endif ?>
                     <h2 class="h5 mb-1"><?= esc($member->name) ?></h2>
                     <p class="text-success fw-semibold small mb-1"><?= esc($member->grade ?? '') ?></p>

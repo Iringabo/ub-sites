@@ -2,15 +2,20 @@
 $pageTitle       = site_text_or_placeholder($pageTitle ?? null, lang('Site.pageTitles.default'));
 $breadcrumbTitle = site_text_or_placeholder($breadcrumbTitle ?? null, $pageTitle);
 $pageSubtitle    = trim((string) ($pageSubtitle ?? ''));
-$defaultImage    = 'assets/images/logo-placeholder.png';
-$bannerImage     = site_text_or_placeholder($bannerImage ?? null, $defaultImage);
+$bannerImage     = trim((string) ($bannerImage ?? ''));
+$isCrest         = $bannerImage === ''
+    || str_contains($bannerImage, 'logo-placeholder.png')
+    || str_contains($bannerImage, 'logo-placeholder.svg');
+$usePhoto        = ! $isCrest;
 $breadcrumbs     = $breadcrumbs ?? [
     ['label' => lang('Site.common.home'), 'url' => site_url('/')],
     ['label' => $breadcrumbTitle],
 ];
-$style = ' style="' . esc("background-image: url('" . site_css_url($bannerImage, $defaultImage) . "');", 'attr') . '"';
+$style = $usePhoto
+    ? ' style="' . esc("background-image: url('" . site_css_url($bannerImage) . "');", 'attr') . '"'
+    : '';
 ?>
-<section class="page-banner page-banner-photo"<?= $style ?>>
+<section class="page-banner<?= $usePhoto ? ' page-banner-photo' : '' ?>"<?= $style ?>>
     <div class="container">
         <nav aria-label="<?= esc(lang('Site.common.breadcrumbs'), 'attr') ?>">
             <ol class="breadcrumb mb-2">

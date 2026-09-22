@@ -1,0 +1,34 @@
+[
+  {
+    "abbr": "LEA",
+    "name": "Laboratoire d'Économie Appliquée",
+    "icon": "bi-bar-chart-line",
+    "description": "Le LEA se consacre à l'analyse quantitative et qualitative des problématiques économiques burundaises et régionales. Il développe des modèles économétriques pour éclairer les décisions de politique économique.",
+    "themes": ["Croissance économique", "Commerce international", "Pauvreté et inégalités", "Économétrie appliquée"],
+    "researchers": 8
+  },
+  {
+    "abbr": "CRGD",
+    "name": "Centre de Recherche en Gestion et Développement",
+    "icon": "bi-building",
+    "description": "Le CRGD étudie les pratiques managériales, la gouvernance des organisations et les stratégies de développement des entreprises dans le contexte africain.",
+    "themes": ["Gouvernance d'entreprise", "Entrepreneuriat", "Management stratégique", "RSE"],
+    "researchers": 6
+  },
+  {
+    "abbr": "LFC",
+    "name": "Laboratoire de Finance et Comptabilité",
+    "icon": "bi-cash-stack",
+    "description": "Le LFC mène des recherches en finance d'entreprise, marchés financiers africains, normalisation comptable et gouvernance financière des organisations.",
+    "themes": ["Finance d'entreprise", "Marchés financiers", "Audit et contrôle", "Normes IFRS"],
+    "researchers": 7
+  },
+  {
+    "abbr": "URPP",
+    "name": "Unité de Recherche en Politiques Publiques",
+    "icon": "bi-briefcase",
+    "description": "L'URPP analyse les politiques publiques économiques, sociales et fiscales, et produit des recommandations pour les décideurs publics burundais.",
+    "themes": ["Fiscalité et budget", "Politiques sociales", "Décentralisation", "Évaluation des politiques"],
+    "researchers": 5
+  }
+]

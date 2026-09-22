@@ -1,0 +1,8 @@
+[
+  { "code": "DEVECO-BI", "description": "Analyse des déterminants du développement économique inclusif au Burundi", "funder": "Union Européenne", "period": "2023–2026", "icon": "bi-globe" },
+  { "code": "FINAFRICA", "description": "Inclusion financière et accès aux services bancaires pour les populations rurales", "funder": "Banque Mondiale", "period": "2024–2026", "icon": "bi-bank" },
+  { "code": "AGRI-IMPACT", "description": "Évaluation de l'impact des politiques agricoles sur la sécurité alimentaire", "funder": "FAO – Burundi", "period": "2022–2025", "icon": "bi-tree" },
+  { "code": "GOUVERN-PME", "description": "Renforcement de la gouvernance des PME burundaises par la formation et l'accompagnement", "funder": "Coopération belge (ARES)", "period": "2023–2027", "icon": "bi-building-gear" },
+  { "code": "FISCALITE-DD", "description": "Réforme fiscale et financement du développement durable au Burundi", "funder": "PNUD Burundi", "period": "2024–2026", "icon": "bi-receipt" },
+  { "code": "INNOV-EMPLOI", "description": "Innovation, entrepreneuriat et création d'emplois chez les jeunes diplômés", "funder": "Union Africaine", "period": "2025–2028", "icon": "bi-rocket" }
+]

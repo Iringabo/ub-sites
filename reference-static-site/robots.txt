@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://christardev.github.io/fseg-website/sitemap.xml

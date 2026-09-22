@@ -1,0 +1,104 @@
+[
+  {
+    "id": "journee-portes-ouvertes",
+    "image": "https://images.unsplash.com/photo-1523050854058-8df90110c9f1",
+    "category": "evenement",
+    "categoryLabel": "Événement",
+    "date": "15 Mars 2026",
+    "sortDate": "2026-03-15",
+    "title": "Journée portes ouvertes FSEG 2026",
+    "excerpt": "La Faculté des Sciences Économiques et de Gestion organise sa journée portes ouvertes annuelle. Venez découvrir nos programmes, rencontrer nos enseignants et poser vos questions sur les admissions. Ouvert à tous les bacheliers et leurs familles.",
+    "featured": false
+  },
+  {
+    "id": "conference-internationale",
+    "image": "https://images.unsplash.com/photo-1540575467063-178a50c2df87",
+    "category": "evenement",
+    "categoryLabel": "Événement",
+    "date": "10 Avr 2026",
+    "sortDate": "2026-04-10",
+    "title": "Conférence internationale — Développement économique en Afrique",
+    "excerpt": "La FSEG accueille une conférence internationale réunissant des chercheurs et praticiens du développement économique en Afrique subsaharienne. Deux jours de panels, communications et ateliers.",
+    "featured": true,
+    "homeOrder": 3
+  },
+  {
+    "id": "resultats-examens",
+    "image": "https://images.unsplash.com/photo-1606326608606-aa0b62935f2b",
+    "category": "actualite",
+    "categoryLabel": "Actualité",
+    "date": "20 Jan 2026",
+    "sortDate": "2026-01-20",
+    "title": "Résultats des examens du 1er semestre 2025–2026",
+    "excerpt": "Les résultats des examens du premier semestre de l'année académique 2025–2026 sont désormais disponibles. Les étudiants peuvent les consulter sur le portail académique en ligne de l'Université du Burundi.",
+    "featured": true,
+    "homeOrder": 1
+  },
+  {
+    "id": "partenariat-liege",
+    "image": "https://images.unsplash.com/photo-1521791136064-7986c2920216",
+    "category": "actualite",
+    "categoryLabel": "Actualité",
+    "date": "5 Fév 2026",
+    "sortDate": "2026-02-05",
+    "title": "Signature d'un partenariat avec l'Université de Liège",
+    "excerpt": "La FSEG a officiellement signé un accord de coopération académique avec l'Université de Liège (Belgique). Ce partenariat permettra des échanges d'étudiants en master, des co-encadrements de thèses et des missions de recherche conjointes.",
+    "featured": true,
+    "homeOrder": 2
+  },
+  {
+    "id": "revue-fseg-7",
+    "image": "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8",
+    "category": "actualite",
+    "categoryLabel": "Actualité",
+    "date": "12 Déc 2025",
+    "sortDate": "2025-12-12",
+    "title": "Publication du numéro 7 de la Revue FSEG",
+    "excerpt": "Le septième numéro de la Revue Scientifique de la FSEG est paru. Il contient 9 articles originaux portant sur la finance, la gestion et le développement économique au Burundi et en Afrique.",
+    "featured": false
+  },
+  {
+    "id": "prix-excellence-2025",
+    "image": "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad",
+    "category": "actualite",
+    "categoryLabel": "Actualité",
+    "date": "3 Nov 2025",
+    "sortDate": "2025-11-03",
+    "title": "Prix d'excellence académique 2025 décernés",
+    "excerpt": "Les prix d'excellence académique de la FSEG ont été décernés lors d'une cérémonie officielle. Vingt étudiants ont été récompensés pour leurs performances exceptionnelles au cours de l'année académique 2024–2025.",
+    "featured": false
+  },
+  {
+    "id": "seminaire-doctoral",
+    "image": "https://images.unsplash.com/photo-1434030216411-0b793f4b4173",
+    "category": "evenement",
+    "categoryLabel": "Événement",
+    "date": "8 Oct 2025",
+    "sortDate": "2025-10-08",
+    "title": "Séminaire doctoral — Méthodes de recherche quantitative",
+    "excerpt": "Un séminaire de deux jours destiné aux doctorants de la FSEG a été organisé sur les méthodes quantitatives avancées en sciences économiques et de gestion. Animé par le Prof. Ndayishimiye et le Dr. Dusabimana.",
+    "featured": false
+  },
+  {
+    "id": "rentree-academique",
+    "image": "https://images.unsplash.com/photo-1541339907198-e08756dedf3f",
+    "category": "evenement",
+    "categoryLabel": "Événement",
+    "date": "25 Sep 2025",
+    "sortDate": "2025-09-25",
+    "title": "Cérémonie de rentrée académique 2025–2026",
+    "excerpt": "La FSEG a accueilli ses nouveaux étudiants lors de la cérémonie officielle de rentrée académique 2025–2026. Discours du Doyen, présentation des programmes et remise des agendas académiques.",
+    "featured": false
+  },
+  {
+    "id": "lancement-innov-emploi",
+    "image": "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d",
+    "category": "actualite",
+    "categoryLabel": "Actualité",
+    "date": "2 Sep 2025",
+    "sortDate": "2025-09-02",
+    "title": "Lancement du projet de recherche INNOV-EMPLOI",
+    "excerpt": "La FSEG a officiellement lancé le projet INNOV-EMPLOI, financé par l'Union Africaine, qui vise à étudier le lien entre innovation, entrepreneuriat et création d'emplois chez les jeunes diplômés en Afrique.",
+    "featured": false
+  }
+]

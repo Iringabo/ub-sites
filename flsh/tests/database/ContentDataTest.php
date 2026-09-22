@@ -160,8 +160,11 @@ final class ContentDataTest extends CIUnitTestCase
             ->get()
             ->getResultArray();
 
-        $this->assertNotEmpty($slides);
-        $this->assertContains('assets/images/logo-placeholder.png', array_column($slides, 'image_path'));
+        $this->assertSame([
+            'assets/images/hero/campus-walkway.jpg',
+            'assets/images/hero/economics-classroom.jpg',
+            'assets/images/hero/research-team.jpg',
+        ], array_column($slides, 'image_path'));
 
         foreach ($slides as $slide) {
             $this->assertSame('1', (string) $slide['is_published']);

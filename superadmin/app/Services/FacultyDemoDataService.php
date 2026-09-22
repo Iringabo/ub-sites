@@ -49,10 +49,22 @@ class FacultyDemoDataService
         $this->db->transStart();
 
         $this->db->table('sites')->where('id', $siteId)->update([
-            'primary_color'   => $color,
-            'secondary_color' => $secondary,
-            'logo'            => $logoPath,
-            'updated_at'      => $this->now(),
+            'primary_color'    => $color,
+            'secondary_color'  => $secondary,
+            'logo'             => $logoPath,
+            'enabled_sections' => json_encode([
+                'hero',
+                'statistics',
+                'about',
+                'programmes_preview',
+                'research_labs',
+                'news_preview',
+                'dean_message',
+                'staff_preview',
+                'custom_text',
+                'contact_cta',
+            ], JSON_UNESCAPED_UNICODE),
+            'updated_at'       => $this->now(),
         ]);
 
         $this->seedHome($siteId, $name, $short, $theme, $heroPath);
@@ -262,7 +274,7 @@ class FacultyDemoDataService
                 'category'         => $row['category'],
                 'name'             => $row['name'],
                 'slug'             => $row['slug'],
-                'photo'            => $photos[$i] ?? null,
+                'photo'            => null,
                 'grade'            => $row['grade'],
                 'specialty'        => $row['specialty'],
                 'role'             => $row['role'],
@@ -293,7 +305,7 @@ class FacultyDemoDataService
                 'slug'            => $row['slug'],
                 'excerpt'         => $row['excerpt'],
                 'body'            => $row['body'],
-                'cover_image'     => $covers[$i] ?? null,
+                'cover_image'     => null,
                 'status'          => 'published',
                 'published_at'    => $published,
                 'featured'        => $i < 3 ? 1 : 0,
@@ -428,6 +440,8 @@ class FacultyDemoDataService
             'faculty' => [
                 'title' => 'Présentation de la faculté',
                 'content' => [
+                    'banner_subtitle' => 'Présentation de ' . $short,
+                    'banner_image'    => $banner,
                     'intro' => $theme['about'],
                     'dean'  => [
                         'name'    => $theme['dean_name'],
@@ -439,12 +453,44 @@ class FacultyDemoDataService
             ],
             'posts' => [
                 'title' => 'Actualités et événements',
-                'content' => ['banner_subtitle' => 'Suivez la vie de ' . $short],
+                'content' => [
+                    'banner_subtitle' => 'Suivez la vie de ' . $short,
+                    'banner_image'    => $banner,
+                ],
+            ],
+            'research' => [
+                'title' => 'Recherche',
+                'content' => [
+                    'banner_subtitle' => 'Laboratoires, publications et projets',
+                    'banner_image'    => $banner,
+                    'labs_label'           => 'Laboratoires',
+                    'labs_title'           => $theme['research_title'],
+                    'labs_text'            => $theme['research_body'],
+                    'publications_label'   => 'Publications',
+                    'publications_title'   => 'Travaux récents',
+                    'publications_text'    => 'Sélection de publications de ' . $short,
+                    'projects_label'       => 'Projets',
+                    'projects_title'       => 'Projets en cours',
+                ],
             ],
             'staff' => [
                 'title' => 'Corps enseignant et personnel',
                 'content' => [
                     'banner_subtitle' => 'Une équipe engagée au service de la formation',
+                    'banner_image'    => $banner,
+                ],
+            ],
+            'formations' => [
+                'title' => 'Formations',
+                'content' => [
+                    'banner_subtitle' => 'Parcours de la licence au doctorat',
+                    'banner_image'    => $banner,
+                ],
+            ],
+            'alumni' => [
+                'title' => 'Alumni',
+                'content' => [
+                    'banner_subtitle' => 'Le réseau des diplômés',
                     'banner_image'    => $banner,
                 ],
             ],

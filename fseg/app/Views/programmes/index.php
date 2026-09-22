@@ -4,6 +4,7 @@
 <?= view('partials/page_banner', [
     'pageTitle'    => $pageTitle ?? lang('Site.pageTitles.programmes'),
     'pageSubtitle' => $content['banner_subtitle'] ?? '',
+    'bannerImage'  => $content['banner_image'] ?? '',
 ]) ?>
 
 <section class="section-pad-sm bg-white">

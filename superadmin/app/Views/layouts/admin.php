@@ -98,7 +98,7 @@ $brandSubtitle = $brand['subtitle'];
                     <button type="button" class="btn btn-outline-green btn-sm" id="adminPaletteHint" data-admin-palette-open title="Rechercher un module (Ctrl+K)">
                         <i class="bi bi-search" aria-hidden="true"></i>
                         <span class="d-none d-xl-inline">Rechercher</span>
-                        <kbd class="d-none d-xl-inline ms-1">Ctrl+K</kbd>
+                        <kbd class="d-none d-xl-inline">Ctrl+K</kbd>
                     </button>
                     <?php if (count($availableSites) > 1): ?>
                         <?php

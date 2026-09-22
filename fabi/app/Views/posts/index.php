@@ -4,6 +4,7 @@
 <?= view('partials/page_banner', [
     'pageTitle'    => $pageTitle ?? lang('Site.pageTitles.posts'),
     'pageSubtitle' => $content['banner_subtitle'] ?? '',
+    'bannerImage'  => $content['banner_image'] ?? '',
 ]) ?>
 
 <section class="section-pad bg-white">
@@ -30,29 +31,47 @@
             <a class="btn btn-outline-green<?= $selectedType === 'event' ? ' active' : '' ?>" href="<?= site_url('actualites?type=evenement' . ($query !== '' ? '&q=' . urlencode($query) : '')) ?>"><?= esc(lang('Site.posts.events')) ?></a>
         </div>
 
-        <div class="row g-4">
-            <?php foreach ($posts as $post): ?>
-                <div class="col-lg-6">
-                    <article class="news-card h-100 d-flex flex-column flex-md-row" data-category="<?= esc(site_post_category($post->type), 'attr') ?>">
-                        <?php if ($post->cover_image): ?>
-                            <img src="<?= esc(site_media_url($post->cover_image), 'attr') ?>" class="news-card-thumb" alt="<?= esc($post->title, 'attr') ?>">
-                        <?php endif ?>
-                        <div class="news-card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
-                                <span class="badge-news badge-<?= esc(site_post_category($post->type), 'attr') ?>"><?= esc(site_post_type_label($post->type)) ?></span>
-                                <span class="small text-muted"><?= esc(site_format_date($post->published_at)) ?></span>
-                            </div>
-                            <h2 class="h6 fw-bold"><?= esc($post->title) ?></h2>
-                            <p class="small text-muted"><?= esc($post->excerpt) ?></p>
-                            <?php if ($post->type === 'event' && $post->event_starts_at): ?>
-                                <p class="small text-muted mb-2"><i class="bi bi-calendar-event me-1"></i><?= esc(site_format_date($post->event_starts_at, true)) ?></p>
-                            <?php endif ?>
-                            <a href="<?= site_url('actualites/' . $post->slug) ?>" class="small fw-semibold text-success"><?= esc(lang('Home.readMore')) ?></a>
+        <?php
+        $upcomingPosts = $upcomingPosts ?? [];
+        $renderPostCard = static function (object $post): void {
+            $cover = site_person_media($post->cover_image ?? null);
+            ?>
+            <div class="col-lg-6">
+                <article class="news-card h-100 d-flex flex-column flex-md-row" data-category="<?= esc(site_post_category($post->type), 'attr') ?>">
+                    <?php if ($cover !== null): ?>
+                        <img src="<?= esc(site_media_url($cover), 'attr') ?>" class="news-card-thumb" alt="<?= esc($post->title, 'attr') ?>">
+                    <?php endif ?>
+                    <div class="news-card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                            <span class="badge-news badge-<?= esc(site_post_category($post->type), 'attr') ?>"><?= esc(site_post_type_label($post->type)) ?></span>
+                            <span class="small text-muted"><?= esc(site_format_date($post->published_at)) ?></span>
                         </div>
-                    </article>
-                </div>
-            <?php endforeach ?>
-        </div>
+                        <h2 class="h6 fw-bold"><?= esc($post->title) ?></h2>
+                        <p class="small text-muted"><?= esc($post->excerpt) ?></p>
+                        <?php if ($post->type === 'event' && $post->event_starts_at): ?>
+                            <p class="small text-muted mb-2"><i class="bi bi-calendar-event me-1"></i><?= esc(site_format_date($post->event_starts_at, true)) ?></p>
+                        <?php endif ?>
+                        <a href="<?= site_url('actualites/' . $post->slug) ?>" class="small fw-semibold text-success"><?= esc(lang('Home.readMore')) ?></a>
+                    </div>
+                </article>
+            </div>
+            <?php
+        };
+        ?>
+        <?php if ($selectedType === null && $upcomingPosts !== []): ?>
+            <h2 class="h4 mb-3"><?= esc(lang('Site.posts.upcoming')) ?></h2>
+            <div class="row g-4 mb-5">
+                <?php foreach ($upcomingPosts as $post) { $renderPostCard($post); } ?>
+            </div>
+        <?php endif ?>
+        <?php if ($selectedType === null && $posts !== []): ?>
+            <h2 class="h4 mb-3"><?= esc(lang('Site.posts.news')) ?></h2>
+        <?php endif ?>
+        <?php if ($posts !== []): ?>
+            <div class="row g-4">
+                <?php foreach ($posts as $post) { $renderPostCard($post); } ?>
+            </div>
+        <?php endif ?>
         <p id="newsNoResults" class="text-center text-muted mt-4 <?= $posts === [] ? '' : 'd-none' ?>"><?= esc(lang('Site.posts.noResults')) ?></p>
         <?= $pager->links('posts', 'site_full') ?>
     </div>

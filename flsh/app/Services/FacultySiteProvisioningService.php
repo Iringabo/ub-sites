@@ -34,7 +34,7 @@ class FacultySiteProvisioningService
             'menu_config'      => json_encode([
                 'items' => ['faculte', 'formations', 'recherche', 'corps-enseignant', 'actualites', 'alumni', 'contact'],
             ], JSON_UNESCAPED_SLASHES),
-            'enabled_sections' => ['hero', 'statistics', 'about', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'contact_cta'],
+            'enabled_sections' => ['hero', 'statistics', 'about', 'programmes_preview', 'research_labs', 'news_preview', 'dean_message', 'staff_preview', 'custom_text', 'contact_cta'],
         ];
 
         // Single public theme; ignore any legacy theme key from callers.
@@ -169,6 +169,10 @@ class FacultySiteProvisioningService
 
     private function heroSlides(int $siteId): void
     {
+        if ($this->db->table('home_hero_slides')->where('site_id', $siteId)->countAllResults() > 0) {
+            return;
+        }
+
         // Minimal starter until `php spark site:seed-demo --force` materializes site-owned uploads.
         foreach ([
             ['assets/images/logo-placeholder.png', 'Image de départ (remplacée par le seed démo)', 1],

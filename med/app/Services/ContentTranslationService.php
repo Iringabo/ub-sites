@@ -227,6 +227,33 @@ class ContentTranslationService
     /**
      * @param array<string, mixed> $values
      */
+    /**
+     * @param list<string> $fields
+     * @return list<int>
+     */
+    public function matchingResourceIds(string $resourceType, string $query, array $fields): array
+    {
+        $query = trim($query);
+        if ($query === '' || $fields === [] || $this->isDefaultLocale()) {
+            return [];
+        }
+
+        $rows = db_connect()->table('content_translations')
+            ->select('resource_id')
+            ->where('site_id', service('siteResolver')->activeSiteId())
+            ->where('resource_type', $resourceType)
+            ->where('locale', site_current_locale())
+            ->whereIn('field', $fields)
+            ->like('value', $query)
+            ->get()
+            ->getResultArray();
+
+        return array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['resource_id'],
+            $rows,
+        )));
+    }
+
     public function save(string $resourceType, int $resourceId, string $locale, array $values): void
     {
         $locale = $this->locale($locale);

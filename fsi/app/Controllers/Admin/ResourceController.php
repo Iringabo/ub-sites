@@ -2111,7 +2111,7 @@ class ResourceController extends BaseController
                 'sections'         => [
                     ['title' => 'Identification', 'fields' => ['identifier', 'name', 'slug', 'status', 'default_locale']],
                     ['title' => 'Domaines', 'fields' => ['hostnames']],
-                    ['title' => 'Identité visuelle', 'fields' => ['logo', 'primary_color', 'secondary_color']],
+                    ['title' => 'Identité visuelle', 'fields' => ['logo']],
                     ['title' => 'Coordonnées', 'fields' => ['contact_email', 'phone']],
                 ],
                 'defaults'         => [
@@ -2122,7 +2122,7 @@ class ResourceController extends BaseController
                     'theme'            => 'default',
                     'theme_config'     => '{"layout":"classic","hero_image":"assets/images/logo-placeholder.png"}',
                     'menu_config'      => '{"items":["faculte","formations","recherche","corps-enseignant","actualites","alumni","contact"]}',
-                    'enabled_sections' => ['hero', 'statistics', 'about', 'dean_message', 'programmes_preview', 'news_preview', 'research_labs', 'staff_preview', 'contact_cta'],
+                    'enabled_sections' => ['hero', 'statistics', 'about', 'programmes_preview', 'research_labs', 'news_preview', 'dean_message', 'staff_preview', 'custom_text', 'contact_cta'],
                 ],
                 'fields'           => [
                     ['name' => 'identifier', 'label' => 'Identifiant interne', 'type' => 'text', 'required' => true, 'max' => 80, 'pattern' => '/^[a-z0-9_.-]+$/', 'patternMessage' => 'L’identifiant contient uniquement minuscules, chiffres, points, tirets et underscores.', 'list' => true],
@@ -2132,8 +2132,6 @@ class ResourceController extends BaseController
                     ['name' => 'status', 'label' => 'État', 'type' => 'select', 'required' => true, 'options' => ['active' => 'Actif', 'inactive' => 'Inactif'], 'default' => 'active', 'list' => true],
                     ['name' => 'default_locale', 'label' => 'Langue par défaut', 'type' => 'select', 'required' => true, 'options' => ['fr' => 'Français', 'en' => 'Anglais'], 'default' => 'fr'],
                     ['name' => 'logo', 'label' => 'Logo', 'type' => 'image', 'folder' => 'sites', 'nullable' => true],
-                    ['name' => 'primary_color', 'label' => 'Couleur principale', 'type' => 'color', 'nullable' => true, 'max' => 7, 'pattern' => '/^#[0-9a-fA-F]{6}$/', 'patternMessage' => 'La couleur principale doit utiliser le format #RRGGBB.'],
-                    ['name' => 'secondary_color', 'label' => 'Couleur secondaire', 'type' => 'color', 'nullable' => true, 'max' => 7, 'pattern' => '/^#[0-9a-fA-F]{6}$/', 'patternMessage' => 'La couleur secondaire doit utiliser le format #RRGGBB.'],
                     ['name' => 'contact_email', 'label' => 'Adresse électronique', 'type' => 'email', 'nullable' => true, 'max' => 255],
                     ['name' => 'phone', 'label' => 'Téléphone', 'type' => 'text', 'nullable' => true, 'max' => 80],
                 ],
