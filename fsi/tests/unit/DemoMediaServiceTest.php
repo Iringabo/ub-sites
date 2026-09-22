@@ -45,6 +45,10 @@ final class DemoMediaServiceTest extends CIUnitTestCase
 
         $this->assertNotEmpty($gallery['heroes']);
         $this->assertStringStartsWith('uploads/sites/fseg/', $gallery['heroes'][0]);
+        $this->assertSame(DemoMediaService::SHARED_LOGO, $gallery['logo']);
+        $this->assertLessThanOrEqual(3, count($gallery['heroes']));
+        $this->assertNotEmpty($gallery['staff']);
+        $this->assertStringStartsWith('uploads/sites/fseg/', $gallery['staff'][0]);
         $this->assertDirectoryExists($this->tempPublic . '/uploads/sites/fseg');
         $this->assertDirectoryDoesNotExist($this->tempPublic . '/uploads/sites/fsi');
         $this->assertDirectoryDoesNotExist($this->tempPublic . '/uploads/sites/med');

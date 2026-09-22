@@ -370,8 +370,8 @@ return [
             'email' => 'fsi-info@ub.edu.bi',
             'phone' => '(+257) 22 22 47 94 / 22 22 48 82',
             'address' => '164, Chaussée Prince Louis Rwagasore, Campus Kiriri, B.P. 2700, Bujumbura, Burundi',
-            'primary' => '#1565C0',
-            'secondary' => '#0D47A1',
+            'primary' => '#0D9B49',
+            'secondary' => '#0B6F38',
         ],
         'home' => [
             'hero_badge' => 'FSI — Université du Burundi',
@@ -426,7 +426,7 @@ return [
             ['footer.copyright', '© ' . date('Y') . ' FSI — Université du Burundi', 'string', 'footer'],
             ['seo.default_title', 'FSI | Université du Burundi', 'string', 'seo'],
             ['seo.default_description', 'Faculté des Sciences de l’Ingénieur, Campus Kiriri.', 'text', 'seo'],
-            ['seo.theme_color', '#1565C0', 'color', 'seo'],
+            ['seo.theme_color', '#0D9B49', 'color', 'seo'],
         ],
         'stats' => [
             ['home_main', 'Étudiants FSI', 1500, '+', 1],

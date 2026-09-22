@@ -83,7 +83,7 @@ class SettingsService
             'seo.default_description'  => $missing,
             'seo.theme_color'          => trim((string) ($site->primary_color ?? '')) ?: '#0D9B49',
             'seo.og_image'             => 'assets/images/logo-placeholder.png',
-            'home.hero_indicator_size' => '1',
+            'home.hero_indicator_size' => '0.75',
             'social.links'             => [],
         ];
     }

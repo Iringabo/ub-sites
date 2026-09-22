@@ -660,9 +660,9 @@ class ResourceController extends BaseController
 
     private function heroIndicatorSizeValue(): string
     {
-        $value = (string) service('settingsService')->get('home.hero_indicator_size', '1');
+        $value = (string) service('settingsService')->get('home.hero_indicator_size', '0.75');
 
-        return array_key_exists($value, $this->heroIndicatorSizeOptions()) ? $value : '1';
+        return array_key_exists($value, $this->heroIndicatorSizeOptions()) ? $value : '0.75';
     }
 
     /**

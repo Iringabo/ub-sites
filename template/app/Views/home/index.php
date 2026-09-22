@@ -177,9 +177,9 @@ $contactCtaUrl = site_public_url((string) ($contactCtaSettings['url'] ?? $contac
 $staffPreviewTitle = $blockText('staff_preview', 'title', lang('Site.pageTitles.staff'));
 $staffPreviewText = $blockText('staff_preview', 'content', '');
 $heroSlides = array_values($heroSlides ?? []);
-$heroIndicatorSize = (string) ($siteSettings['home.hero_indicator_size'] ?? service('settingsService')->get('home.hero_indicator_size', '1'));
+$heroIndicatorSize = (string) ($siteSettings['home.hero_indicator_size'] ?? service('settingsService')->get('home.hero_indicator_size', '0.75'));
 if (! in_array($heroIndicatorSize, ['0.75', '1', '1.25', '1.5'], true)) {
-    $heroIndicatorSize = '1';
+    $heroIndicatorSize = '0.75';
 }
 $slideValue = static function (mixed $slide, string $field): ?string {
     if (is_array($slide)) {

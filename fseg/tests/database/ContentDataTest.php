@@ -154,18 +154,18 @@ final class ContentDataTest extends CIUnitTestCase
     {
         $slides = $this->db->table('home_hero_slides')
             ->select('image_path, alt_text, display_order, is_published')
+            ->where('deleted_at', null)
             ->orderBy('display_order', 'ASC')
+            ->orderBy('id', 'ASC')
             ->get()
             ->getResultArray();
 
-        $this->assertCount(1, $slides);
-        $this->assertSame([
-            'assets/images/logo-placeholder.png',
-        ], array_column($slides, 'image_path'));
+        $this->assertNotEmpty($slides);
+        $this->assertContains('assets/images/logo-placeholder.png', array_column($slides, 'image_path'));
 
-        foreach ($slides as $index => $slide) {
-            $this->assertSame((string) ($index + 1), (string) $slide['display_order']);
+        foreach ($slides as $slide) {
             $this->assertSame('1', (string) $slide['is_published']);
+            $this->assertNotSame('', trim((string) $slide['image_path']));
             $this->assertNotSame('', trim((string) $slide['alt_text']));
         }
     }

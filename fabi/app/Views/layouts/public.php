@@ -9,7 +9,7 @@ $locale       = site_current_locale();
 $activeSite   = service('siteResolver')->activeSite();
 $validHex     = static fn (mixed $value, string $fallback): string => is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1 ? $value : $fallback;
 $primaryColor = $validHex($activeSite->primary_color ?? null, '#0D9B49');
-$secondaryColor = $validHex($activeSite->secondary_color ?? null, '#108545');
+$secondaryColor = $validHex($activeSite->secondary_color ?? null, '#0B6F38');
 $themeName    = preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($activeSite->theme ?? 'default'))) ?: 'default';
 $themeConfig  = json_decode((string) ($activeSite->theme_config ?? ''), true);
 $themeLayout  = is_array($themeConfig) ? preg_replace('/[^a-z0-9_-]/', '', strtolower((string) ($themeConfig['layout'] ?? 'classic'))) : 'classic';

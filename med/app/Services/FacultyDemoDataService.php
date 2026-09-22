@@ -33,7 +33,8 @@ class FacultyDemoDataService
         $slug = strtolower(trim((string) $site->slug));
         $name = trim((string) $site->name) ?: ('Faculté ' . strtoupper($slug));
         $short = strtoupper(trim((string) ($site->identifier ?: $slug)));
-        $color = (string) ($site->primary_color ?: '#0D9B49');
+        $color = '#0D9B49';
+        $secondary = '#0B6F38';
         $theme = $this->themeForSlug($slug);
 
         if (! $force) {
@@ -42,9 +43,17 @@ class FacultyDemoDataService
 
         $this->clearSiteContent($siteId);
         $gallery = $this->media->materializeSiteGallery($slug, $name, $color);
-        $heroPath = $gallery['heroes'][0] ?? 'assets/images/logo-placeholder.png';
+        $heroPath = $gallery['heroes'][0] ?? DemoMediaService::SHARED_LOGO;
+        $logoPath = $gallery['logo'] ?: DemoMediaService::SHARED_LOGO;
 
         $this->db->transStart();
+
+        $this->db->table('sites')->where('id', $siteId)->update([
+            'primary_color'   => $color,
+            'secondary_color' => $secondary,
+            'logo'            => $logoPath,
+            'updated_at'      => $this->now(),
+        ]);
 
         $this->seedHome($siteId, $name, $short, $theme, $heroPath);
         $this->seedHeroes($siteId, $gallery['heroes'], $theme);
@@ -56,7 +65,7 @@ class FacultyDemoDataService
         $this->seedTimeline($siteId, $theme);
         $this->seedAlumni($siteId, $slug, $theme);
         $this->seedPages($siteId, $name, $short, $gallery['banner'], $theme);
-        $this->seedSettings($siteId, $name, $short, $color, $gallery['logo'], $site);
+        $this->seedSettings($siteId, $name, $short, $color, $logoPath, $site);
         $this->seedContentBlocks($siteId, $theme);
 
         $this->db->transComplete();
@@ -485,10 +494,10 @@ class FacultyDemoDataService
             ['assets.logo', $logoPath, 'path', 'assets'],
             ['seo.default_title', $short . ' | Université du Burundi', 'string', 'seo'],
             ['seo.default_description', 'Site officiel de démonstration — ' . $name, 'text', 'seo'],
-            ['seo.theme_color', $color, 'color', 'seo'],
+            ['seo.theme_color', '#0D9B49', 'color', 'seo'],
             ['seo.og_image', $logoPath, 'path', 'seo'],
             ['social.links', json_encode(['facebook' => 'https://facebook.com', 'twitter' => 'https://x.com'], JSON_UNESCAPED_UNICODE), 'json', 'social'],
-            ['home.hero_indicator_size', '1', 'string', 'home'],
+            ['home.hero_indicator_size', '0.75', 'string', 'home'],
         ];
 
         foreach ($rows as [$key, $value, $type, $context]) {
@@ -519,6 +528,7 @@ class FacultyDemoDataService
                 'type'          => $type,
                 'title'         => $title,
                 'content'       => $content,
+                'settings'      => json_encode(new \stdClass(), JSON_FORCE_OBJECT),
                 'display_order' => $order,
                 'is_published'  => 1,
                 'created_at'    => $this->now(),

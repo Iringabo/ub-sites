@@ -231,8 +231,8 @@ $faculties['med'] = [
         'email' => 'medecine@ub.edu.bi',
         'phone' => '(+257) 22 23 20 74',
         'address' => 'Centre Hospitalo-Universitaire de Kamenge (CHUK), Boulevard de Mwewi Gisabo, B.P. 2210, Bujumbura, Burundi',
-        'primary' => '#0B6E99',
-        'secondary' => '#084B6B',
+        'primary' => '#0D9B49',
+        'secondary' => '#0B6F38',
     ],
     'home' => [
         'hero_badge' => 'Faculté de Médecine — Université du Burundi',
@@ -285,7 +285,7 @@ $faculties['med'] = [
         ['footer.copyright', '© ' . date('Y') . ' Faculté de Médecine — Université du Burundi', 'string', 'footer'],
         ['seo.default_title', 'Faculté de Médecine | Université du Burundi', 'string', 'seo'],
         ['seo.default_description', 'Doctorat en Médecine et spécialisations DES à l’Université du Burundi (CHUK Kamenge).', 'text', 'seo'],
-        ['seo.theme_color', '#0B6E99', 'color', 'seo'],
+        ['seo.theme_color', '#0D9B49', 'color', 'seo'],
     ],
     'stats' => [
         ['home_main', 'Étudiants en médecine', 850, '+', 1],
@@ -594,8 +594,8 @@ $faculties['fabi'] = [
         'email' => 'fabi@ub.edu.bi',
         'phone' => '(+257) 22 40 25 00',
         'address' => 'Campus Zege (Gitega) — Faculté d’Agronomie et de Bio-Ingénierie ; CRAVE B.P. 2940, Bujumbura, Burundi',
-        'primary' => '#2E7D32',
-        'secondary' => '#1B5E20',
+        'primary' => '#0D9B49',
+        'secondary' => '#0B6F38',
     ],
     'home' => [
         'hero_badge' => 'FABI — Université du Burundi',
@@ -648,7 +648,7 @@ $faculties['fabi'] = [
         ['footer.copyright', '© ' . date('Y') . ' FABI — Université du Burundi', 'string', 'footer'],
         ['seo.default_title', 'FABI | Université du Burundi', 'string', 'seo'],
         ['seo.default_description', 'Faculté d’Agronomie et de Bio-Ingénierie de l’Université du Burundi (campus Zege).', 'text', 'seo'],
-        ['seo.theme_color', '#2E7D32', 'color', 'seo'],
+        ['seo.theme_color', '#0D9B49', 'color', 'seo'],
     ],
     'stats' => [
         ['home_main', 'Étudiants FABI', 1200, '+', 1],
@@ -956,8 +956,8 @@ $faculties['flsh'] = [
         'email' => 'flsh@ub.edu.bi',
         'phone' => '(+257) 22 22 52 28',
         'address' => 'Campus universitaire, Avenue de l’UNESCO / Bujumbura — Faculté des Lettres et des Sciences Humaines, Université du Burundi, B.P. 1550',
-        'primary' => '#8B2942',
-        'secondary' => '#5C1A2E',
+        'primary' => '#0D9B49',
+        'secondary' => '#0B6F38',
     ],
     'home' => [
         'hero_badge' => 'FLSH — Université du Burundi',
@@ -1010,7 +1010,7 @@ $faculties['flsh'] = [
         ['footer.copyright', '© ' . date('Y') . ' FLSH — Université du Burundi', 'string', 'footer'],
         ['seo.default_title', 'FLSH | Université du Burundi', 'string', 'seo'],
         ['seo.default_description', 'Faculté des Lettres et des Sciences Humaines de l’Université du Burundi.', 'text', 'seo'],
-        ['seo.theme_color', '#8B2942', 'color', 'seo'],
+        ['seo.theme_color', '#0D9B49', 'color', 'seo'],
     ],
     'stats' => [
         ['home_main', 'Étudiants FLSH', 2500, '+', 1],

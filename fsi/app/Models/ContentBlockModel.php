@@ -24,7 +24,7 @@ class ContentBlockModel extends SiteScopedModel
     ];
     protected array $casts      = [
         'id'            => 'integer',
-        'settings'      => 'json-array',
+        'settings'      => '?json-array',
         'display_order' => 'integer',
         'is_published'  => 'boolean',
     ];

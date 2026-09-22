@@ -7,6 +7,8 @@ namespace App\Services;
  */
 class DemoMediaService
 {
+    public const SHARED_LOGO = 'assets/images/logo-placeholder.png';
+
     private MediaService $media;
 
     public function __construct(?MediaService $media = null)
@@ -15,9 +17,10 @@ class DemoMediaService
     }
 
     /**
-     * Copy pack photos for this slug only, then fill gaps with labeled placeholders.
+     * Copy pack photos for this slug only. Reuse photographic assets for staff/posts.
+     * Logo is the shared static crest (not a generated tile).
      *
-     * @return array{heroes: list<string>, banner: ?string, logo: ?string, staff: list<string>, posts: list<string>}
+     * @return array{heroes: list<string>, banner: ?string, logo: string, staff: list<string>, posts: list<string>}
      */
     public function materializeSiteGallery(string $slug, string $facultyLabel, string $primaryColor = '#0D9B49'): array
     {
@@ -25,52 +28,45 @@ class DemoMediaService
         $packDir = $this->packDirectory($slug);
 
         $heroes = [];
-        foreach (['hero-1.jpg', 'hero-2.jpg', 'hero-3.jpg'] as $index => $file) {
+        foreach (['hero-1.jpg', 'hero-2.jpg', 'hero-3.jpg'] as $file) {
             $source = $packDir . DIRECTORY_SEPARATOR . $file;
-            $path = is_file($source)
-                ? $this->media->storeLocalFileForSite($slug, 'hero', $source)
-                : $this->labeledJpeg($slug, 'hero', $facultyLabel, 'Héros ' . ($index + 1), $primaryColor, 1600, 900);
+            if (! is_file($source)) {
+                continue;
+            }
+            $path = $this->media->storeLocalFileForSite($slug, 'hero', $source);
             if ($path !== null) {
                 $heroes[] = $path;
             }
         }
 
-        while (count($heroes) < 5) {
-            $n = count($heroes) + 1;
-            $path = $this->labeledJpeg($slug, 'hero', $facultyLabel, 'Campus ' . $n, $primaryColor, 1600, 900);
-            if ($path === null) {
-                break;
-            }
-            $heroes[] = $path;
+        $bannerSource = $packDir . DIRECTORY_SEPARATOR . 'banner.jpg';
+        $banner = null;
+        if (is_file($bannerSource)) {
+            $banner = $this->media->storeLocalFileForSite($slug, 'banners', $bannerSource);
+        }
+        if ($banner === null && $heroes !== []) {
+            $banner = $heroes[0];
         }
 
-        $bannerSource = $packDir . DIRECTORY_SEPARATOR . 'banner.jpg';
-        $banner = is_file($bannerSource)
-            ? $this->media->storeLocalFileForSite($slug, 'banners', $bannerSource)
-            : $this->labeledJpeg($slug, 'banners', $facultyLabel, 'Bannière', $primaryColor, 1600, 500);
-
-        $logo = $this->labeledJpeg($slug, 'settings', $facultyLabel, strtoupper($slug), $primaryColor, 512, 512);
+        $photoPool = array_values(array_filter(array_merge($heroes, $banner !== null ? [$banner] : [])));
+        if ($photoPool === []) {
+            $photoPool = [self::SHARED_LOGO];
+        }
 
         $staff = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $path = $this->labeledJpeg($slug, 'staff', $facultyLabel, 'Personnel ' . $i, $this->shiftColor($primaryColor, $i * 12), 600, 750);
-            if ($path !== null) {
-                $staff[] = $path;
-            }
+        for ($i = 0; $i < 12; $i++) {
+            $staff[] = $photoPool[$i % count($photoPool)];
         }
 
         $posts = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $path = $this->labeledJpeg($slug, 'posts', $facultyLabel, 'Actualité ' . $i, $this->shiftColor($primaryColor, $i * 18), 1200, 675);
-            if ($path !== null) {
-                $posts[] = $path;
-            }
+        for ($i = 0; $i < 12; $i++) {
+            $posts[] = $photoPool[($i + 1) % count($photoPool)];
         }
 
         return [
             'heroes' => $heroes,
             'banner' => $banner,
-            'logo'   => $logo,
+            'logo'   => self::SHARED_LOGO,
             'staff'  => $staff,
             'posts'  => $posts,
         ];
@@ -160,16 +156,6 @@ class DemoMediaService
             hexdec(substr($hex, 2, 2)),
             hexdec(substr($hex, 4, 2)),
         ];
-    }
-
-    private function shiftColor(string $hex, int $delta): string
-    {
-        [$r, $g, $b] = $this->hexToRgb($hex);
-        $r = max(0, min(255, $r + ($delta % 40) - 20));
-        $g = max(0, min(255, $g + (($delta * 2) % 40) - 20));
-        $b = max(0, min(255, $b + (($delta * 3) % 40) - 20));
-
-        return sprintf('#%02x%02x%02x', $r, $g, $b);
     }
 
     private function truncate(string $text, int $max): string

@@ -40,7 +40,7 @@ $orderable = ! $trash
     && empty($filters['q'])
     && $orderBy !== null
     && array_key_first($orderBy) === 'display_order';
-$heroIndicatorSize = $heroIndicatorSize ?? '1';
+$heroIndicatorSize = $heroIndicatorSize ?? '0.75';
 $heroIndicatorOptions = $heroIndicatorOptions ?? [
     '0.75' => 'Petite (0,75 rem)',
     '1'    => 'Moyenne (1 rem)',

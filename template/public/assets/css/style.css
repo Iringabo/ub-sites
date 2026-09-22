@@ -764,17 +764,25 @@ footer.site-footer .footer-contact-item {
 }
 
 .hero .carousel-indicators [data-bs-target] {
-    width: var(--hero-indicator-size, 1rem);
-    height: var(--hero-indicator-size, 1rem);
-    border-radius: 50%;
+    box-sizing: border-box;
+    width: var(--hero-indicator-size, 0.75rem);
+    height: var(--hero-indicator-size, 0.75rem);
+    padding: 0;
+    margin: 0 0.28rem;
+    flex: 0 0 auto;
+    text-indent: 0;
     border: 1px solid rgba(255, 255, 255, 0.85);
+    border-top: 1px solid rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
     background-color: transparent;
+    background-clip: padding-box;
     opacity: 1;
 }
 
 .hero .carousel-indicators .active {
     background-color: var(--white);
-    transform: scale(1.15);
+    transform: scale(1.05);
 }
 
 .hero .carousel-control-prev,
@@ -1477,7 +1485,7 @@ body.admin-site-loading-active {
     }
 
     .hero {
-        min-height: auto;
+        min-height: 70vh;
         padding: 5rem 0 4rem;
     }
 
