@@ -48,8 +48,11 @@
             <?php foreach ($profiles as $profile): ?>
                 <div class="col-lg-3 col-md-6">
                     <article class="staff-card h-100">
-                        <?php if ($profile->photo): ?>
-                            <img src="<?= esc(site_media_url($profile->photo), 'attr') ?>" alt="<?= esc($profile->name, 'attr') ?>" class="staff-photo">
+                        <?php $alumniPhoto = site_person_media($profile->photo ?? null); ?>
+                        <?php if ($alumniPhoto !== null): ?>
+                            <img src="<?= esc(site_media_url($alumniPhoto), 'attr') ?>" alt="<?= esc($profile->name, 'attr') ?>" class="staff-photo">
+                        <?php else: ?>
+                            <div class="card-icon mx-auto" aria-hidden="true"><?= esc(site_initials($profile->name)) ?></div>
                         <?php endif ?>
                         <h3 class="staff-name mb-0"><?= esc($profile->name) ?></h3>
                         <p class="staff-grade mb-1"><?= esc($profile->promotion ?? '') ?></p>

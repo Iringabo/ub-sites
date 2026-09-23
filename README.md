@@ -31,6 +31,7 @@ Ou dans un dossier : `./scripts/dev-serve.sh` (lit `app.baseURL` du `.env`).
 - Opérations locales (seed, cartes, admins) : [`template/docs/LOCAL_OPERATIONS.md`](template/docs/LOCAL_OPERATIONS.md)
 - Créer une faculté : [`template/docs/CREER_UN_SITE.md`](template/docs/CREER_UN_SITE.md)
 - Multi-dossiers : [`template/docs/MULTI_FOLDER_DEPLOYMENT.md`](template/docs/MULTI_FOLDER_DEPLOYMENT.md)
+- Mise en ligne (hébergeurs gratuits / essais longs) : [`deploy/README.md`](deploy/README.md) — checklist production [`deploy/09-production-go-live.md`](deploy/09-production-go-live.md)
 
 ## Scripts racine (`scripts/`)
 

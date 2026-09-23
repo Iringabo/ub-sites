@@ -71,11 +71,11 @@ class FacultyDemoDataService
         $this->seedHeroes($siteId, $gallery['heroes'], $theme);
         $this->seedStats($siteId, $theme);
         $this->seedProgrammes($siteId, $theme);
-        $this->seedStaff($siteId, $gallery['staff'], $theme);
+        $this->seedStaff($siteId, $gallery['staff'], $theme, $slug, $name, $color);
         $this->seedPosts($siteId, $gallery['posts'], $name, $slug, $theme);
         $this->seedResearch($siteId, $short, $theme);
         $this->seedTimeline($siteId, $theme);
-        $this->seedAlumni($siteId, $slug, $theme);
+        $this->seedAlumni($siteId, $slug, $theme, $gallery['alumni'] ?? [], $name, $color);
         $this->seedPages($siteId, $name, $short, $gallery['banner'], $theme);
         $this->seedSettings($siteId, $name, $short, $color, $logoPath, $site);
         $this->seedContentBlocks($siteId, $theme);
@@ -86,6 +86,7 @@ class FacultyDemoDataService
         }
 
         $imageCount = count($gallery['heroes']) + count($gallery['staff']) + count($gallery['posts'])
+            + count($gallery['alumni'] ?? [])
             + ($gallery['banner'] ? 1 : 0) + ($gallery['logo'] ? 1 : 0);
 
         return [
@@ -266,15 +267,23 @@ class FacultyDemoDataService
      * @param list<string> $photos
      * @param array<string, mixed> $theme
      */
-    private function seedStaff(int $siteId, array $photos, array $theme): void
+    private function seedStaff(int $siteId, array $photos, array $theme, string $slug, string $facultyLabel, string $color): void
     {
         foreach ($theme['staff'] as $i => $row) {
+            $photo = $this->media->portraitJpeg(
+                $slug,
+                'staff',
+                $facultyLabel,
+                (string) $row['name'],
+                $this->demoPortraitColor($color, $i),
+            ) ?? ($photos[$i] ?? null);
+
             $this->db->table('staff')->insert([
                 'site_id'          => $siteId,
                 'category'         => $row['category'],
                 'name'             => $row['name'],
                 'slug'             => $row['slug'],
-                'photo'            => null,
+                'photo'            => $photo,
                 'grade'            => $row['grade'],
                 'specialty'        => $row['specialty'],
                 'role'             => $row['role'],
@@ -298,6 +307,7 @@ class FacultyDemoDataService
     {
         foreach ($theme['posts'] as $i => $row) {
             $published = date('Y-m-d H:i:s', strtotime('-' . ($i * 3) . ' days'));
+            $cover = $covers === [] ? null : ($covers[$i % count($covers)] ?? null);
             $this->db->table('posts')->insert([
                 'site_id'         => $siteId,
                 'type'            => $row['type'],
@@ -305,7 +315,7 @@ class FacultyDemoDataService
                 'slug'            => $row['slug'],
                 'excerpt'         => $row['excerpt'],
                 'body'            => $row['body'],
-                'cover_image'     => null,
+                'cover_image'     => $cover,
                 'status'          => 'published',
                 'published_at'    => $published,
                 'featured'        => $i < 3 ? 1 : 0,
@@ -396,11 +406,20 @@ class FacultyDemoDataService
     }
 
     /**
+     * @param list<string> $photos
      * @param array<string, mixed> $theme
      */
-    private function seedAlumni(int $siteId, string $slug, array $theme): void
+    private function seedAlumni(int $siteId, string $slug, array $theme, array $photos, string $facultyLabel, string $color): void
     {
         foreach ($theme['alumni'] as $i => $row) {
+            $photo = $this->media->portraitJpeg(
+                $slug,
+                'alumni',
+                $facultyLabel,
+                (string) $row['name'],
+                $this->demoPortraitColor($color, $i + 2),
+            ) ?? ($photos[$i] ?? null);
+
             $this->db->table('alumni_profiles')->insert([
                 'site_id'       => $siteId,
                 'name'          => $row['name'],
@@ -409,7 +428,7 @@ class FacultyDemoDataService
                 'organization'  => $row['organization'],
                 'promotion'     => (string) $row['year'],
                 'biography'     => $row['bio'],
-                'photo'         => null,
+                'photo'         => $photo,
                 'display_order' => $i + 1,
                 'is_published'  => 1,
                 'created_at'    => $this->now(),
@@ -492,6 +511,23 @@ class FacultyDemoDataService
                 'content' => [
                     'banner_subtitle' => 'Le réseau des diplômés',
                     'banner_image'    => $banner,
+                    'intro_label' => 'Communauté',
+                    'intro_title' => 'Les alumni de ' . $short,
+                    'intro_paragraphs' => [
+                        'Les diplômés de ' . $name . ' forment un réseau actif dans l’administration, le secteur privé, la recherche et l’entrepreneuriat.',
+                        'Cette page présente quelques parcours illustratifs. Les fiches peuvent être enrichies depuis l’administration.',
+                    ],
+                    'intro_button_label' => 'Rejoindre le réseau',
+                    'intro_button_url' => '/contact',
+                    'profiles_label' => 'Profils',
+                    'profiles_title' => 'Parcours de diplômés',
+                    'profiles_text' => 'Une sélection de profils pour illustrer la diversité des débouchés.',
+                    'testimonials_label' => 'Témoignages',
+                    'testimonials_title' => 'Ce que la faculté leur a apporté',
+                    'cta_title' => 'Vous êtes diplômé de ' . $short . ' ?',
+                    'cta_text' => 'Contactez le secrétariat pour actualiser votre profil ou rejoindre les activités du réseau alumni.',
+                    'cta_label' => 'Nous écrire',
+                    'cta_url' => '/contact',
                 ],
             ],
             'contact' => [
@@ -564,7 +600,7 @@ class FacultyDemoDataService
     private function seedContentBlocks(int $siteId, array $theme): void
     {
         $blocks = [
-            ['home', 'custom_text', 'Mot d’accueil', $theme['about'], 1],
+            ['home', 'custom_text', 'Mot d’accueil', $theme['welcome'] ?? ('Bienvenue sur le site de ' . ($theme['short'] ?? 'la faculté') . '. Découvrez nos formations, notre recherche et la vie du campus.'), 1],
             ['home', 'contact_cta', 'Rejoignez-nous', 'Contactez le secrétariat pour vos démarches d’admission.', 2],
         ];
         foreach ($blocks as [$pageKey, $type, $title, $content, $order]) {
@@ -614,6 +650,7 @@ class FacultyDemoDataService
             $this->staffSet('eco'),
             $this->postSet('eco'),
             $this->labSet('eco'),
+            'eco',
         );
     }
 
@@ -632,6 +669,7 @@ class FacultyDemoDataService
             $this->staffSet('sci'),
             $this->postSet('sci'),
             $this->labSet('sci'),
+            'sci',
         );
     }
 
@@ -650,6 +688,7 @@ class FacultyDemoDataService
             $this->staffSet('med'),
             $this->postSet('med'),
             $this->labSet('med'),
+            'med',
         );
     }
 
@@ -668,6 +707,7 @@ class FacultyDemoDataService
             $this->staffSet('agro'),
             $this->postSet('agro'),
             $this->labSet('agro'),
+            'agro',
         );
     }
 
@@ -686,6 +726,7 @@ class FacultyDemoDataService
             $this->staffSet('hum'),
             $this->postSet('hum'),
             $this->labSet('hum'),
+            'hum',
         );
     }
 
@@ -708,10 +749,12 @@ class FacultyDemoDataService
         array $staff,
         array $posts,
         array $labs,
+        string $key = 'eco',
     ): array {
         return [
             'tagline' => $tagline,
             'about' => $about,
+            'welcome' => 'Bienvenue sur notre site. Explorez les formations, la recherche, les actualités et le réseau alumni — puis contactez-nous pour toute question.',
             'research_title' => $researchTitle,
             'research_body' => $researchBody,
             'programmes_intro' => $programmesIntro,
@@ -738,6 +781,8 @@ class FacultyDemoDataService
                 ['section' => 'home_research', 'label' => 'Projets actifs', 'value' => 14, 'suffix' => ''],
                 ['section' => 'home_research', 'label' => 'Laboratoires', 'value' => 3, 'suffix' => ''],
                 ['section' => 'alumni', 'label' => 'Diplômés', 'value' => 4200, 'suffix' => '+'],
+                ['section' => 'alumni', 'label' => 'Pays représentés', 'value' => 12, 'suffix' => ''],
+                ['section' => 'alumni', 'label' => 'Entrepreneurs', 'value' => 180, 'suffix' => '+'],
             ],
             'programmes' => $programmes,
             'staff' => $staff,
@@ -746,8 +791,8 @@ class FacultyDemoDataService
             'publications' => $this->publicationSet(),
             'projects' => $this->projectSet(),
             'timeline' => $this->timelineSet(),
-            'alumni' => $this->alumniSet(),
-            'testimonials' => $this->testimonialSet(),
+            'alumni' => $this->alumniSet($key),
+            'testimonials' => $this->testimonialSet($key),
         ];
     }
 
@@ -973,17 +1018,61 @@ class FacultyDemoDataService
     }
 
     /** @return list<array<string, mixed>> */
-    private function alumniSet(): array
+    private function alumniSet(string $key): array
     {
+        $sets = [
+            'eco' => [
+                ['Aline Niyonzima', 'Analyste financière', 'Banque de la République', 2018],
+                ['Patrick Habonimana', 'Consultant en management', 'Cabinet Horizon', 2016],
+                ['Sandrine Uwimana', 'Responsable RH', 'Groupe industriel local', 2019],
+                ['Eric Ndayisaba', 'Entrepreneur', 'Start-up FinTech Bujumbura', 2020],
+                ['Chantal Hakizimana', 'Économiste', 'Ministère des Finances', 2015],
+                ['David Manirakiza', 'Auditeur interne', 'Cabinet d’audit régional', 2017],
+            ],
+            'sci' => [
+                ['Nadia Barakamfitiye', 'Ingénieure logicielle', 'TechHub Burundi', 2019],
+                ['Joseph Niyonkuru', 'Data scientist', 'Centre de recherche appliquée', 2018],
+                ['Florence Irakoze', 'Ingénieure réseaux', 'Opérateur télécoms', 2017],
+                ['Aimé Nsabimana', 'Chef de projet digital', 'Agence numérique', 2020],
+                ['Linda Muco', 'Enseignante-chercheuse', 'Université partenaire', 2016],
+                ['Kevin Bizimana', 'Développeur full-stack', 'PME technologique', 2021],
+            ],
+            'med' => [
+                ['Dr. Olga Nibigira', 'Médecin généraliste', 'CHUK', 2017],
+                ['Dr. Placide Nduwimana', 'Interniste', 'Hôpital Prince Régent', 2016],
+                ['Dr. Rachel Bigirimana', 'Pédiatre', 'Centre de santé communautaire', 2019],
+                ['Dr. Serge Niyonkuru', 'Santé publique', 'OMS / partenaire local', 2015],
+                ['Dr. Alice Hakizimana', 'Infirmière spécialisée', 'Clinique universitaire', 2018],
+                ['Dr. Yves Manirakiza', 'Chirurgien', 'Hôpital régional', 2014],
+            ],
+            'agro' => [
+                ['Ir. Diane Niyongabo', 'Agronome', 'Projet développement rural', 2018],
+                ['Ir. Pacifique Habiyaremye', 'Conseiller environnement', 'ONG agricole', 2017],
+                ['Ir. Esther Ndayishimiye', 'Responsable filière café', 'Coopérative paysanne', 2019],
+                ['Ir. Claude Nsabimana', 'Expert sols', 'Institut de recherche agronomique', 2016],
+                ['Ir. Solange Uwimana', 'Entrepreneuriale agro', 'Ferme modèles', 2020],
+                ['Ir. Thierry Bizimana', 'Gestion des ressources', 'Projet bassin versant', 2015],
+            ],
+            'hum' => [
+                ['Grace Nkurunziza', 'Journaliste', 'Média national', 2018],
+                ['Benjamin Hakizimana', 'Enseignant de lettres', 'Lycée de référence', 2016],
+                ['Carine Niyonkuru', 'Chargée de communication', 'Organisation culturelle', 2019],
+                ['Olivier Manirakiza', 'Traducteur', 'Bureau de traduction', 2017],
+                ['Diane Irakoze', 'Chercheuse en histoire', 'Centre patrimonial', 2015],
+                ['Samuel Ndayizeye', 'Responsable pédagogique', 'Institut de formation', 2020],
+            ],
+        ];
+
+        $rows = $sets[$key] ?? $sets['eco'];
         $out = [];
-        for ($i = 1; $i <= 5; $i++) {
+        foreach ($rows as $i => [$name, $role, $org, $year]) {
             $out[] = [
-                'name' => 'Alumni Démo ' . $i,
-                'slug' => 'alumni-demo-' . $i,
-                'role' => 'Cadre / entrepreneur',
-                'organization' => 'Organisation partenaire',
-                'year' => 2015 + $i,
-                'bio' => 'Parcours illustratif d’un diplômé engagé dans son secteur.',
+                'name' => $name,
+                'slug' => 'alumni-' . ($i + 1) . '-' . $key,
+                'role' => $role,
+                'organization' => $org,
+                'year' => $year,
+                'bio' => "Diplômé(e) de la promotion {$year}, {$name} illustre le parcours professionnel ouvert par la faculté dans le domaine « {$role} ».",
             ];
         }
 
@@ -991,18 +1080,54 @@ class FacultyDemoDataService
     }
 
     /** @return list<array<string, mixed>> */
-    private function testimonialSet(): array
+    private function testimonialSet(string $key): array
     {
+        $quotes = [
+            'eco' => [
+                ['Aline Niyonzima', 'Promotion 2018', 'La rigueur analytique acquise à la faculté m’accompagne chaque jour dans mon métier de la finance.'],
+                ['Patrick Habonimana', 'Promotion 2016', 'Les projets tutorés et les stages m’ont ouvert les portes du conseil en management.'],
+                ['Sandrine Uwimana', 'Promotion 2019', 'J’y ai trouvé un réseau d’anciens solidaires et une formation orientée vers l’emploi.'],
+            ],
+            'sci' => [
+                ['Nadia Barakamfitiye', 'Promotion 2019', 'Les laboratoires et les projets numériques m’ont préparée aux défis technologiques réels.'],
+                ['Joseph Niyonkuru', 'Promotion 2018', 'La formation allie théorie solide et pratique : un atout pour la data science.'],
+                ['Florence Irakoze', 'Promotion 2017', 'J’ai appris à résoudre des problèmes complexes avec méthode et créativité.'],
+            ],
+            'med' => [
+                ['Dr. Olga Nibigira', 'Promotion 2017', 'L’approche clinique et humaine de la faculté guide encore ma pratique au quotidien.'],
+                ['Dr. Placide Nduwimana', 'Promotion 2016', 'Stages hospitaliers et encadrement de qualité : une base indispensable pour soigner.'],
+                ['Dr. Rachel Bigirimana', 'Promotion 2019', 'La faculté m’a donné confiance pour servir les communautés avec compétence.'],
+            ],
+            'agro' => [
+                ['Ir. Diane Niyongabo', 'Promotion 2018', 'Les enseignements de terrain m’aident à accompagner les producteurs ruraux.'],
+                ['Ir. Pacifique Habiyaremye', 'Promotion 2017', 'J’y ai découvert l’agroécologie comme levier de développement durable.'],
+                ['Ir. Esther Ndayishimiye', 'Promotion 2019', 'La faculté relie science agronomique et réalités des filières agricoles.'],
+            ],
+            'hum' => [
+                ['Grace Nkurunziza', 'Promotion 2018', 'Esprit critique, langues et culture : des outils précieux pour le journalisme.'],
+                ['Benjamin Hakizimana', 'Promotion 2016', 'La FLSH m’a préparé à transmettre le goût des lettres aux jeunes générations.'],
+                ['Carine Niyonkuru', 'Promotion 2019', 'Communication et sciences humaines : un duo parfait pour mon métier actuel.'],
+            ],
+        ];
+
+        $rows = $quotes[$key] ?? $quotes['eco'];
         $out = [];
-        for ($i = 1; $i <= 5; $i++) {
+        foreach ($rows as $i => [$name, $promotion, $quote]) {
             $out[] = [
-                'name' => 'Témoin ' . $i,
-                'promotion' => 'Promotion ' . (2016 + $i),
-                'quote' => 'La faculté m’a donné des bases solides et un réseau professionnel durable.',
+                'name' => $name,
+                'promotion' => $promotion,
+                'quote' => $quote,
             ];
         }
 
         return $out;
+    }
+
+    private function demoPortraitColor(string $base, int $index): string
+    {
+        $palette = [$base, '#0B6F38', '#14532D', '#0F766E', '#1D4ED8', '#7C3AED', '#B45309', '#BE123C'];
+
+        return $palette[$index % count($palette)];
     }
 
     private function now(): string
