@@ -14,8 +14,9 @@ ajoutées que lorsqu’elles sont vérifiables.
   `sync-instances.sh`.
 - Remember-me désactivé sur la superadministration.
 
-- Administration en trois zones métier ; l’administrateur de faculté gère
-  identité, messages, et peut créer un admin ou un éditeur de *sa* faculté.
+- Administration regroupée Accueil / Pages du site / Messages / Comptes /
+  Identité ; l’administrateur de faculté gère identité, messages, et peut
+  créer uniquement un **éditeur** de *sa* faculté.
 - Superadmin : édition in situ de la faculté choisie ; plus de création de
   site depuis l’écran Facultés ; sites `template` / `demo` exclus.
 - Cookies de session par instance (`session.cookieName`).

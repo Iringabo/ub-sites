@@ -139,16 +139,33 @@ class AdminAccessService
             return [];
         }
 
-        $rows = db_connect()->table('user_sites')
+        $db = db_connect();
+        $rows = $db->table('user_sites')
             ->select('user_id')
             ->where('site_id', $siteId)
             ->get()
             ->getResultArray();
 
-        return array_values(array_unique(array_map(
+        $ids = array_map(
             static fn (array $row): int => (int) $row['user_id'],
             $rows,
-        )));
+        );
+
+        // Faculty managers must see platform superadmins in the list as
+        // out-of-scope rows; those accounts are not in user_sites.
+        $groupsTable = config('Auth')->tables['groups_users'] ?? 'auth_groups_users';
+        if ($db->tableExists($groupsTable)) {
+            $superRows = $db->table($groupsTable)
+                ->select('user_id')
+                ->where('group', 'superadmin')
+                ->get()
+                ->getResultArray();
+            foreach ($superRows as $row) {
+                $ids[] = (int) $row['user_id'];
+            }
+        }
+
+        return array_values(array_unique(array_filter($ids, static fn (int $id): bool => $id > 0)));
     }
 
     public function siteRole(int $userId, int $siteId): ?string

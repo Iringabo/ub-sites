@@ -47,8 +47,9 @@ final class DemoMediaServiceTest extends CIUnitTestCase
         $this->assertStringStartsWith('uploads/sites/fseg/', $gallery['heroes'][0]);
         $this->assertSame(DemoMediaService::SHARED_LOGO, $gallery['logo']);
         $this->assertLessThanOrEqual(3, count($gallery['heroes']));
-        $this->assertNotEmpty($gallery['staff']);
-        $this->assertStringStartsWith('uploads/sites/fseg/', $gallery['staff'][0]);
+        // Portraits are generated per person via portraitJpeg() during seed, not here.
+        $this->assertSame([], $gallery['staff']);
+        $this->assertSame([], $gallery['alumni']);
         $this->assertDirectoryExists($this->tempPublic . '/uploads/sites/fseg');
         $this->assertDirectoryDoesNotExist($this->tempPublic . '/uploads/sites/fsi');
         $this->assertDirectoryDoesNotExist($this->tempPublic . '/uploads/sites/med');

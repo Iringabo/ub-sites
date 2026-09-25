@@ -12,7 +12,10 @@ Ce fichier est un guide opérationnel court pour les futurs agents. Il ne rempla
 
 - Ce dépôt est le **modèle (template)** de la plateforme, pas un site en production.
 - On en copie manuellement deux types d'instances : un **dossier par faculté** (site public + administration de cette seule faculté) et un **dossier superadministration** (le superadmin choisit une faculté et en édite le contenu ici).
-- Menu `/admin` : trois zones métier. L’admin facultaire a `settings.manage` et peut créer admin/éditeur de *sa* faculté. Pas de création de site depuis l’UI.
+- Menu `/admin` : Accueil, Pages du site, Messages, Comptes, Identité
+  (+ Plateforme sur superadmin). L’admin facultaire a `settings.manage` et
+  crée uniquement des **éditeurs** de *sa* faculté. Pas de création de site
+  depuis l’UI. Modules retirés de l’UI : pages, blocs, points forts.
 - Une seule base de données est partagée par toutes les instances ; l'isolation des contenus repose sur `site_id`.
 - Aucune identité ou contenu FSEG réel ne doit être figé dans le modèle : contenu de démarrage neutre uniquement, généré par provisionnement (`FacultySiteProvisioningService`, `php spark site:create`).
 

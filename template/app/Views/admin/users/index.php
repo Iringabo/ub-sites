@@ -112,7 +112,7 @@ $filters = $filters ?? ['q' => '', 'status' => '', 'site_id' => ''];
                             $isProtectedSuperAdmin = in_array('superadmin', $userGroups, true) && ! $currentActorIsSuperAdmin;
                             $actions = [];
                             if (! $canEditUser || $isProtectedSuperAdmin) {
-                                echo '<span class="text-muted small">Hors périmètre</span>';
+                                echo '<span class="text-muted small">Hors périmètre de modification</span>';
                             } else {
                                 $actions[] = [
                                     'type'  => 'link',

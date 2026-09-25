@@ -1,12 +1,16 @@
 # Guide Utilisateur Du Site Public
 
-Dernière actualisation documentaire : 11 août 2026.
+Dernière actualisation documentaire : 25 septembre 2026.
 
 Ce guide s'adresse aux visiteurs du site.
 
 ## Accueil
 
-La page d'accueil présente la faculté, le carrousel d'images, les atouts, les statistiques, les formations mises en avant, la recherche et les actualités/événements récents.
+La page d'accueil présente la faculté, le carrousel d'images, les
+statistiques, les formations mises en avant, la recherche et les
+actualités/événements récents. Une ancienne section « atouts » peut encore
+apparaître si des données legacy existent en base ; elle n’est plus gérée
+depuis l’administration.
 
 ## Langue
 

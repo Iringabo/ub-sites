@@ -1,6 +1,6 @@
 # Architecture actuelle
 
-Dernière actualisation : 14 septembre 2026. Ce document décrit l’état
+Dernière actualisation : 25 septembre 2026. Ce document décrit l’état
 présent de la plateforme.
 
 ## Vue d’ensemble
@@ -41,9 +41,9 @@ cd fseg && ./scripts/dev-serve.sh start
 ./scripts/dev-serve.sh stop
 ```
 
-Les ports viennent de `app.baseURL`. Par défaut le script lance
-`fseg fsi superadmin` ; pour les six sites :
-`PLATFORM_INSTANCES='fseg fsi superadmin med fabi flsh'`.
+Les ports viennent de `app.baseURL`. Par défaut le script lance les six
+instances (`fseg fsi superadmin med fabi flsh`). Sous-ensemble :
+`PLATFORM_INSTANCES='fseg fsi' ./scripts/dev-serve.sh start`.
 
 ## Résolution du site actif
 
@@ -65,17 +65,18 @@ Groupes Shield : `superadmin`, `admin`, `editor`
 
 | Qui | Où | Peut faire |
 |---|---|---|
-| Superadministrateur | `superadmin/` | facultés existantes, comptes, **édition in situ** du `site_id` choisi |
-| Administrateur de faculté | `/admin` de son dossier | trois zones ; crée admin/éditeur **de sa faculté** ; identité |
-| Éditeur | `/admin` de son dossier | contenu ; pas d’utilisateurs ni d’identité |
+| Superadministrateur | `superadmin/` | facultés existantes, comptes, **édition in situ** du `site_id` choisi ; seul rôle qui crée des **administrateurs** de faculté |
+| Administrateur de faculté | `/admin` de son dossier | Accueil / Pages du site / Messages / Comptes / Identité ; crée uniquement des **éditeurs** de *sa* faculté |
+| Éditeur | `/admin` de son dossier | contenu Accueil + Pages du site ; pas de messages, comptes ni identité |
 
 `AdminAccessFilter` lie le personnel au site du dossier. Le sélecteur de
 site est réservé au superadmin.
 
-Le menu `/admin` a trois zones métier (`AdminNavigationService`) : contenu
-et communication ; communauté et recherche ; administration. Sur
-l’instance centrale s’ajoute le groupe Plateforme. L’écran `/admin/sites`
-n’offre plus la création.
+Le menu `/admin` (`AdminNavigationService`) regroupe : **Accueil**,
+**Pages du site**, **Messages**, **Comptes**, **Identité**. Sur l’instance
+centrale s’ajoute **Plateforme**. Les modules « Pages institutionnelles »,
+« Blocs de page » et « Points forts » sont retirés de l’UI (routes gardées).
+L’écran `/admin/sites` n’offre plus la création.
 
 ## Isolation multi-sites
 

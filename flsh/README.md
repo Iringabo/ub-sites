@@ -46,9 +46,9 @@ Les identifiants locaux de la plateforme sont dans `LOCAL_CREDENTIALS.md`
 
 ## Qui fait quoi dans `/admin`
 
-- **Éditeur** : accueil, actualités, formations, pages, personnel, recherche.
+- **Éditeur** : accueil, actualités, formations, personnel, recherche.
 - **Administrateur de la faculté** : la même chose, plus messages, comptes
-  (admin ou éditeur de *cette* faculté) et coordonnées / identité.
+  (uniquement des **éditeurs** de *cette* faculté) et coordonnées / identité.
 
 ## Tests
 

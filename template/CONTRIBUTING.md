@@ -10,7 +10,10 @@ cp .env.example .env
 php spark key:generate
 php spark migrate --all
 # (optionnel) php spark db:seed TemplateStarterSeeder — contenu de départ neutre
-php spark admin:create-superadmin
+# Compte faculté (si app.centralAdminMode=false et app.siteSlug renseigné) :
+# PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-faculty-admin --email … --username … --password-env PLATFORM_ADMIN_PASSWORD
+# Superadmin uniquement depuis superadmin/ (centralAdminMode=true) :
+# php spark admin:create-superadmin
 php spark serve
 ```
 

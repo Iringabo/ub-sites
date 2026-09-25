@@ -18,7 +18,7 @@ Ce document décrit le schéma logique réel à partir des migrations présentes
 |---|---|---|
 | `home_content` | contenu singleton de l'accueil | oui |
 | `home_hero_slides` | images du carrousel d'accueil | oui |
-| `home_highlights` | atouts affichés sur l'accueil | oui |
+| `home_highlights` | atouts hérités (affichage public legacy si données présentes ; **plus d’UI admin**) | oui |
 | `site_stats` | statistiques d'accueil, recherche, alumni | oui |
 | `posts` | actualités et événements | oui |
 | `programmes` | formations | oui |
@@ -45,6 +45,9 @@ Ce document décrit le schéma logique réel à partir des migrations présentes
 - `status`
 - `default_locale`
 - `logo`, couleurs et coordonnées
+- `theme`, `theme_config`, `menu_config` (JSON)
+- `enabled_sections` (JSON : sections d’accueil activées / ordre, géré via
+  `/admin/home-sections`)
 
 `user_sites` contient :
 

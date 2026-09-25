@@ -38,7 +38,7 @@ Identifiants locaux : `LOCAL_CREDENTIALS.md` à la racine de la plateforme (fich
 
 1. Le tableau de bord plateforme liste les facultés (pas le modèle interne).
 2. **Gérer le contenu** ou le sélecteur en haut enregistre la faculté active.
-3. Les trois zones (contenu, communauté, administration) portent alors sur
+3. Les zones Accueil / Pages du site / Messages / Identité portent alors sur
    **cette** faculté : les enregistrements écrivent son `site_id`.
 4. **Voir le site** ouvre l’adresse publique de la faculté choisie, dans un
    nouvel onglet.

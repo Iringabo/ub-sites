@@ -47,7 +47,7 @@ class FacultySiteProvisioningService
         }
 
         if (! isset($siteData['hostnames']) || $siteData['hostnames'] === null || $siteData['hostnames'] === []) {
-            $siteData['hostnames'] = [$siteData['slug'] . '.test'];
+            $siteData['hostnames'] = $this->hostnamesForSlug((string) ($siteData['slug'] ?? ''));
         }
 
         $siteModel = model(SiteModel::class, false);
@@ -69,6 +69,36 @@ class FacultySiteProvisioningService
         }
 
         return $siteId;
+    }
+
+    /**
+     * Public hostnames for a faculty slug. Nothing is invented in code:
+     * set app.publicHostPattern in .env, with {slug} replaced by the faculty
+     * slug. Examples: "{slug}.test" locally, "{slug}.account.alwaysdata.net"
+     * on Alwaysdata, "{slug}.ub.edu.bi" on a university domain.
+     * An empty pattern stores no hostname; the folder still serves its
+     * faculty through app.siteSlug.
+     *
+     * @return list<string>
+     */
+    public function hostnamesForSlug(string $slug): array
+    {
+        $pattern = trim((string) env('app.publicHostPattern', ''));
+        $slug = strtolower(trim($slug));
+        if ($pattern === '' || $slug === '') {
+            return [];
+        }
+
+        $hosts = [];
+        foreach (preg_split('/[\s,]+/', $pattern) ?: [] as $part) {
+            $host = strtolower(trim(str_replace('{slug}', $slug, (string) $part)));
+            if ($host === '' || in_array($host, $hosts, true)) {
+                continue;
+            }
+            $hosts[] = $host;
+        }
+
+        return $hosts;
     }
 
     public function provisionStarterContent(int $siteId): void

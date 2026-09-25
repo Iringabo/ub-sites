@@ -13,9 +13,10 @@ Lire le code de ce dossier. L’architecture générale :
 - Servir le site public FABI et son `/admin`.
 - `app.siteSlug = fabi`, `app.centralAdminMode = false`.
 - Isolation des contenus par `site_id` sur la base partagée.
-- L’administrateur de faculté gère les comptes admin/éditeur de *cette*
-  faculté et les coordonnées. Le superadministrateur se connecte sur le
-  dossier superadmin.
+- L’administrateur de faculté crée uniquement des **éditeurs** de *cette*
+  faculté et gère les coordonnées. Le superadministrateur se connecte sur le
+  dossier superadmin. Doc plateforme à jour : `../template/docs/`
+  (`sync-instances.sh` ne recopie pas la documentation).
 - Création d’admin local : `php spark admin:create-faculty-admin` (pas
   `admin:create-superadmin`).
 

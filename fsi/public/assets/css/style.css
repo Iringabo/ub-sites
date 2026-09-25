@@ -1510,6 +1510,18 @@ body.admin-site-loading-active {
         margin: 0.5rem 0;
     }
 
+    .navbar-brand-text {
+        min-width: 0;
+        max-width: min(52vw, 14rem);
+    }
+
+    .navbar-brand-text .brand-title,
+    .navbar-brand-text .brand-subtitle {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .hero {
         min-height: 70vh;
         padding: 5rem 0 4rem;
@@ -1540,35 +1552,63 @@ body.admin-site-loading-active {
 
     .news-card-thumb {
         width: 100%;
+        min-width: 0;
         height: 160px;
     }
 
     .news-card.d-flex {
         flex-direction: column;
     }
+
+    /* g-5 (3rem) negative row margins overflow narrow phones; tighten gutters. */
+    .row.g-5,
+    .row.gy-5,
+    .row.gx-5 {
+        --bs-gutter-x: 1.5rem;
+        --bs-gutter-y: 1.5rem;
+    }
 }
 
 @media (max-width: 576px) {
+    .row.g-5,
+    .row.gy-5,
+    .row.gx-5 {
+        --bs-gutter-x: 1rem;
+        --bs-gutter-y: 1rem;
+    }
+
     .admin-topbar {
         align-items: flex-start;
         flex-wrap: wrap;
+        gap: 0.65rem;
     }
 
     .admin-topbar-title {
         flex: 1 1 calc(100% - 60px);
+        max-width: 100%;
     }
 
     .admin-topbar-actions {
         width: 100%;
         margin-left: 0;
         flex-wrap: wrap;
+        gap: 0.5rem;
     }
 
     .admin-topbar-actions .btn,
     .admin-site-switcher,
     .admin-site-switcher .form-select {
-        flex: 1 1 0;
-        max-width: none;
+        flex: 1 1 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .admin-site-switcher {
+        width: 100%;
+    }
+
+    .admin-topbar-actions kbd {
+        display: none;
     }
 
     .admin-content {

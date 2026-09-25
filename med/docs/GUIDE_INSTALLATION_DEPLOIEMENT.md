@@ -1,6 +1,6 @@
 # Guide D'Installation Et De Déploiement
 
-Dernière actualisation documentaire : 10 septembre 2026.
+Dernière actualisation documentaire : 25 septembre 2026.
 
 Ce guide installe le **modèle** sur une machine neuve. Pour une faculté
 déjà copiée, voir le README de cette instance. Pour ouvrir une faculté :
@@ -12,7 +12,10 @@ Ne jamais copier un fichier contenant des secrets réels.
 
 - PHP 8.2 ou plus récent.
 - Extensions PHP vérifiées par Composer : `ctype`, `dom`, `filter`, `intl`, `json`, `libxml`, `mbstring`, `phar`, `tokenizer`, `xmlwriter`.
-- Extensions/runtime nécessaires au projet : `mysqli` pour MySQL/MariaDB et `fileinfo` pour la validation des uploads. `curl` est recommandé pour les environnements de déploiement usuels.
+- Extensions/runtime nécessaires au projet : `mysqli` pour MySQL/MariaDB,
+  `fileinfo` pour la validation des uploads, et `gd` pour le traitement
+  d’images. `curl` est recommandé pour les environnements de déploiement
+  usuels.
 - Composer.
 - MySQL ou MariaDB avec InnoDB et `utf8mb4`.
 - Serveur web Apache ou Nginx pointant vers `public/`.
@@ -69,10 +72,18 @@ php spark migrate --all
 
 Conserver `--all` pour inclure les migrations de l'application et celles des packages, notamment CodeIgniter Shield.
 
-Créer le premier superadministrateur :
+Créer le premier compte selon le type d’instance :
 
 ```bash
-php spark admin:create-superadmin
+# Faculté (app.centralAdminMode=false, app.siteSlug renseigné) :
+PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-faculty-admin \
+  --email admin-faculte@example.edu --username adminfac \
+  --password-env PLATFORM_ADMIN_PASSWORD
+
+# Superadmin uniquement depuis superadmin/ (app.centralAdminMode=true) :
+PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-superadmin \
+  --email admin@example.edu --username admin \
+  --password-env PLATFORM_ADMIN_PASSWORD
 ```
 
 Lancer le serveur local :
@@ -86,9 +97,10 @@ Vérifier :
 - `http://localhost:8101/` (fseg) · `:8102` (fsi) · `:8103` (superadmin)
   · `:8104` (med) · `:8105` (fabi) · `:8106` (flsh)
 
-Lancer les instances : `scripts/dev-serve.sh start` (défaut : fseg, fsi,
-superadmin). Les six sites :
-`PLATFORM_INSTANCES='fseg fsi superadmin med fabi flsh' scripts/dev-serve.sh start`
+Lancer les instances depuis un dossier d’instance (ex. `fseg/`) :
+`./scripts/dev-serve.sh start` (défaut : les six sites présents).
+Sous-ensemble :
+`PLATFORM_INSTANCES='fseg fsi' ./scripts/dev-serve.sh start`
 (arrêt : `stop`, état : `status`). Opérations seed / cartes / admins :
 [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md). Le `.env` d'une instance locale contient :
 
@@ -99,7 +111,14 @@ app.allowedHostnames = localhost,127.0.0.1
 
 ## Commandes Spark Projet
 
-- `php spark admin:create-superadmin` : crée un compte superadministrateur.
+- `php spark admin:create-superadmin` : crée un compte superadministrateur
+  (**uniquement** si `app.centralAdminMode=true`, typiquement dossier
+  `superadmin/`).
+- `php spark admin:create-faculty-admin` : crée un administrateur de faculté
+  (**uniquement** si `app.centralAdminMode=false` et `app.siteSlug`
+  renseigné).
+- `php spark site:seed-demo [--force]` : peuplement démo contenu + médias
+  (depuis `superadmin/` en local ; voir [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md)).
 - `php spark app:production-check` : vérifie les prérequis production.
 - `php spark app:production-check --strict` : considère aussi les avertissements comme bloquants.
 - `php spark testdb:migrate` : migre la connexion `tests`.
@@ -120,7 +139,7 @@ database.tests.DBPrefix = test_
 database.tests.port = 3306
 ```
 
-Attention : `tests/bootstrap.php` supprime et recrée `database.tests.database`. Ne jamais utiliser une base de développement ou production pour `database.tests.database`.
+Attention : `tests/bootstrap.php` supprime et recrée `database.tests.database`. Ne jamais utiliser une base de développement ou production pour `database.tests.database`. L’exemple suivi par Git est `platform_test` ; une machine locale peut utiliser un autre nom dédié (ex. `ub_shared_test`) tant qu’il n’est **pas** `ub_shared`.
 
 Le compte SQL de test doit pouvoir se connecter au serveur MySQL/MariaDB et recréer uniquement la base de test :
 
@@ -168,7 +187,7 @@ composer install --no-dev --optimize-autoloader
 php spark migrate --all
 ```
 
-Ne lancer `# (optionnel) php spark db:seed TemplateStarterSeeder — contenu de départ neutre` en production que pour une première installation qui doit recevoir les données de démonstration. Créer ensuite un compte administrateur avec `php spark admin:create-superadmin` si aucun superadministrateur n'existe.
+Ne lancer `# (optionnel) php spark db:seed TemplateStarterSeeder — contenu de départ neutre` en production que pour une première installation qui doit recevoir les données de démonstration. Créer ensuite le premier compte avec `admin:create-faculty-admin` sur le dossier facultaire, ou `admin:create-superadmin` **uniquement** dans `superadmin/` si aucun superadministrateur n'existe.
 
 Si les notifications de contact sont activées :
 

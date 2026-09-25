@@ -1,7 +1,7 @@
 # Déploiement multi-dossiers (un dossier par site)
 
 > **Pour ouvrir une faculté** : suivre [CREER_UN_SITE.md](CREER_UN_SITE.md)
-> (copie du dossier, trois champs `.env`, deux commandes). Ce document
+> (copie du dossier, réglages `.env` essentiels, migrations + CLI). Ce document
 > explique le fonctionnement technique.
 
 Toutes les instances partagent le même code applicatif, les mêmes

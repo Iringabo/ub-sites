@@ -2,17 +2,17 @@
 
 Derniere actualisation documentaire : 10 septembre 2026.
 
-Ce guide publie **l'instance superadministration** sur un hebergement
-mutualise Apache/cPanel. La base est **la meme** que les facultes.
-`app.centralAdminMode = true`, `session.cookieName = ci_session_central`.
-Le document root pointe vers `public/` ; l'accueil redirige vers `/admin`.
+Ce guide publie **une copie du modele** (faculte ou superadmin) sur un
+hebergement mutualise Apache/cPanel. Toutes les copies partagent **une**
+base MySQL. Completer [CREER_UN_SITE.md](CREER_UN_SITE.md) et
+[GUIDE_INSTALLATION_DEPLOIEMENT.md](GUIDE_INSTALLATION_DEPLOIEMENT.md).
 
 ## 1. Prerequis cPanel
 
 Verifier dans cPanel :
 
 - PHP 8.2 ou plus recent;
-- extensions PHP : `intl`, `mbstring`, `mysqli`, `fileinfo`, `json`, `dom`, `xmlwriter`, `curl`;
+- extensions PHP : `intl`, `mbstring`, `mysqli`, `fileinfo`, `gd`, `json`, `dom`, `xmlwriter`, `curl`;
 - MySQL ou MariaDB disponible;
 - acces Terminal/SSH ou possibilite d'executer Composer localement;
 - gestion du document root du domaine ou sous-domaine;
@@ -104,6 +104,11 @@ app.CSPEnabled = true
 app.defaultLocale = fr
 app.appTimezone = Africa/Bujumbura
 app.siteSlug = fseg
+session.cookieName = ci_session_fseg
+session.rememberCookieName = remember_fseg
+# app.proxyIPs = 10.0.0.1
+# app.uploadMirrors =
+# app.previewBase.fseg = https://fseg.votre-domaine.bi/
 
 database.default.hostname = localhost
 database.default.database = compte_fseg
@@ -124,6 +129,18 @@ php spark key:generate
 
 Si la commande n'est pas disponible sur cPanel, generer la cle localement dans un `.env` temporaire, copier uniquement la valeur de `encryption.key`, puis supprimer le temporaire.
 
+Checklist des cles d'isolation (meme tableau que dans CREER_UN_SITE.md) :
+
+| Cle | Faculte (ex. `fseg`) | Superadministration |
+| --- | --- | --- |
+| `session.cookieName` | `ci_session_fseg` | `ci_session_central` |
+| `session.rememberCookieName` | `remember_fseg` | `remember_central` |
+| `app.uploadMirrors` | laisser vide | `fseg:/chemin/fseg,fsi:/chemin/fsi` |
+| `app.previewBase.{slug}` | inutile | URL publique de la faculte |
+| `app.proxyIPs` | IPs du reverse proxy, ou vide | idem |
+
+`X-Forwarded-Host` n'est lu que lorsque `app.proxyIPs` est renseigne.
+
 ## 7. Migrations Et Initialisation
 
 Avec Terminal/SSH cPanel :
@@ -138,10 +155,14 @@ Pour une premiere installation avec donnees de demonstration seulement :
 # (optionnel) php spark db:seed TemplateStarterSeeder — contenu de départ neutre
 ```
 
-Creer ensuite le premier superadministrateur :
+Creer ensuite le premier compte selon le type d'instance :
 
 ```bash
-php spark admin:create-superadmin
+# Faculte (centralAdminMode=false) :
+php spark admin:create-faculty-admin --email admin@example.edu --username adminfac
+
+# Superadmin uniquement si app.centralAdminMode=true (dossier superadmin/) :
+php spark admin:create-superadmin --email admin@example.edu --username admin
 ```
 
 Si cPanel ne permet pas d'executer `spark`, preparer la base dans un environnement local equivalent, exporter un dump SQL avec phpMyAdmin ou `mysqldump`, puis importer le dump dans phpMyAdmin cPanel. Cette methode doit rester reservee aux hebergements sans terminal.

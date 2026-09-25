@@ -7,6 +7,7 @@ pas le modèle. On n’y crée pas de nouveau site.
 
 Lire le code de ce dossier. L’architecture générale :
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Doc plateforme à jour : `../template/docs/` (`sync-instances.sh` ne recopie pas les docs).
 
 ## Mission de cette instance
 

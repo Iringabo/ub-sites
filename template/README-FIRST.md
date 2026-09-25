@@ -10,19 +10,26 @@ site facultaire (public + `/admin`) ou l’instance superadministration.
 2. [README.md](README.md) — vue d’ensemble.
 3. [docs/README.md](docs/README.md) — choisir le bon guide.
 
-## Lancement local minimal
+## Lancement local minimal (faculté de démo)
 
 ```bash
 composer install
 cp .env.example .env
 php spark key:generate
+# Renseigner database.default.* et app.siteSlug=exemple, puis :
 php spark migrate --all
-php spark admin:create-superadmin
+php spark site:create --identifier exemple --slug exemple --name "Faculté de démonstration"
+PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-faculty-admin \
+  --email admin@example.test --username admin --password-env PLATFORM_ADMIN_PASSWORD
 php spark serve
 ```
 
 Le site public est sur `http://localhost:8080/`. L’administration est sur
 `/admin`.
+
+`admin:create-superadmin` ne fonctionne que dans un dossier avec
+`app.centralAdminMode=true` (typiquement `superadmin/`). Voir
+[docs/CREER_UN_SITE.md](docs/CREER_UN_SITE.md).
 
 ## Rappels
 

@@ -91,20 +91,24 @@ Chrome partagé uniquement : `public/assets/images/logo-placeholder.*`.
 - Chaque slide : image + badge + titre + texte + boutons (cible via
   liste déroulante : aucun, formations, contact, actualités, etc.).
 - **Sections & ordre** (`admin/home-sections`) : cocher et glisser-déposer.
-- Les modules « Pages institutionnelles » et « Blocs de page » ne sont plus
-  exposés dans le menu admin.
+- Les modules « Pages institutionnelles », « Blocs de page » et
+  « Points forts » ne sont plus exposés dans le menu admin.
 
+## Serveurs locaux
 
-Le script lance par défaut les six instances présentes
-(`fseg fsi superadmin med fabi flsh`). Sous-ensemble possible via
-`PLATFORM_INSTANCES`.
+Le script `dev-serve.sh` est dans **chaque dossier d’instance** (ex. `fseg/`),
+pas à la racine de la plateforme. Depuis une instance, il lance par défaut
+les six sites présents (`fseg fsi superadmin med fabi flsh`). Sous-ensemble
+possible via `PLATFORM_INSTANCES`.
 
 ```bash
+cd fseg   # ou fsi, superadmin, med, fabi, flsh
 ./scripts/dev-serve.sh start
 # ou : PLATFORM_INSTANCES='fseg fsi' ./scripts/dev-serve.sh start
 ```
 
 Les ports viennent de `app.baseURL` dans chaque `.env` (8101–8106).
+Préférer `http://localhost:PORT` (pas `127.0.0.1`) pour les cookies.
 
 ## Documents liés
 

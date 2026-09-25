@@ -12,7 +12,7 @@ base MySQL. Completer [CREER_UN_SITE.md](CREER_UN_SITE.md) et
 Verifier dans cPanel :
 
 - PHP 8.2 ou plus recent;
-- extensions PHP : `intl`, `mbstring`, `mysqli`, `fileinfo`, `json`, `dom`, `xmlwriter`, `curl`;
+- extensions PHP : `intl`, `mbstring`, `mysqli`, `fileinfo`, `gd`, `json`, `dom`, `xmlwriter`, `curl`;
 - MySQL ou MariaDB disponible;
 - acces Terminal/SSH ou possibilite d'executer Composer localement;
 - gestion du document root du domaine ou sous-domaine;
@@ -155,10 +155,14 @@ Pour une premiere installation avec donnees de demonstration seulement :
 # (optionnel) php spark db:seed TemplateStarterSeeder — contenu de départ neutre
 ```
 
-Creer ensuite le premier superadministrateur :
+Creer ensuite le premier compte selon le type d'instance :
 
 ```bash
-php spark admin:create-superadmin
+# Faculte (centralAdminMode=false) :
+php spark admin:create-faculty-admin --email admin@example.edu --username adminfac
+
+# Superadmin uniquement si app.centralAdminMode=true (dossier superadmin/) :
+php spark admin:create-superadmin --email admin@example.edu --username admin
 ```
 
 Si cPanel ne permet pas d'executer `spark`, preparer la base dans un environnement local equivalent, exporter un dump SQL avec phpMyAdmin ou `mysqldump`, puis importer le dump dans phpMyAdmin cPanel. Cette methode doit rester reservee aux hebergements sans terminal.

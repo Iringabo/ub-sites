@@ -17,13 +17,13 @@ Le français est la langue source et la locale par défaut. Le public peut affic
 Priorité réelle :
 
 1. paramètre `?lang=fr` ou `?lang=en`;
-2. cookie `fseg_locale`;
-3. headers pays `CF-IPCountry`, `X-Vercel-IP-Country`, `CloudFront-Viewer-Country`;
+2. cookie `site_locale_{slug}` (ou `site_locale_central` sur l’instance superadmin) ;
+3. headers pays `CF-IPCountry`, `X-Vercel-IP-Country`, `CloudFront-Viewer-Country` **uniquement** si `app.proxyIPs` est renseigné ;
 4. header `Accept-Language`;
 5. `sites.default_locale`;
 6. fallback `fr`.
 
-La route `/language/{locale}` pose le cookie et redirige vers une URL sûre. Les URLs externes ne doivent pas être utilisées comme cible de retour.
+La route `/language/{locale}` pose le cookie d’instance et redirige vers une URL sûre. Les URLs externes ne doivent pas être utilisées comme cible de retour.
 
 ## Stockage Des Traductions
 
@@ -44,7 +44,6 @@ Les modules administrables exposent une section "Version anglaise" lorsque des c
 
 - accueil;
 - carrousel;
-- atouts;
 - statistiques;
 - programmes;
 - personnel;
@@ -54,9 +53,12 @@ Les modules administrables exposent une section "Version anglaise" lorsque des c
 - historique;
 - alumni;
 - témoignages;
-- pages;
 - paramètres;
 - actualités et événements.
+
+Les tables / modules `home_highlights` (atouts) et `pages` / blocs restent
+traduisibles en base pour données legacy, mais n’ont plus d’écran d’édition
+dans le menu admin.
 
 La section "Mot du doyen" de la page Faculté est administrée par un écran dédié. Le français reste stocké dans `pages.content.dean`; les champs anglais sont stockés dans `content_translations` comme traduction du champ `content` de la ressource `pages`.
 

@@ -10,7 +10,10 @@ cp .env.example .env
 php spark key:generate
 php spark migrate --all
 # (optionnel) php spark db:seed TemplateStarterSeeder — contenu de départ neutre
-php spark admin:create-superadmin
+# Compte faculté (si app.centralAdminMode=false et app.siteSlug renseigné) :
+# PLATFORM_ADMIN_PASSWORD='…' php spark admin:create-faculty-admin --email … --username … --password-env PLATFORM_ADMIN_PASSWORD
+# Superadmin uniquement depuis superadmin/ (centralAdminMode=true) :
+# php spark admin:create-superadmin
 php spark serve
 ```
 
@@ -35,10 +38,11 @@ Ne copiez pas le fichier `env` suivi par Git pour créer un environnement local.
 
 Le code source de vérité est `template/app`, `template/tests` et
 `template/public/assets`. Après une modification, depuis `template/` :
-`./scripts/sync-instances.sh` (fseg, fsi, superadmin, med, fabi, flsh).
-Ne pas partager `vendor/` par symlink sans `composer dump-autoload` dans
-la copie. Identifiants locaux : `LOCAL_CREDENTIALS.md` à la racine de la
-plateforme (fichier ignoré par Git).
+`./scripts/sync-instances.sh` (cible : fseg, fsi, superadmin, med, fabi,
+flsh). Ne pas partager `vendor/` par symlink sans `composer dump-autoload`
+dans la copie. Opérations locales : [docs/LOCAL_OPERATIONS.md](docs/LOCAL_OPERATIONS.md).
+Les mots de passe locaux : fichier `LOCAL_CREDENTIALS.md` à la racine
+(plateforme), **ignoré par Git**.
 
 ## Multi-Site
 

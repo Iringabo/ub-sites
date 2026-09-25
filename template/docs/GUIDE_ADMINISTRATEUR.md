@@ -1,6 +1,6 @@
 # Guide administrateur
 
-Dernière actualisation : 15 septembre 2026.
+Dernière actualisation : 25 septembre 2026.
 
 Ce guide décrit le back-office tel qu’il fonctionne aujourd’hui. L’interface
 est en français. Les textes anglais du site public se saisissent dans
@@ -45,7 +45,7 @@ désactive.
 
 **Voir le site** ouvre le site public dans un nouvel onglet.
 
-## Trois zones de travail
+## Zones de travail
 
 Le menu n’est pas une copie du site public. Il est regroupé par métier. Une
 zone sans droit disparaît.
@@ -56,15 +56,15 @@ Synthèse du site actif, messages récents, et une liste de mise en route tant
 que des textes d’exemple (« à remplacer ») n’ont pas été écrasés. Les
 raccourcis respectent les permissions.
 
-### Contenu et communication
+### Accueil
 
-Accueil (textes, carrousel, points forts, chiffres), actualités et
-événements, formations, présentation / mot du doyen, pages
-institutionnelles, blocs de page, historique.
+Héros (slides), sections & ordre, chiffres clés, textes des sections.
 
-### Communauté et recherche
+### Pages du site
 
-Personnel, alumni, témoignages, laboratoires, publications, projets.
+Actualités et événements, formations, présentation / mot du doyen,
+historique, personnel, alumni, témoignages, laboratoires, publications,
+projets.
 
 Pour peupler localement une faculté « comme terminée » (contenu + images
 isolées par site) : depuis `superadmin/`, `php spark site:seed-demo --force`
@@ -80,29 +80,35 @@ Les projets et laboratoires sont indépendants. Les formations ne sont pas
 liées obligatoirement au personnel. Un témoignage peut, ou non, pointer vers
 un profil alumni.
 
-### Administration
+### Messages
+
+**Messages de contact** : filtrer, ouvrir, marquer lu / traité, archiver,
+supprimer (suppression logique ; pas d’écran de restauration).
+
+### Comptes & Identité
 
 Visible pour l’administrateur de faculté et le superadministrateur.
 
-- **Messages de contact** : filtrer, ouvrir, marquer lu / traité, archiver,
-  supprimer (suppression logique ; pas d’écran de restauration).
 - **Coordonnées et identité** (`/admin/settings/global`) : textes publics,
   coordonnées, liens, images. Jamais de secrets techniques.
 - **Comptes & accès** (dossier facultaire) : comptes de **cette** faculté.
+  L’administrateur de faculté ne peut y créer que des **éditeurs**.
 
 Sur l’instance superadmin, le groupe **Plateforme** s’ajoute : aperçu du
-site choisi, liste des facultés, comptes de toutes les facultés.
+site choisi, liste des facultés, comptes de toutes les facultés (y compris
+création d’administrateurs de faculté).
 
 ## Qui peut faire quoi
 
 | Rôle | Où | Droits |
 |---|---|---|
-| Éditeur | `/admin` de sa faculté | Zones contenu et communauté. Pas de messages, pas de comptes, pas d’identité. |
-| Administrateur de faculté | `/admin` de sa faculté | Les trois zones. Crée uniquement un **éditeur** pour *sa* faculté. Pas d’autre administrateur, pas de superadmin, pas d’autre site. |
-| Superadministrateur | dossier `superadmin/` | Plateforme + les trois zones de la faculté **choisie**. Seul rôle autorisé à **créer des administrateurs** de faculté. |
+| Éditeur | `/admin` de sa faculté | Accueil + Pages du site. Pas de messages, pas de comptes, pas d’identité. |
+| Administrateur de faculté | `/admin` de sa faculté | Accueil, Pages du site, Messages, Comptes, Identité. Crée uniquement un **éditeur** pour *sa* faculté. Pas d’autre administrateur, pas de superadmin, pas d’autre site. |
+| Superadministrateur | dossier `superadmin/` | Plateforme + les zones de la faculté **choisie**. Seul rôle autorisé à **créer des administrateurs** de faculté. |
 
 Le personnel d’une faculté ne peut pas administrer une autre faculté, même
 en tapant une autre URL.
+
 
 ## Choisir une faculté (superadmin)
 

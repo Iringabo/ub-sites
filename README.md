@@ -18,30 +18,41 @@ sont des copies configurées par `.env`.
 
 ## Démarrage local
 
+Le script `dev-serve` vit **dans chaque instance** (pas à la racine du dépôt).
+Depuis une instance, il démarre par défaut les six sites présents :
+
 ```bash
-# Depuis n’importe quelle instance (ex. fseg) — les six sites si présents :
+cd fseg
 ./scripts/dev-serve.sh start
+./scripts/dev-serve.sh status   # chaque /healthz → 204
 ```
 
-Ou dans un dossier : `./scripts/dev-serve.sh` (lit `app.baseURL` du `.env`).
+Sous-ensemble : `PLATFORM_INSTANCES='fseg fsi' ./scripts/dev-serve.sh start`.
+
+Utiliser `http://localhost:PORT` (pas `127.0.0.1`) pour que les cookies
+correspondent à `app.baseURL`.
 
 ## Documentation
 
 - Canonique : [`template/docs/`](template/docs/) — index [`template/docs/README.md`](template/docs/README.md)
-- Opérations locales (seed, cartes, admins) : [`template/docs/LOCAL_OPERATIONS.md`](template/docs/LOCAL_OPERATIONS.md)
+- Opérations locales (seed, cartes, admins, serve) : [`template/docs/LOCAL_OPERATIONS.md`](template/docs/LOCAL_OPERATIONS.md)
 - Créer une faculté : [`template/docs/CREER_UN_SITE.md`](template/docs/CREER_UN_SITE.md)
 - Multi-dossiers : [`template/docs/MULTI_FOLDER_DEPLOYMENT.md`](template/docs/MULTI_FOLDER_DEPLOYMENT.md)
 - Mise en ligne (hébergeurs gratuits / essais longs) : [`deploy/README.md`](deploy/README.md) — checklist production [`deploy/09-production-go-live.md`](deploy/09-production-go-live.md)
 
-## Scripts racine (`scripts/`)
+## Scripts
 
-| Script | Rôle |
+| Emplacement | Rôle |
 |---|---|
-| `seed-ub-faculty-content.php` | Contenu réaliste UB pour les cinq facultés |
-| `seed-ub-faculty-data-fseg-fsi.php` | Payloads FSEG/FSI (inclus par le seeder) |
-| `update-faculty-maps.php` | Iframes Google Maps + adresses campus |
-| `ensure-faculty-admins.php` | Créer / réinitialiser les admins locaux |
+| `scripts/seed-ub-faculty-content.php` | Contenu réaliste UB pour les cinq facultés (legacy) |
+| `scripts/seed-ub-faculty-data-fseg-fsi.php` | Payloads FSEG/FSI (inclus par le seeder) |
+| `scripts/update-faculty-maps.php` | Iframes Google Maps + adresses campus |
+| `scripts/ensure-faculty-admins.php` | Créer / réinitialiser les admins locaux |
+| `php spark site:seed-demo --force` (depuis `superadmin/`) | **Recommandé** : démo contenu + médias par site |
+| `template/scripts/new-faculty-instance.sh` | Copie guidée d’une faculté |
+| `template/scripts/new-admin-instance.sh` | Copie guidée de la superadministration |
 
+Détail seed / médias : [`template/docs/LOCAL_OPERATIONS.md`](template/docs/LOCAL_OPERATIONS.md).
 
 ## Synchroniser le code
 

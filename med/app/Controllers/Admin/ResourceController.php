@@ -149,6 +149,10 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
+        }
+
         if ($redirect = $this->centralContentGuard($resource)) {
             return $redirect;
         }
@@ -183,6 +187,10 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
+        }
+
         if ($redirect = $this->centralContentGuard($resource)) {
             return $redirect;
         }
@@ -204,6 +212,10 @@ class ResourceController extends BaseController
         $config = $this->resource($resource);
         if ($config === null) {
             return $this->notFound('Module d’administration introuvable.');
+        }
+
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
         }
 
         if ($redirect = $this->centralContentGuard($resource)) {
@@ -237,6 +249,10 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
+        }
+
         if ($redirect = $this->centralContentGuard($resource)) {
             return $redirect;
         }
@@ -254,6 +270,10 @@ class ResourceController extends BaseController
         $config = $this->resource($resource);
         if ($config === null) {
             return $this->notFound('Module d’administration introuvable.');
+        }
+
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
         }
 
         if ($redirect = $this->centralContentGuard($resource)) {
@@ -294,6 +314,10 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
+        }
+
         if ($redirect = $this->centralContentGuard($resource)) {
             return $redirect;
         }
@@ -322,6 +346,10 @@ class ResourceController extends BaseController
         $config = $this->resource($resource);
         if ($config === null) {
             return $this->notFound('Module d’administration introuvable.');
+        }
+
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
         }
 
         if ($redirect = $this->centralContentGuard($resource)) {
@@ -361,6 +389,10 @@ class ResourceController extends BaseController
         $config = $this->resource($resource);
         if ($config === null) {
             return $this->notFound('Module d’administration introuvable.');
+        }
+
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
         }
 
         if ($redirect = $this->centralContentGuard($resource)) {
@@ -444,6 +476,10 @@ class ResourceController extends BaseController
             return $this->notFound('Module d’administration introuvable.');
         }
 
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
+        }
+
         if ($redirect = $this->centralContentGuard($resource)) {
             return $redirect;
         }
@@ -522,6 +558,10 @@ class ResourceController extends BaseController
         $config = $this->resource($resource);
         if ($config === null) {
             return $this->response->setStatusCode(404);
+        }
+
+        if ($redirect = $this->retiredResourceGuard($resource)) {
+            return $redirect;
         }
 
         if ($redirect = $this->centralContentGuard($resource)) {

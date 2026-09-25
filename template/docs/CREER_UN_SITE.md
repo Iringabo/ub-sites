@@ -35,20 +35,21 @@ Après création, pour charger le contenu de démonstration UB (local) ou
 mettre à jour les cartes : voir [LOCAL_OPERATIONS.md](LOCAL_OPERATIONS.md)
 et les scripts à la racine de la plateforme.
 
-## 2. Remplir trois champs dans `.env`
+## 2. Remplir le `.env` (réglages essentiels)
 
 ```bash
 cd fseg
 cp .env.example .env
 ```
 
-Ouvrez `.env` et renseignez **uniquement** :
+Ouvrez `.env` et renseignez au minimum :
 
 | Champ | Exemple | Rôle |
 |---|---|---|
 | `app.baseURL` | `https://fseg.ub.edu.bi/` | Adresse publique du site (avec le `/` final) |
 | `database.default.*` | les **mêmes** valeurs que les autres facultés | Base partagée |
 | `app.siteSlug` | `fseg` | Identifiant de cette faculté |
+| `app.publicHostPattern` | `{slug}.ub.edu.bi` | Hôte public écrit par `site:create`. `{slug}` est remplacé. Laisser vide en local. |
 
 Pour une faculté, laissez `app.centralAdminMode = false`.
 

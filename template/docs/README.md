@@ -5,8 +5,8 @@ Ce dossier est le **modèle** de la plateforme. État du système :
 
 ## Cible et déploiement
 
-- [Créer un site facultaire](CREER_UN_SITE.md) : copier ce dossier, trois
-  champs `.env`, deux commandes — guide pour un non-programmeur.
+- [Créer un site facultaire](CREER_UN_SITE.md) : copier ce dossier, régler
+  le `.env`, migrations et CLI — guide pour un non-programmeur.
 - [Architecture actuelle](ARCHITECTURE.md) : instances, isolation, accès,
   cookies de session, qualité.
 - [Déploiement multi-dossiers](MULTI_FOLDER_DEPLOYMENT.md) : fonctionnement
@@ -32,8 +32,8 @@ Ce dossier est le **modèle** de la plateforme. État du système :
 
 ## Guides
 
-- [Guide administrateur](GUIDE_ADMINISTRATEUR.md) : trois zones, rôles,
-  superadmin in situ.
+- [Guide administrateur](GUIDE_ADMINISTRATEUR.md) : menu Accueil / Pages du
+  site / Messages / Comptes / Identité, rôles, superadmin in situ.
 - [Guide du site public](GUIDE_UTILISATEUR_CLIENT.md)
 - [Cahier des charges](CAHIER_DES_CHARGES.md) : besoins d’origine (référence
   client, pas l’état du code).

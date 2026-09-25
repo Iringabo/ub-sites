@@ -4,6 +4,20 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/codeigniter4/framework/system/Test/bootstrap.php';
 
+// PHPUnit applies <env force="true"> with putenv(). Names that contain a
+// dot, such as app.centralAdminMode, do not survive that call: getenv()
+// returns false, and DotEnv then replaces the value with the instance .env.
+// Re-apply the suite settings as real strings so every folder, including
+// superadmin, runs the faculty-site cases the suite declares.
+foreach ([
+    'app.centralAdminMode' => 'false',
+    'app.siteSlug'         => 'fseg',
+] as $name => $value) {
+    putenv($name . '=' . $value);
+    $_ENV[$name]    = $value;
+    $_SERVER[$name] = $value;
+}
+
 resetTestDatabase();
 
 /**

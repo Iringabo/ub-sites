@@ -5,3 +5,4 @@ LOCAL_CREDENTIALS.md
 .DS_Store
 Thumbs.db
 *.tmp
+.responsive-audit/

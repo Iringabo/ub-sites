@@ -19,6 +19,7 @@ class DemoMediaService
     /**
      * Copy pack photos for heroes/banners/covers; generate people portraits into staff/alumni.
      * Logo is the shared static crest (not a generated tile).
+     * Staff/alumni portraits are generated on demand via portraitJpeg() when seeding.
      *
      * @return array{heroes: list<string>, banner: ?string, logo: string, staff: list<string>, posts: list<string>, alumni: list<string>}
      */
