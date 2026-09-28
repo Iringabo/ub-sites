@@ -1306,6 +1306,10 @@ class ResourceController extends BaseController
 
     private function retiredResourceGuard(string $resource): ?RedirectResponse
     {
+        if ($resource === 'home-content') {
+            return redirect()->to('/admin/textes/accueil')->with('message', 'Les textes de l’accueil se modifient désormais par section, dans « Pages du site › Accueil ».');
+        }
+
         if (in_array($resource, service('adminNavigation')->retiredResourceKeys(), true)) {
             return redirect()->to('/admin')->with('error', 'Ce module n’est plus disponible dans l’administration.');
         }
@@ -1891,8 +1895,8 @@ class ResourceController extends BaseController
                 ],
             ],
             'home-hero-slides' => [
-                'title'          => 'Héros (slides)',
-                'singular'       => 'slide du héros',
+                'title'          => 'Carrousel d’images',
+                'singular'       => 'image du carrousel',
                 'model'          => HomeHeroSlideModel::class,
                 'permission'     => 'home.manage',
                 'publishedField' => 'is_published',

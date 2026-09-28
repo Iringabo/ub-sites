@@ -153,17 +153,19 @@ class HomePageService
     }
 
     /**
+     * One mixed stream of upcoming events and featured news, closest to today first.
+     *
      * @return list<object>
      */
     private function featuredPosts(): array
     {
-        $now = date('Y-m-d H:i:s');
+        $now = time();
         $translator = service('contentTranslationService');
         $events = $translator->records('posts', $this->visiblePosts()
             ->where('type', 'event')
-            ->where('event_starts_at >=', $now)
+            ->where('event_starts_at >=', date('Y-m-d H:i:s', $now))
             ->orderBy('event_starts_at', 'ASC')
-            ->findAll(2));
+            ->findAll(3));
         $news = $translator->records('posts', $this->visiblePosts()
             ->where('featured', 1)
             ->where('type', 'news')
@@ -171,7 +173,17 @@ class HomePageService
             ->orderBy('published_at', 'DESC')
             ->findAll(3));
 
-        return array_merge($events, $news);
+        $distance = static function (object $post) use ($now): int {
+            $date = ($post->type ?? '') === 'event' ? ($post->event_starts_at ?? $post->published_at) : $post->published_at;
+            $timestamp = strtotime((string) $date);
+
+            return $timestamp === false ? PHP_INT_MAX : abs($timestamp - $now);
+        };
+
+        $posts = array_merge($events, $news);
+        usort($posts, static fn (object $a, object $b): int => $distance($a) <=> $distance($b));
+
+        return $posts;
     }
 
     /**

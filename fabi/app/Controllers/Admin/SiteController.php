@@ -93,7 +93,7 @@ class SiteController extends BaseController
             return site_url('admin/users');
         }
 
-        // /admin/settings/global stays; other deep paths collapse to first segment when numeric id present
+        // Two-segment paths (settings/contact, textes/faculte) stay; deeper paths keep their first two segments.
         return site_url('admin/' . $segments[0] . (isset($segments[1]) && ! ctype_digit($segments[1]) ? '/' . $segments[1] : ''));
     }
 

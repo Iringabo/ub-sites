@@ -5,7 +5,7 @@ return [
     'readMore'             => 'Read more',
     'viewProgramme'        => 'View the programme',
     'viewAll'              => 'View all',
-    'footerCallout'        => 'Stay informed about the latest news and events.',
+    'footerCallout'        => 'Follow the faculty so you never miss news or events.',
     'heroCarouselLabel'    => 'Main faculty images',
     'showHeroSlide'        => 'Show image {0}',
     'previousHeroSlide'    => 'Previous image',

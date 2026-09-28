@@ -3,11 +3,13 @@
 <?= $this->section('content') ?>
 <?php $errors = session('errors') ?? []; ?>
 <?= view('partials/page_banner', [
-    'pageTitle'    => $pageTitle ?? lang('Site.pageTitles.contact'),
-    'pageSubtitle' => $content['banner_subtitle'] ?? lang('Site.contact.defaultSubtitle'),
+    'pageTitle'       => site_text_or_placeholder((string) ($content['banner_title'] ?? ''), $pageTitle ?? lang('Site.pageTitles.contact')),
+    'breadcrumbTitle' => $pageTitle ?? lang('Site.pageTitles.contact'),
+    'pageSubtitle'    => $content['banner_subtitle'] ?? lang('Site.contact.defaultSubtitle'),
+    'bannerImage'     => $content['banner_image'] ?? '',
 ]) ?>
 
-<section class="section-pad bg-white">
+<section id="coordonnees" class="section-pad bg-white">
     <div class="container">
         <div class="row g-5">
             <div class="col-lg-4">
@@ -15,39 +17,39 @@
                 <h2 class="section-title"><?= esc($content['contact_title'] ?? lang('Site.contact.detailsTitle')) ?></h2>
                 <div class="divider-green"></div>
 
-                <address>
-                    <div class="d-flex gap-3 mb-4">
-                        <div class="card-icon mb-0"><i class="bi bi-geo-alt"></i></div>
+                <address class="d-grid gap-3 mb-0">
+                    <div class="info-card">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i>
                         <div>
-                            <p class="fw-bold mb-0"><?= esc(lang('Site.contact.address')) ?></p>
-                            <p class="text-muted small mb-0"><?= esc(site_text_or_placeholder(site_contact_address($siteSettings))) ?></p>
+                            <strong><?= esc(lang('Site.contact.address')) ?></strong>
+                            <span class="text-muted small"><?= esc(site_text_or_placeholder(site_contact_address($siteSettings))) ?></span>
                         </div>
                     </div>
-                    <div class="d-flex gap-3 mb-4">
-                        <div class="card-icon mb-0"><i class="bi bi-telephone"></i></div>
+                    <div class="info-card">
+                        <i class="bi bi-telephone" aria-hidden="true"></i>
                         <div>
-                            <p class="fw-bold mb-0"><?= esc(lang('Site.contact.phone')) ?></p>
-                            <p class="text-muted small mb-0"><?= esc(site_text_or_placeholder($siteSettings['contact.phone'] ?? null)) ?></p>
+                            <strong><?= esc(lang('Site.contact.phone')) ?></strong>
+                            <a href="tel:<?= esc(preg_replace('/[^+\d]/', '', (string) ($siteSettings['contact.phone'] ?? '')), 'attr') ?>" class="small text-brand text-decoration-none"><?= esc(site_text_or_placeholder($siteSettings['contact.phone'] ?? null)) ?></a>
                         </div>
                     </div>
-                    <div class="d-flex gap-3 mb-4">
-                        <div class="card-icon mb-0"><i class="bi bi-envelope"></i></div>
+                    <div class="info-card">
+                        <i class="bi bi-envelope" aria-hidden="true"></i>
                         <div>
-                            <p class="fw-bold mb-0"><?= esc(lang('Site.contact.email')) ?></p>
-                            <a href="mailto:<?= esc(site_text_or_placeholder($siteSettings['contact.email'] ?? null), 'attr') ?>" class="small text-success"><?= esc(site_text_or_placeholder($siteSettings['contact.email'] ?? null)) ?></a>
+                            <strong><?= esc(lang('Site.contact.email')) ?></strong>
+                            <a href="mailto:<?= esc(site_text_or_placeholder($siteSettings['contact.email'] ?? null), 'attr') ?>" class="small text-brand text-decoration-none"><?= esc(site_text_or_placeholder($siteSettings['contact.email'] ?? null)) ?></a>
                         </div>
                     </div>
-                    <div class="d-flex gap-3 mb-4">
-                        <div class="card-icon mb-0"><i class="bi bi-clock"></i></div>
+                    <div class="info-card hours-card">
+                        <i class="bi bi-clock" aria-hidden="true"></i>
                         <div>
-                            <p class="fw-bold mb-0"><?= esc(lang('Site.contact.hours')) ?></p>
-                            <p class="text-muted small mb-0"><?= esc(site_text_or_placeholder($siteSettings['contact.hours'] ?? null)) ?></p>
+                            <strong><?= esc(lang('Site.contact.hours')) ?></strong>
+                            <span class="text-muted small"><?= esc(site_text_or_placeholder($siteSettings['contact.hours'] ?? null)) ?></span>
                         </div>
                     </div>
                 </address>
             </div>
 
-            <div class="col-lg-8">
+            <div id="formulaire" class="col-lg-8">
                 <div class="card-faculte p-4">
                     <h2 class="h5 fw-bold"><?= esc($content['form_title'] ?? lang('Site.contact.formTitle')) ?></h2>
                     <p class="text-muted small mb-4"><?= esc($content['form_help'] ?? '') ?></p>
@@ -109,7 +111,7 @@
 </section>
 
 <?php if (! empty($content['map_url'])): ?>
-    <section>
+    <section id="carte">
         <iframe
             src="<?= esc($content['map_url'], 'attr') ?>"
             width="100%" height="350" style="border:0;" allowfullscreen loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="<?= esc(lang('Site.pages.contact'), 'attr') ?>">

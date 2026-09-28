@@ -39,9 +39,10 @@ $items = [
                         </li>
                     <?php endforeach ?>
                     <li class="nav-item ms-xl-2">
-                        <form class="d-flex" action="<?= site_url('trouver') ?>" method="get" role="search">
+                        <form class="navbar-search" action="<?= site_url('trouver') ?>" method="get" role="search">
                             <label class="visually-hidden" for="siteSearch"><?= esc(lang('Site.common.search'), 'attr') ?></label>
                             <input class="form-control form-control-sm" type="search" id="siteSearch" name="q" value="<?= esc((string) (service('request')->getGet('q') ?? ''), 'attr') ?>" placeholder="<?= esc(lang('Site.common.search'), 'attr') ?>">
+                            <button type="submit" class="navbar-search-btn" aria-label="<?= esc(lang('Site.common.search'), 'attr') ?>"><i class="bi bi-search" aria-hidden="true"></i></button>
                         </form>
                     </li>
                     <li class="nav-item ms-xl-2">

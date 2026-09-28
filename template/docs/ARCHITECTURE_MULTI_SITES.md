@@ -66,7 +66,7 @@ Tables site-scopées :
 ## Administration
 
 - Le sélecteur de site apparaît dans le layout admin lorsqu'un utilisateur a plusieurs sites disponibles.
-- L'écran `/admin/faculty/profile` modifie le "Mot du doyen" de la page Faculté du site actif uniquement. Il utilise la page `pages.key=faculty` du site courant.
+- Les catégories de texte `/admin/textes/{page}/{section}` (par exemple `/admin/textes/faculte/mot-du-doyen`) modifient la page du site actif uniquement (`pages.key` du site courant, ou `home_content` pour l'accueil). L'ancienne adresse `/admin/faculty/profile` redirige vers Mot du doyen.
 - `sites.manage` donne accès au module `/admin/sites`.
 - Les superadministrateurs peuvent voir tous les sites actifs.
 - Les autres administrateurs sont limités à leurs entrées `user_sites`.
@@ -89,7 +89,7 @@ Les nouveaux médias sont stockés sous :
 public/uploads/sites/{slug-du-site}/{module}/...
 ```
 
-Les photos de doyens envoyées depuis l'écran `/admin/faculty/profile` utilisent le dossier `faculty-deans` sous le site actif.
+Les photos de doyens envoyées depuis La Faculté › Mot du doyen utilisent le dossier `faculty-deans` sous le site actif ; les images de bandeau utilisent `banners`.
 
 Les anciens chemins restent lisibles pour éviter une migration destructive.
 

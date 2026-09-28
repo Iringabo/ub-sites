@@ -114,7 +114,7 @@ final class AdminUsersTest extends CIUnitTestCase
         $this->assertTrue((bool) $reloaded->active);
     }
 
-    public function testFacultyAdminCanOnlyCreateEditorOnOwnSite(): void
+    public function testFacultyAdminCanCreateEditorOnOwnSite(): void
     {
         $actor = $this->facultyAdminUser('faculty-admin-actor@example.test', 'facultyadminactor');
         $this->actingAs($actor);
@@ -122,9 +122,8 @@ final class AdminUsersTest extends CIUnitTestCase
         $form = $this->get('/admin/users/new');
         $form->assertOK();
         $form->assertSee('Éditeur de cette faculté');
-        $form->assertSee('Seul un superadministrateur peut créer un administrateur');
+        $form->assertSee('Administrateur de cette faculté');
         $form->assertDontSee('Superadministrateur');
-        $form->assertDontSee('Administrateur de cette faculté');
 
         $create = $this->post('/admin/users', $this->withCsrf([
             'username'   => 'nouveaueeditorfac',
@@ -151,24 +150,53 @@ final class AdminUsersTest extends CIUnitTestCase
             ->countAllResults());
     }
 
-    public function testFacultyAdminCannotCreateAdminOnOwnSite(): void
+    public function testFacultyAdminCanCreateAdminOnOwnSite(): void
+    {
+        $actor = $this->facultyAdminUser('faculty-admin-peer@example.test', 'facultyadminpeer');
+        $this->actingAs($actor);
+
+        $create = $this->post('/admin/users', $this->withCsrf([
+            'username'   => 'nouveauadminfac',
+            'email'      => 'nouveau-admin-fac@example.test',
+            'password'   => 'MotDePassePhase5!2026',
+            'confirm'    => 'MotDePassePhase5!2026',
+            'active'     => '1',
+            'site_roles' => [1 => 'site_admin'],
+        ]));
+
+        $create->assertRedirect();
+        $created = $this->userByEmail('nouveau-admin-fac@example.test');
+        $this->assertInstanceOf(User::class, $created);
+        $this->assertSame(['admin'], $created->getGroups());
+        $this->assertSame(1, $this->db->table('user_sites')
+            ->where('user_id', $created->id)
+            ->where('site_id', 1)
+            ->where('role', 'site_admin')
+            ->countAllResults());
+        $this->assertSame(0, $this->db->table('auth_groups_users')
+            ->where('user_id', $created->id)
+            ->where('group', 'superadmin')
+            ->countAllResults());
+    }
+
+    public function testFacultyAdminCannotAssignSuperadmin(): void
     {
         $actor = $this->facultyAdminUser('faculty-admin-deny@example.test', 'facultyadmindeny');
         $this->actingAs($actor);
 
         $create = $this->post('/admin/users', $this->withCsrf([
-            'username'   => 'deniedadminfac',
-            'email'      => 'denied-admin-fac@example.test',
+            'username'   => 'deniedsuperfac',
+            'email'      => 'denied-super-fac@example.test',
             'password'   => 'MotDePassePhase5!2026',
             'confirm'    => 'MotDePassePhase5!2026',
             'active'     => '1',
-            'groups'     => ['admin'],
+            'groups'     => ['superadmin'],
             'site_roles' => [1 => 'site_admin'],
         ]));
 
         $create->assertRedirect();
         $create->assertSessionHas('errors');
-        $this->assertNull($this->userByEmail('denied-admin-fac@example.test'));
+        $this->assertNull($this->userByEmail('denied-super-fac@example.test'));
     }
 
     public function testFacultyAdminSaveKeepsAssignmentsOnOtherSites(): void

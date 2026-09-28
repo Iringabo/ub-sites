@@ -436,7 +436,13 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $public->assertSee('Bienvenue sur le site de FSI_PLATFORM');
         $publicBody = (string) $public->response()->getBody();
         $this->assertStringContainsString('theme-default', $publicBody);
-        $this->assertStringContainsString('--green: #0D9B49', $publicBody);
+        // Tokens are derived from the site's own primary/secondary colours.
+        $this->assertStringContainsString('--brand: #14532D;', $publicBody);
+        // Secondary (#0F766E) is lighter than the brand, so the dark shade is derived instead.
+        $this->assertMatchesRegularExpression('/--brand-dark: #[0-9A-F]{6};/', $publicBody);
+        $this->assertStringNotContainsString('--brand-dark: #0F766E;', $publicBody);
+        $this->assertStringNotContainsString('--green: #0D9B49', $publicBody);
+        $this->assertStringContainsString('<meta name="theme-color" content="#14532D">', html_entity_decode($publicBody, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     }
 
     public function testUiCannotCreateANewFacultySite(): void
@@ -489,7 +495,9 @@ final class MultiSiteIsolationTest extends CIUnitTestCase
         $droit->assertOK();
         $droitBody = (string) $droit->response()->getBody();
         $this->assertStringContainsString('theme-default', $droitBody);
-        $this->assertStringContainsString('--green: #0D9B49', $droitBody);
+        $this->assertStringContainsString('--brand: #1D4ED8;', $droitBody);
+        $this->assertStringContainsString('--brand-rgb: 29, 78, 216;', $droitBody);
+        $this->assertStringNotContainsString('--brand: #0D9B49', $droitBody);
         $this->assertStringContainsString('Bloc droit isolé', $droitBody);
         $this->assertStringContainsString('Contenu visible uniquement sur le site droit.', $droitBody);
 

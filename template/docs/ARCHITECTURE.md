@@ -65,18 +65,22 @@ Groupes Shield : `superadmin`, `admin`, `editor`
 
 | Qui | Où | Peut faire |
 |---|---|---|
-| Superadministrateur | `superadmin/` | facultés existantes, comptes, **édition in situ** du `site_id` choisi ; seul rôle qui crée des **administrateurs** de faculté |
-| Administrateur de faculté | `/admin` de son dossier | Accueil / Pages du site / Messages / Comptes / Identité ; crée uniquement des **éditeurs** de *sa* faculté |
-| Éditeur | `/admin` de son dossier | contenu Accueil + Pages du site ; pas de messages, comptes ni identité |
+| Superadministrateur | `superadmin/` | facultés existantes, comptes de toutes les facultés, **édition in situ** du `site_id` choisi |
+| Administrateur de faculté | `/admin` de son dossier | les quatre sections du menu ; crée un **administrateur** ou un **éditeur** de *sa* faculté |
+| Éditeur | `/admin` de son dossier | Tableau de bord + Pages du site ; pas de messages, paramètres ni comptes |
 
 `AdminAccessFilter` lie le personnel au site du dossier. Le sélecteur de
 site est réservé au superadmin.
 
-Le menu `/admin` (`AdminNavigationService`) regroupe : **Accueil**,
-**Pages du site**, **Messages**, **Comptes**, **Identité**. Sur l’instance
-centrale s’ajoute **Plateforme**. Les modules « Pages institutionnelles »,
-« Blocs de page » et « Points forts » sont retirés de l’UI (routes gardées).
-L’écran `/admin/sites` n’offre plus la création.
+Le menu `/admin` (`AdminNavigationService::sections()`) a quatre sections :
+**Au quotidien**, **Pages du site** (un menu déroulant par page publique,
+construit depuis `PageTextCatalog` : « Sections de la page » puis
+« Listes »), **Paramètres du site** et **Administration**. Sur l’instance
+centrale, **Plateforme** vient en tête et les sections de la faculté
+n’apparaissent qu’une fois la faculté choisie. Les modules « Pages
+institutionnelles », « Blocs de page », « Points forts » et « Textes des
+sections » sont retirés de l’UI (routes gardées). L’écran `/admin/sites`
+n’offre plus la création.
 
 ## Isolation multi-sites
 

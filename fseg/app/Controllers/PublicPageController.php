@@ -184,25 +184,18 @@ class PublicPageController extends BaseController
         $content = $this->withSharedBanner($this->pageContent($page, $this->postsFallback()));
         $type    = $this->postTypeFromRequest((string) $this->request->getGet('type'));
         $query   = trim((string) $this->request->getGet('q'));
-        $now     = date('Y-m-d H:i:s');
         $translator = service('contentTranslationService');
-        $upcoming = [];
-
-        if ($type === null) {
-            $upcomingModel = $this->visiblePosts()
-                ->where('type', 'event')
-                ->where('event_starts_at >=', $now);
-            $this->applyPostSearch($upcomingModel, $query);
-            $upcoming = $translator->records('posts', $upcomingModel
-                ->orderBy('event_starts_at', 'ASC')
-                ->findAll(12));
-        }
 
         $model = $this->visiblePosts();
         if ($type === 'event') {
             $model->where('type', 'event')->orderBy('event_starts_at', 'ASC');
+        } elseif ($type === 'news') {
+            $model->where('type', 'news')->orderBy('published_at', 'DESC')->orderBy('id', 'DESC');
         } else {
-            $model->where('type', $type ?? 'news')->orderBy('published_at', 'DESC')->orderBy('id', 'DESC');
+            // "Tous": one stream of both types; an event is dated by its start, so upcoming ones lead.
+            $model->whereIn('type', ['news', 'event'])
+                ->orderBy('COALESCE(event_starts_at, published_at)', 'DESC', false)
+                ->orderBy('id', 'DESC');
         }
         $this->applyPostSearch($model, $query);
 
@@ -216,7 +209,6 @@ class PublicPageController extends BaseController
             'siteSettings'   => $this->siteSettings,
             'content'        => $content,
             'posts'          => $posts,
-            'upcomingPosts'  => $upcoming,
             'pager'          => $model->pager,
             'selectedType'   => $type,
             'query'          => $query,
@@ -287,30 +279,23 @@ class PublicPageController extends BaseController
      */
     private function withSharedBanner(array $content): array
     {
-        $current = trim((string) ($content['banner_image'] ?? ''));
-        if ($this->isUploadBanner($current)) {
+        if ($this->hasBannerImage(trim((string) ($content['banner_image'] ?? '')))) {
             return $content;
         }
 
         $staff = $this->page('staff');
         $staffContent = $this->pageContent($staff, []);
         $shared = trim((string) ($staffContent['banner_image'] ?? ''));
-        if ($this->isUploadBanner($shared)) {
+        if ($this->hasBannerImage($shared)) {
             $content['banner_image'] = $shared;
         }
 
         return $content;
     }
 
-    private function isUploadBanner(string $path): bool
+    private function hasBannerImage(string $path): bool
     {
-        if ($path === '') {
-            return false;
-        }
-
-        $lower = strtolower($path);
-
-        return ! str_contains($lower, 'logo-placeholder') && str_starts_with($lower, 'uploads/');
+        return $path !== '' && ! str_contains(strtolower($path), 'logo-placeholder');
     }
 
     private function postTypeFromRequest(string $type): ?string

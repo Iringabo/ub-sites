@@ -11,6 +11,40 @@ use RuntimeException;
  */
 class FacultyDemoDataService
 {
+    /**
+     * Default brand colour per faculty slug. Every value is a shade of the
+     * green or red found in the Université du Burundi logo; unknown slugs
+     * fall back to the institutional green.
+     *
+     * @var array<string, string>
+     */
+    public const BRAND_COLORS = [
+        'fseg' => '#0D9B49', // emerald (UB green)
+        'fsi'  => '#0B6F38', // forest green
+        'fabi' => '#4E8F2F', // leaf green
+        'med'  => '#C8102E', // crimson (UB red)
+        'flsh' => '#8B1E2D', // burgundy
+    ];
+
+    /**
+     * Home section order applied by the demo seed (visitor-first reading order).
+     *
+     * @var list<string>
+     */
+    public const DEFAULT_SECTION_ORDER = [
+        'hero',
+        'quick_links',
+        'statistics',
+        'about',
+        'programmes_preview',
+        'news_preview',
+        'research_labs',
+        'dean_message',
+        'staff_preview',
+        'custom_text',
+        'contact_cta',
+    ];
+
     private BaseConnection $db;
     private DemoMediaService $media;
 
@@ -33,8 +67,8 @@ class FacultyDemoDataService
         $slug = strtolower(trim((string) $site->slug));
         $name = trim((string) $site->name) ?: ('Faculté ' . strtoupper($slug));
         $short = strtoupper(trim((string) ($site->identifier ?: $slug)));
-        $color = '#0D9B49';
-        $secondary = '#0B6F38';
+        $color = $this->brandColorForSlug($slug);
+        $secondary = service('siteTheme')->tokens($color)['brand-dark'];
         $theme = $this->themeForSlug($slug);
 
         if (! $force) {
@@ -52,18 +86,7 @@ class FacultyDemoDataService
             'primary_color'    => $color,
             'secondary_color'  => $secondary,
             'logo'             => $logoPath,
-            'enabled_sections' => json_encode([
-                'hero',
-                'statistics',
-                'about',
-                'programmes_preview',
-                'research_labs',
-                'news_preview',
-                'dean_message',
-                'staff_preview',
-                'custom_text',
-                'contact_cta',
-            ], JSON_UNESCAPED_UNICODE),
+            'enabled_sections' => json_encode(self::DEFAULT_SECTION_ORDER, JSON_UNESCAPED_UNICODE),
             'updated_at'       => $this->now(),
         ]);
 
@@ -71,14 +94,15 @@ class FacultyDemoDataService
         $this->seedHeroes($siteId, $gallery['heroes'], $theme);
         $this->seedStats($siteId, $theme);
         $this->seedProgrammes($siteId, $theme);
-        $this->seedStaff($siteId, $gallery['staff'], $theme, $slug, $name, $color);
+        $deanPhoto = $this->seedStaff($siteId, $gallery['staff'], $theme, $slug, $name, $color);
         $this->seedPosts($siteId, $gallery['posts'], $name, $slug, $theme);
         $this->seedResearch($siteId, $short, $theme);
         $this->seedTimeline($siteId, $theme);
         $this->seedAlumni($siteId, $slug, $theme, $gallery['alumni'] ?? [], $name, $color);
-        $this->seedPages($siteId, $name, $short, $gallery['banner'], $theme);
-        $this->seedSettings($siteId, $name, $short, $color, $logoPath, $site);
+        $this->seedPages($siteId, $name, $short, $gallery['banner'], $theme, $deanPhoto);
+        $this->seedSettings($siteId, $name, $short, $color, $logoPath, $site, $theme);
         $this->seedContentBlocks($siteId, $theme);
+        $this->seedEnglishTranslations($siteId, $theme);
 
         $this->db->transComplete();
         if (! $this->db->transStatus()) {
@@ -136,20 +160,31 @@ class FacultyDemoDataService
     private function seedHeroes(int $siteId, array $heroes, array $theme): void
     {
         $captions = $theme['hero_captions'];
+        // Each slide gets a primary + secondary call to action so visitors always
+        // have a direct path to programmes, news, research or contact.
+        $ctas = [
+            [['programmes', 'Découvrir les formations'], ['contact', 'Nous contacter']],
+            [['programmes', 'Voir les formations'], ['news', 'Actualités & événements']],
+            [['research', 'Explorer la recherche'], ['contact', 'Nous contacter']],
+            [['news', 'Actualités & événements'], ['programmes', 'Voir les formations']],
+            [['contact', 'Rejoindre la faculté'], ['programmes', 'Voir les formations']],
+        ];
         foreach ($heroes as $i => $path) {
             $cap = $captions[$i] ?? ['badge' => 'Campus', 'title' => $theme['tagline'], 'text' => $theme['about']];
+            [$primary, $secondary] = $ctas[$i % count($ctas)];
+            $badge = $i === 0 ? ($cap['badge'] . ' · Université du Burundi') : $cap['badge'];
             $this->db->table('home_hero_slides')->insert([
                 'site_id'              => $siteId,
                 'image_path'           => $path,
                 'alt_text'             => $cap['title'],
-                'badge'                => $cap['badge'],
+                'badge'                => $badge,
                 'title'                => $cap['title'],
                 'text'                 => $cap['text'],
-                'primary_cta_target'   => $i === 0 ? 'programmes' : ($i === 1 ? 'news' : 'contact'),
-                'primary_cta_label'    => $i === 0 ? 'Nos formations' : ($i === 1 ? 'Actualités' : 'Nous contacter'),
+                'primary_cta_target'   => $primary[0],
+                'primary_cta_label'    => $primary[1],
                 'primary_cta_url'      => null,
-                'secondary_cta_target' => 'none',
-                'secondary_cta_label'  => null,
+                'secondary_cta_target' => $secondary[0],
+                'secondary_cta_label'  => $secondary[1],
                 'secondary_cta_url'     => null,
                 'display_order'        => $i + 1,
                 'is_published'         => 1,
@@ -169,8 +204,8 @@ class FacultyDemoDataService
             'singleton_key'            => 1,
             'hero_media_type'          => 'image',
             'hero_media_path'          => $heroPath,
-            'hero_badge'               => $short,
-            'hero_title'               => $name,
+            'hero_badge'               => $short . ' · Université du Burundi',
+            'hero_title'               => $theme['hero_captions'][0]['title'] ?? $name,
             'hero_text'                => $theme['tagline'],
             'hero_primary_label'       => 'Découvrir les formations',
             'hero_primary_url'         => '/formations',
@@ -184,17 +219,17 @@ class FacultyDemoDataService
             'research_label'           => 'Recherche',
             'research_title'           => $theme['research_title'],
             'research_body'            => $theme['research_body'],
-            'research_button_label'    => 'Laboratoires',
+            'research_button_label'    => 'Découvrir la recherche',
             'research_button_url'      => '/recherche',
             'programmes_label'         => 'Formations',
             'programmes_title'         => $theme['programmes_title'] ?? 'Parcours académiques',
             'programmes_text'          => $theme['programmes_intro'],
             'programmes_button_label'  => 'Toutes les formations',
             'programmes_button_url'    => '/formations',
-            'posts_label'              => 'Actualités',
+            'posts_label'              => 'Actualités & événements',
             'posts_title'              => $theme['posts_title'] ?? 'Vie de la faculté',
             'posts_text'               => $theme['posts_intro'] ?? 'Retrouvez les dernières nouvelles, événements et opportunités.',
-            'posts_button_label'       => 'Voir tout',
+            'posts_button_label'       => 'Toutes les actualités',
             'posts_button_url'         => '/actualites',
             'seo_title'                => $short . ' | Université du Burundi',
             'seo_description'          => $theme['seo_description'] ?? $theme['tagline'],
@@ -267,8 +302,10 @@ class FacultyDemoDataService
      * @param list<string> $photos
      * @param array<string, mixed> $theme
      */
-    private function seedStaff(int $siteId, array $photos, array $theme, string $slug, string $facultyLabel, string $color): void
+    private function seedStaff(int $siteId, array $photos, array $theme, string $slug, string $facultyLabel, string $color): ?string
     {
+        $deanPhoto = null;
+
         foreach ($theme['staff'] as $i => $row) {
             $photo = $this->media->portraitJpeg(
                 $slug,
@@ -277,6 +314,10 @@ class FacultyDemoDataService
                 (string) $row['name'],
                 $this->demoPortraitColor($color, $i),
             ) ?? ($photos[$i] ?? null);
+
+            if ($deanPhoto === null && ($row['category'] ?? '') === 'enseignant' && is_string($photo) && $photo !== '') {
+                $deanPhoto = $photo;
+            }
 
             $this->db->table('staff')->insert([
                 'site_id'          => $siteId,
@@ -297,6 +338,8 @@ class FacultyDemoDataService
                 'updated_at'       => $this->now(),
             ]);
         }
+
+        return $deanPhoto;
     }
 
     /**
@@ -360,7 +403,7 @@ class FacultyDemoDataService
                 'title'         => $row['title'],
                 'authors'       => $row['authors'],
                 'journal'       => $row['journal'],
-                'url'           => null,
+                'url'           => $row['url'] ?? null,
                 'display_order' => $i + 1,
                 'is_published'  => 1,
                 'created_at'    => $this->now(),
@@ -371,13 +414,13 @@ class FacultyDemoDataService
         foreach ($theme['projects'] as $i => $row) {
             $this->db->table('research_projects')->insert([
                 'site_id'       => $siteId,
-                'code'          => strtoupper($short) . '-P' . ($i + 1),
+                'code'          => $row['code'] ?? (strtoupper($short) . '-P' . ($i + 1)),
                 'title'         => $row['title'],
                 'description'   => $row['description'],
                 'funder'        => $row['funder'],
                 'period_start'  => $row['start'],
                 'period_end'    => $row['end'],
-                'icon'          => 'bi-lightbulb',
+                'icon'          => $row['icon'] ?? 'bi-lightbulb',
                 'display_order' => $i + 1,
                 'is_published'  => 1,
                 'created_at'    => $this->now(),
@@ -453,29 +496,65 @@ class FacultyDemoDataService
     /**
      * @param array<string, mixed> $theme
      */
-    private function seedPages(int $siteId, string $name, string $short, ?string $banner, array $theme): void
+    private function seedPages(int $siteId, string $name, string $short, ?string $banner, array $theme, ?string $deanPhoto = null): void
     {
+        $deanParagraphs = $this->paragraphsFromText((string) ($theme['dean_message'] ?? ''));
+        $mission = is_array($theme['mission'] ?? null) ? $theme['mission'] : [
+            'icon' => 'bi-bullseye',
+            'title' => 'Mission',
+            'paragraphs' => $this->paragraphsFromText((string) ($theme['mission'] ?? '')),
+        ];
+        $vision = is_array($theme['vision'] ?? null) ? $theme['vision'] : [
+            'icon' => 'bi-eye',
+            'title' => 'Vision',
+            'paragraphs' => $this->paragraphsFromText((string) ($theme['vision'] ?? '')),
+        ];
+        $values = [];
+        foreach (($theme['values'] ?? []) as $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+            $values[] = [
+                'icon'        => (string) ($value['icon'] ?? 'bi-star'),
+                'title'       => (string) ($value['title'] ?? ''),
+                'description' => (string) ($value['description'] ?? $value['text'] ?? ''),
+            ];
+        }
+
+        $campus = is_array($theme['campus'] ?? null) ? $theme['campus'] : [];
         $pages = [
             'faculty' => [
-                'title' => 'Présentation de la faculté',
+                'title' => 'La Faculté',
                 'content' => [
-                    'banner_subtitle' => 'Présentation de ' . $short,
+                    'banner_title'    => '',
+                    'banner_subtitle' => $theme['faculty_banner'] ?? ('Présentation de ' . $short),
                     'banner_image'    => $banner,
-                    'intro' => $theme['about'],
-                    'mission' => $theme['mission'] ?? null,
-                    'vision'  => $theme['vision'] ?? null,
-                    'values'  => $theme['values'] ?? [],
-                    'dean'  => [
-                        'name'    => $theme['dean_name'],
-                        'title'   => 'Doyen',
-                        'message' => $theme['dean_message'],
-                        'photo'   => null,
+                    'dean'            => [
+                        'label'      => $theme['dean_label'] ?? 'Mot du Doyen',
+                        'title'      => $theme['dean_title'] ?? ('Bienvenue à ' . $short),
+                        'photo'      => $deanPhoto,
+                        'name'       => $theme['dean_name'] ?? '',
+                        'role'       => $theme['dean_role'] ?? 'Doyen de la Faculté',
+                        'specialty'  => $theme['dean_specialty'] ?? '',
+                        'signature'  => $theme['dean_signature'] ?? ($theme['dean_name'] ?? ''),
+                        'paragraphs' => $deanParagraphs,
+                    ],
+                    'mission_label' => $theme['mission_label'] ?? 'Nos valeurs fondamentales',
+                    'mission_title' => $theme['mission_title'] ?? 'Mission & Vision',
+                    'mission'       => $mission,
+                    'vision'        => $vision,
+                    'values'        => $values,
+                    'history'       => $theme['history'] ?? [
+                        'label' => 'Notre parcours',
+                        'title' => 'Historique de ' . $short,
+                        'text'  => 'Une trajectoire académique au service du développement national.',
                     ],
                 ],
             ],
             'posts' => [
                 'title' => 'Actualités et événements',
                 'content' => [
+                    'banner_title'    => '',
                     'banner_subtitle' => $theme['posts_banner'] ?? ('Suivez la vie de ' . $short),
                     'banner_image'    => $banner,
                 ],
@@ -483,8 +562,9 @@ class FacultyDemoDataService
             'research' => [
                 'title' => 'Recherche',
                 'content' => [
-                    'banner_subtitle' => $theme['research_banner'] ?? 'Laboratoires, publications et projets',
-                    'banner_image'    => $banner,
+                    'banner_title'         => '',
+                    'banner_subtitle'      => $theme['research_banner'] ?? 'Laboratoires, publications et projets',
+                    'banner_image'         => $banner,
                     'labs_label'           => 'Laboratoires',
                     'labs_title'           => $theme['research_title'],
                     'labs_text'            => $theme['research_body'],
@@ -493,11 +573,13 @@ class FacultyDemoDataService
                     'publications_text'    => $theme['publications_intro'] ?? ('Sélection de publications de ' . $short),
                     'projects_label'       => 'Projets',
                     'projects_title'       => $theme['projects_title'] ?? 'Projets en cours',
+                    'projects_text'        => $theme['projects_intro'] ?? ('Projets financés et partenariats de ' . $short),
                 ],
             ],
             'staff' => [
                 'title' => 'Corps enseignant et personnel',
                 'content' => [
+                    'banner_title'    => '',
                     'banner_subtitle' => $theme['staff_banner'] ?? 'Une équipe engagée au service de la formation',
                     'banner_image'    => $banner,
                 ],
@@ -505,38 +587,53 @@ class FacultyDemoDataService
             'formations' => [
                 'title' => 'Formations',
                 'content' => [
+                    'banner_title'    => '',
                     'banner_subtitle' => $theme['formations_banner'] ?? 'Parcours de la licence au doctorat',
                     'banner_image'    => $banner,
+                    'offer_label'     => $theme['offer_label'] ?? 'Offre académique',
+                    'offer_title'     => $theme['offer_title'] ?? 'Des programmes adaptés à chaque ambition',
+                    'offer_text'      => $theme['offer_text'] ?? $theme['programmes_intro'],
+                    'cta_title'       => $theme['cta_title'] ?? 'Vous souhaitez postuler ?',
+                    'cta_text'        => $theme['cta_text'] ?? 'Contactez notre service des admissions pour plus d’informations sur les procédures d’inscription.',
+                    'cta_label'       => $theme['cta_label'] ?? 'Nous contacter',
+                    'cta_url'         => '/contact',
                 ],
             ],
             'alumni' => [
                 'title' => 'Alumni',
                 'content' => [
-                    'banner_subtitle' => $theme['alumni_banner'] ?? 'Le réseau des diplômés',
-                    'banner_image'    => $banner,
-                    'intro_label' => 'Communauté',
-                    'intro_title' => 'Les alumni de ' . $short,
-                    'intro_paragraphs' => $theme['alumni_intro'] ?? [
+                    'banner_title'         => '',
+                    'banner_subtitle'      => $theme['alumni_banner'] ?? 'Le réseau des diplômés',
+                    'banner_image'         => $banner,
+                    'intro_label'          => 'Communauté',
+                    'intro_title'          => 'Les alumni de ' . $short,
+                    'intro_paragraphs'     => $theme['alumni_intro'] ?? [
                         'Les diplômés de ' . $name . ' forment un réseau actif dans l’administration, le secteur privé, la recherche et l’entrepreneuriat.',
                         'Cette page présente quelques parcours illustratifs. Les fiches peuvent être enrichies depuis l’administration.',
                     ],
-                    'intro_button_label' => 'Rejoindre le réseau',
-                    'intro_button_url' => '/contact',
-                    'profiles_label' => 'Profils',
-                    'profiles_title' => 'Parcours de diplômés',
-                    'profiles_text' => $theme['alumni_profiles_text'] ?? 'Une sélection de profils pour illustrer la diversité des débouchés.',
-                    'testimonials_label' => 'Témoignages',
-                    'testimonials_title' => 'Ce que la faculté leur a apporté',
-                    'cta_title' => 'Vous êtes diplômé de ' . $short . ' ?',
-                    'cta_text' => $theme['alumni_cta'] ?? ('Contactez le secrétariat pour actualiser votre profil ou rejoindre les activités du réseau alumni.'),
-                    'cta_label' => 'Nous écrire',
-                    'cta_url' => '/contact',
+                    'intro_button_label'   => 'Rejoindre le réseau',
+                    'intro_button_url'     => '/contact',
+                    'profiles_label'       => 'Profils',
+                    'profiles_title'       => 'Parcours de diplômés',
+                    'profiles_text'        => $theme['alumni_profiles_text'] ?? 'Une sélection de profils pour illustrer la diversité des débouchés.',
+                    'testimonials_label'   => 'Témoignages',
+                    'testimonials_title'   => 'Ce que la faculté leur a apporté',
+                    'cta_title'            => 'Vous êtes diplômé de ' . $short . ' ?',
+                    'cta_text'             => $theme['alumni_cta'] ?? ('Contactez le secrétariat pour actualiser votre profil ou rejoindre les activités du réseau alumni.'),
+                    'cta_label'            => 'Nous écrire',
+                    'cta_url'              => '/contact',
                 ],
             ],
             'contact' => [
                 'title' => 'Contact',
                 'content' => [
-                    'intro' => $theme['contact_intro'] ?? 'Écrivez-nous pour toute demande d’information sur les formations ou la recherche.',
+                    'banner_title'    => '',
+                    'banner_subtitle' => $theme['contact_banner'] ?? ($campus['label'] ?? ('Nous sommes à votre écoute — ' . $short)),
+                    'contact_label'   => $theme['contact_label'] ?? 'Nos coordonnées',
+                    'contact_title'   => $theme['contact_title'] ?? 'Prenez contact',
+                    'form_title'      => $theme['form_title'] ?? 'Formulaire de contact',
+                    'form_help'       => $theme['form_help'] ?? 'Tous les champs marqués comme obligatoires doivent être remplis.',
+                    'map_url'         => $campus['map_url'] ?? '',
                 ],
             ],
         ];
@@ -549,7 +646,7 @@ class FacultyDemoDataService
                 'slug'            => $key,
                 'seo_title'       => $page['title'] . ' | ' . $short,
                 'seo_description' => $theme['tagline'],
-                'content'         => json_encode($page['content'], JSON_UNESCAPED_UNICODE),
+                'content'         => json_encode($page['content'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'is_published'    => 1,
                 'created_at'      => $this->now(),
                 'updated_at'      => $this->now(),
@@ -559,40 +656,45 @@ class FacultyDemoDataService
 
     /**
      * @param object|array<string, mixed> $site
+     * @param array<string, mixed> $theme
      */
-    private function seedSettings(int $siteId, string $name, string $short, string $color, ?string $logo, $site): void
+    private function seedSettings(int $siteId, string $name, string $short, string $color, ?string $logo, $site, array $theme = []): void
     {
         $logoPath = $logo ?: 'assets/images/logo-placeholder.png';
+        $campus = is_array($theme['campus'] ?? null) ? $theme['campus'] : [];
+        $emailLocal = (string) ($campus['email_local'] ?? strtolower($short));
         $rows = [
             ['institution.faculty_name', $name, 'string', 'institution'],
             ['institution.short_name', $short, 'string', 'institution'],
             ['institution.university', 'Université du Burundi', 'string', 'institution'],
-            ['contact.address_line', 'Avenue de l’Université', 'string', 'contact'],
-            ['contact.address_commune', 'Mukaza', 'string', 'contact'],
-            ['contact.address_province', 'Bujumbura Mairie', 'string', 'contact'],
-            ['contact.address_country', 'Burundi', 'string', 'contact'],
-            ['contact.phone', '+257 22 22 00 00', 'string', 'contact'],
-            ['contact.email', strtolower($short) . '@ub.edu.bi', 'email', 'contact'],
-            ['contact.hours', 'Lun–Ven 8h–16h', 'string', 'contact'],
-            ['footer.text', $name . ' — Université du Burundi. Contenu de démonstration locale.', 'text', 'footer'],
+            ['contact.address_line', (string) ($campus['address_line'] ?? 'Avenue de l’Université'), 'string', 'contact'],
+            ['contact.address_commune', (string) ($campus['commune'] ?? 'Mukaza'), 'string', 'contact'],
+            ['contact.address_province', (string) ($campus['province'] ?? 'Bujumbura Mairie'), 'string', 'contact'],
+            ['contact.address_country', (string) ($campus['country'] ?? 'Burundi'), 'string', 'contact'],
+            ['contact.phone', (string) ($campus['phone'] ?? '+257 22 22 00 00'), 'string', 'contact'],
+            ['contact.email', $emailLocal . '@ub.edu.bi', 'email', 'contact'],
+            ['contact.hours', (string) ($campus['hours'] ?? 'Lun–Ven 8h–16h'), 'string', 'contact'],
+            ['footer.text', $name . ' — Université du Burundi.', 'text', 'footer'],
             ['footer.copyright', '© ' . date('Y') . ' ' . $name, 'string', 'footer'],
             ['assets.logo', $logoPath, 'path', 'assets'],
             ['seo.default_title', $short . ' | Université du Burundi', 'string', 'seo'],
-            ['seo.default_description', 'Site officiel de démonstration — ' . $name, 'text', 'seo'],
-            ['seo.theme_color', '#0D9B49', 'color', 'seo'],
+            ['seo.default_description', $theme['seo_description'] ?? ('Site officiel — ' . $name), 'text', 'seo'],
+            ['seo.theme_color', $color, 'color', 'seo'],
             ['seo.og_image', $logoPath, 'path', 'seo'],
-            ['social.links', json_encode(['facebook' => 'https://facebook.com', 'twitter' => 'https://x.com'], JSON_UNESCAPED_UNICODE), 'json', 'social'],
+            ['social.links', json_encode(new \stdClass(), JSON_FORCE_OBJECT), 'json', 'social'],
             ['home.hero_indicator_size', '0.75', 'string', 'home'],
         ];
 
         foreach ($rows as [$key, $value, $type, $context]) {
             $this->db->table('settings')->insert([
-                'site_id' => $siteId,
-                'class'   => 'App\\Settings\\Site',
-                'key'     => $key,
-                'value'   => $value,
-                'type'    => $type,
-                'context' => $context,
+                'site_id'    => $siteId,
+                'class'      => 'App\\Settings\\Site',
+                'key'        => $key,
+                'value'      => $value,
+                'type'       => $type,
+                'context'    => $context,
+                'created_at' => $this->now(),
+                'updated_at' => $this->now(),
             ]);
         }
     }
@@ -603,17 +705,17 @@ class FacultyDemoDataService
     private function seedContentBlocks(int $siteId, array $theme): void
     {
         $blocks = [
-            ['home', 'custom_text', 'Mot d’accueil', $theme['welcome'] ?? ('Bienvenue sur le site de ' . ($theme['short'] ?? 'la faculté') . '. Découvrez nos formations, notre recherche et la vie du campus.'), 1],
-            ['home', 'contact_cta', 'Rejoignez-nous', 'Contactez le secrétariat pour vos démarches d’admission.', 2],
+            ['home', 'custom_text', 'Mot d’accueil', $theme['welcome'] ?? ('Bienvenue sur le site de ' . ($theme['short'] ?? 'la faculté') . '. Découvrez nos formations, notre recherche et la vie du campus.'), 1, []],
+            ['home', 'contact_cta', 'Une question ? Contactez-nous', $theme['contact_cta'] ?? 'Admissions, stages, partenariats ou simple demande d’information : le secrétariat de la faculté vous répond pendant les heures d’ouverture.', 2, ['label' => 'Écrire à la faculté', 'url' => '/contact']],
         ];
-        foreach ($blocks as [$pageKey, $type, $title, $content, $order]) {
+        foreach ($blocks as [$pageKey, $type, $title, $content, $order, $settings]) {
             $this->db->table('content_blocks')->insert([
                 'site_id'       => $siteId,
                 'page_key'      => $pageKey,
                 'type'          => $type,
                 'title'         => $title,
                 'content'       => $content,
-                'settings'      => json_encode(new \stdClass(), JSON_FORCE_OBJECT),
+                'settings'      => json_encode($settings === [] ? new \stdClass() : $settings, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'display_order' => $order,
                 'is_published'  => 1,
                 'created_at'    => $this->now(),
@@ -625,6 +727,14 @@ class FacultyDemoDataService
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Brand colour used by the demo seed for a faculty slug (UB green by default).
+     */
+    public function brandColorForSlug(string $slug): string
+    {
+        return self::BRAND_COLORS[strtolower(trim($slug))] ?? SiteThemeService::UB_GREEN;
+    }
+
     private function themeForSlug(string $slug): array
     {
         $catalog = [
@@ -674,7 +784,30 @@ class FacultyDemoDataService
                 ['icon' => 'bi-mortarboard', 'title' => 'Formation d’excellence', 'description' => 'Curricula modernisés, stages encadrés et exigence académique de la licence au doctorat.'],
                 ['icon' => 'bi-graph-up-arrow', 'title' => 'Recherche appliquée', 'description' => 'Travaux sur la croissance, la finance inclusive, la gouvernance des PME et les politiques fiscales.'],
                 ['icon' => 'bi-people', 'title' => 'Communauté et partenariats', 'description' => 'Échanges internationaux, réseau alumni et liens étroits avec le secteur public et privé.'],
+                ['icon' => 'bi-globe2', 'title' => 'Ouverture internationale', 'description' => 'Mobilités, cotutelles et partenariats universitaires en Afrique et en Europe.'],
             ],
+            'dean_role' => 'Doyen de la Faculté',
+            'dean_specialty' => 'Économie & Développement',
+            'dean_title' => 'Bienvenue à la FSEG',
+            'dean_label' => 'Mot du Doyen',
+            'history' => [
+                'label' => 'Notre parcours',
+                'title' => 'Historique de la FSEG',
+                'text'  => 'Plus de cinq décennies d’excellence académique et d’engagement au service du développement national.',
+            ],
+            'offer_label' => 'Offre académique',
+            'offer_title' => 'Des programmes adaptés à chaque ambition',
+            'offer_text' => 'De la licence au doctorat, la FSEG propose des cursus complets couvrant l’économie, la gestion et la finance.',
+            'cta_title' => 'Vous souhaitez postuler ?',
+            'cta_text' => 'Contactez notre service des admissions pour plus d’informations sur les procédures d’inscription.',
+            'cta_label' => 'Nous contacter',
+            'contact_label' => 'Nos coordonnées',
+            'contact_title' => 'Prenez contact',
+            'form_title' => 'Formulaire de contact',
+            'form_help' => 'Tous les champs marqués comme obligatoires doivent être remplis.',
+            'faculty_banner' => 'Faculté des Sciences Économiques et de Gestion',
+            'contact_banner' => 'Nous sommes à votre écoute — Campus Mutanga',
+            'projects_intro' => 'Projets financés avec l’UE, la Banque mondiale, la FAO et les partenaires bilatéraux.',
             'stats' => null,
             'formations_banner' => 'Parcours en économie, gestion et finance',
             'research_banner' => 'Laboratoires LEA, CRGD, LFC et URPP',
@@ -730,7 +863,20 @@ class FacultyDemoDataService
                 ['icon' => 'bi-cpu', 'title' => 'Informatique et data', 'description' => 'Génie logiciel, systèmes embarqués et science des données pour l’économie numérique.'],
                 ['icon' => 'bi-lightning-charge', 'title' => 'Énergies et physique', 'description' => 'Formation et recherche tournées vers l’efficacité énergétique et les renouvelables.'],
                 ['icon' => 'bi-calculator', 'title' => 'Mathématiques appliquées', 'description' => 'Modélisation, statistique et outils quantitatifs au service des autres sciences.'],
+                ['icon' => 'bi-gear-wide-connected', 'title' => 'Ingénierie de terrain', 'description' => 'Projets tutorés, prototypes et stages en entreprise technologique.'],
             ],
+            'dean_role' => 'Doyen de la Faculté',
+            'dean_specialty' => 'Informatique & Systèmes',
+            'dean_title' => 'Bienvenue à la FSI',
+            'history' => [
+                'label' => 'Notre parcours',
+                'title' => 'Historique de la FSI',
+                'text'  => 'Une faculté scientifique engagée dans la formation d’ingénieurs et de chercheurs pour le Burundi.',
+            ],
+            'offer_title' => 'Sciences fondamentales et technologiques',
+            'offer_text' => 'Licences, masters et doctorats en mathématiques, informatique, physique et génie, avec une forte composante expérimentale.',
+            'faculty_banner' => 'Faculté des Sciences et Ingénierie',
+            'contact_banner' => 'Campus Kiriri — Sciences et Ingénierie',
             'stats' => [
                 ['section' => 'home_main', 'label' => 'Étudiants', 'value' => 1420, 'suffix' => '+'],
                 ['section' => 'home_main', 'label' => 'Programmes', 'value' => 10, 'suffix' => ''],
@@ -797,7 +943,20 @@ class FacultyDemoDataService
                 ['icon' => 'bi-heart-pulse', 'title' => 'Formation clinique', 'description' => 'Stages hospitaliers structurés et enseignement au lit du malade.'],
                 ['icon' => 'bi-hospital', 'title' => 'Santé publique', 'description' => 'Prévention, épidémiologie et organisation des soins de proximité.'],
                 ['icon' => 'bi-emoji-smile', 'title' => 'Éthique du soin', 'description' => 'Une médecine attentive à la dignité et aux réalités des patients.'],
+                ['icon' => 'bi-people', 'title' => 'Communauté hospitalière', 'description' => 'Partenariats avec le CHUK et les formations sanitaires du pays.'],
             ],
+            'dean_role' => 'Doyenne de la Faculté',
+            'dean_specialty' => 'Santé publique & épidémiologie',
+            'dean_title' => 'Bienvenue à la Faculté de Médecine',
+            'history' => [
+                'label' => 'Notre parcours',
+                'title' => 'Historique de la Faculté de Médecine',
+                'text'  => 'Une tradition hospitalo-universitaire au service de la santé des populations.',
+            ],
+            'offer_title' => 'Des cursus médicaux et paramédicaux exigeants',
+            'offer_text' => 'Médecine, sciences infirmières, pharmacie et santé publique ancrées dans la pratique hospitalière.',
+            'faculty_banner' => 'Faculté de Médecine',
+            'contact_banner' => 'CHUK Kamenge — Faculté de Médecine',
             'stats' => [
                 ['section' => 'home_main', 'label' => 'Étudiants', 'value' => 980, 'suffix' => '+'],
                 ['section' => 'home_main', 'label' => 'Programmes', 'value' => 10, 'suffix' => ''],
@@ -864,7 +1023,20 @@ class FacultyDemoDataService
                 ['icon' => 'bi-tree', 'title' => 'Agroécologie', 'description' => 'Pratiques agricoles durables adaptées aux systèmes de production locaux.'],
                 ['icon' => 'bi-droplet', 'title' => 'Ressources naturelles', 'description' => 'Gestion des sols, de l’eau et des bassins versants.'],
                 ['icon' => 'bi-people', 'title' => 'Développement rural', 'description' => 'Accompagnement des producteurs et des coopératives.'],
+                ['icon' => 'bi-flower1', 'title' => 'Innovation rurale', 'description' => 'Stations expérimentales et projets de terrain avec les communautés.'],
             ],
+            'dean_role' => 'Doyenne de la Faculté',
+            'dean_specialty' => 'Agroécologie & productions végétales',
+            'dean_title' => 'Bienvenue à la FABI',
+            'history' => [
+                'label' => 'Notre parcours',
+                'title' => 'Historique de la FABI',
+                'text'  => 'Former des ingénieurs agronomes engagés pour la sécurité alimentaire et le monde rural.',
+            ],
+            'offer_title' => 'Agronomie, environnement et bioingénierie',
+            'offer_text' => 'Des parcours de terrain alliant sciences du vivant, innovation rurale et gestion durable des ressources.',
+            'faculty_banner' => 'Faculté d’Agronomie et de Bioingénierie',
+            'contact_banner' => 'Campus Zege (Gitega) — FABI',
             'stats' => [
                 ['section' => 'home_main', 'label' => 'Étudiants', 'value' => 760, 'suffix' => '+'],
                 ['section' => 'home_main', 'label' => 'Programmes', 'value' => 10, 'suffix' => ''],
@@ -931,7 +1103,20 @@ class FacultyDemoDataService
                 ['icon' => 'bi-book', 'title' => 'Lettres et langues', 'description' => 'Littérature, linguistique et magister pour transmettre le goût des textes.'],
                 ['icon' => 'bi-clock-history', 'title' => 'Histoire et société', 'description' => 'Comprendre les trajectoires du Burundi et de la région.'],
                 ['icon' => 'bi-broadcast', 'title' => 'Communication', 'description' => 'Former des professionnels des médias et de la médiation culturelle.'],
+                ['icon' => 'bi-chat-quote', 'title' => 'Débat public', 'description' => 'Colloques, publications et engagement citoyen des étudiants.'],
             ],
+            'dean_role' => 'Doyenne de la Faculté',
+            'dean_specialty' => 'Littératures francophones',
+            'dean_title' => 'Bienvenue à la FLSH',
+            'history' => [
+                'label' => 'Notre parcours',
+                'title' => 'Historique de la FLSH',
+                'text'  => 'Cultiver l’esprit critique et transmettre les humanités au Burundi depuis plusieurs décennies.',
+            ],
+            'offer_title' => 'Lettres, langues et sciences humaines',
+            'offer_text' => 'Des parcours ouverts sur l’enseignement, la culture, les médias et la recherche en sciences humaines.',
+            'faculty_banner' => 'Faculté des Lettres et des Sciences Humaines',
+            'contact_banner' => 'Campus Mutanga — FLSH',
             'stats' => [
                 ['section' => 'home_main', 'label' => 'Étudiants', 'value' => 1680, 'suffix' => '+'],
                 ['section' => 'home_main', 'label' => 'Programmes', 'value' => 10, 'suffix' => ''],
@@ -973,6 +1158,7 @@ class FacultyDemoDataService
     private function buildTheme(array $meta, array $programmes, array $staff, array $posts, array $labs): array
     {
         $key = (string) $meta['key'];
+        $meta = $this->normalizeThemeMeta($meta, $key);
         $defaultStats = [
             ['section' => 'home_main', 'label' => 'Étudiants', 'value' => 1850, 'suffix' => '+'],
             ['section' => 'home_main', 'label' => 'Programmes', 'value' => 10, 'suffix' => ''],
@@ -1745,7 +1931,7 @@ class FacultyDemoDataService
                 'specialty' => 'Économie & Développement',
                 'role' => 'Doyen de la Faculté',
                 'email' => 'jb.ndayishimiye@ub.edu.bi',
-                'bio' => 'Prof. Jean-Baptiste Ndayishimiye est Doyen de la Faculté à la FSEG. Spécialisé(e) en Économie & Développement, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'Prof. Jean-Baptiste Ndayishimiye est Doyen de la Faculté à la FSEG. Spécialisé en Économie & Développement, il contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Il publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1755,7 +1941,7 @@ class FacultyDemoDataService
                 'specialty' => 'Finance & Comptabilité',
                 'role' => 'Chef de Département Finance',
                 'email' => 'mc.hakizimana@ub.edu.bi',
-                'bio' => 'Dr. Marie-Claire Hakizimana est Chef de Département Finance à la FSEG. Spécialisé(e) en Finance & Comptabilité, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'Dr. Marie-Claire Hakizimana est Chef de Département Finance à la FSEG. Spécialisée en Finance & Comptabilité, elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Elle publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1765,7 +1951,7 @@ class FacultyDemoDataService
                 'specialty' => 'Gestion des Entreprises',
                 'role' => 'Responsable Master Management',
                 'email' => 'p.nkurunziza@ub.edu.bi',
-                'bio' => 'Dr. Pierre Nkurunziza est Responsable Master Management à la FSEG. Spécialisé(e) en Gestion des Entreprises, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'Dr. Pierre Nkurunziza est Responsable Master Management à la FSEG. Spécialisé en Gestion des Entreprises, il contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Il publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1775,7 +1961,7 @@ class FacultyDemoDataService
                 'specialty' => 'Économie du Développement',
                 'role' => 'Directrice URPP',
                 'email' => 'a.ntakarutimana@ub.edu.bi',
-                'bio' => 'Dr. Aline Ntakarutimana est Directrice URPP à la FSEG. Spécialisé(e) en Économie du Développement, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'Dr. Aline Ntakarutimana est Directrice URPP à la FSEG. Spécialisée en Économie du Développement, elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Elle publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1785,7 +1971,7 @@ class FacultyDemoDataService
                 'specialty' => 'Audit & Contrôle de Gestion',
                 'role' => 'Directeur LFC',
                 'email' => 'f.bigirimana@ub.edu.bi',
-                'bio' => 'Dr. Faustin Bigirimana est Directeur LFC à la FSEG. Spécialisé(e) en Audit & Contrôle de Gestion, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'Dr. Faustin Bigirimana est Directeur LFC à la FSEG. Spécialisé en Audit & Contrôle de Gestion, il contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Il publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1795,7 +1981,7 @@ class FacultyDemoDataService
                 'specialty' => 'Marketing & Stratégie',
                 'role' => 'Enseignante-Chercheure',
                 'email' => 'r.manirakiza@ub.edu.bi',
-                'bio' => 'Dr. Rose Manirakiza est Enseignante-Chercheure à la FSEG. Spécialisé(e) en Marketing & Stratégie, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'Dr. Rose Manirakiza est Enseignante-Chercheure à la FSEG. Spécialisée en Marketing & Stratégie, elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Elle publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1805,7 +1991,7 @@ class FacultyDemoDataService
                 'specialty' => 'Économétrie',
                 'role' => 'Directeur LEA',
                 'email' => 'c.dusabimana@ub.edu.bi',
-                'bio' => 'Dr. Cyprien Dusabimana est Directeur LEA à la FSEG. Spécialisé(e) en Économétrie, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'Dr. Cyprien Dusabimana est Directeur LEA à la FSEG. Spécialisé en Économétrie, il contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Il publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1815,7 +2001,7 @@ class FacultyDemoDataService
                 'specialty' => 'Ressources Humaines',
                 'role' => 'Enseignante-Chercheure',
                 'email' => 'g.niyonkuru@ub.edu.bi',
-                'bio' => 'Dr. Geneviève Niyonkuru est Enseignante-Chercheure à la FSEG. Spécialisé(e) en Ressources Humaines, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'Dr. Geneviève Niyonkuru est Enseignante-Chercheure à la FSEG. Spécialisée en Ressources Humaines, elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Elle publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1825,7 +2011,7 @@ class FacultyDemoDataService
                 'specialty' => 'Droit des Affaires',
                 'role' => 'Enseignant',
                 'email' => 'e.minani@ub.edu.bi',
-                'bio' => 'M. Etienne Minani est Enseignant à la FSEG. Spécialisé(e) en Droit des Affaires, il/elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Son engagement illustre la diversité des parcours académiques au service de la communauté universitaire.',
+                'bio' => 'M. Etienne Minani est Enseignant à la FSEG. Spécialisé en Droit des Affaires, il contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Il publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'administratif',
@@ -3058,6 +3244,7 @@ class FacultyDemoDataService
                 'title' => 'Gouvernance d\'entreprise et performance financière dans les PME burundaises',
                 'authors' => 'Bigirimana F., Nkurunziza P.',
                 'journal' => 'Journal of African Business Studies',
+                'url' => 'https://doi.org/10.1000/demo.eco.1',
             ],
             [
                 'year' => 2024,
@@ -3070,12 +3257,14 @@ class FacultyDemoDataService
                 'title' => 'Inclusion financière et réduction de la pauvreté en Afrique subsaharienne',
                 'authors' => 'Hakizimana M.-C., Ndayishimiye J.-B.',
                 'journal' => 'African Finance Journal',
+                'url' => 'https://doi.org/10.1000/demo.eco.2',
             ],
             [
                 'year' => 2023,
                 'title' => 'Pratiques de contrôle de gestion dans les entreprises publiques burundaises',
                 'authors' => 'Bigirimana F.',
                 'journal' => 'Comptabilité, Contrôle, Audit — Afrique',
+                'url' => 'https://doi.org/10.1000/demo.eco.3',
             ],
             [
                 'year' => 2023,
@@ -3090,18 +3279,21 @@ class FacultyDemoDataService
                 'title' => 'Modélisation de la production solaire en altitude : cas du campus universitaire',
                 'authors' => 'Habonimana E., Nsabimana A.',
                 'journal' => 'Revue Africaine des Énergies',
+                'url' => 'https://doi.org/10.1000/demo.sci.1',
             ],
             [
                 'year' => 2025,
                 'title' => 'Architectures microservices pour les services publics numériques',
                 'authors' => 'Barakamfitiye N., Bizimana K.',
                 'journal' => 'Journal of African Software Engineering',
+                'url' => 'https://doi.org/10.1000/demo.sci.2',
             ],
             [
                 'year' => 2024,
                 'title' => 'Apprentissage automatique appliqué aux données de consommation électrique',
                 'authors' => 'Niyonkuru J., Uwimana S.',
                 'journal' => 'African Data Science Review',
+                'url' => 'https://doi.org/10.1000/demo.sci.3',
             ],
             [
                 'year' => 2024,
@@ -3128,18 +3320,21 @@ class FacultyDemoDataService
                 'title' => 'Surveillance des maladies chroniques dans trois districts sanitaires',
                 'authors' => 'Ndayizeye I., Bigirimana R.',
                 'journal' => 'Revue Burundaise de Santé Publique',
+                'url' => 'https://doi.org/10.1000/demo.med.1',
             ],
             [
                 'year' => 2025,
                 'title' => 'Impact d’un module de simulation sur la confiance des étudiants infirmiers',
                 'authors' => 'Hakizimana A., Nibigira O.',
                 'journal' => 'African Journal of Nursing Education',
+                'url' => 'https://doi.org/10.1000/demo.med.2',
             ],
             [
                 'year' => 2024,
                 'title' => 'Suivi prénatal et accès aux soins en milieu rural',
                 'authors' => 'Habiyaremye P., Ndayizeye I.',
                 'journal' => 'Santé et Développement',
+                'url' => 'https://doi.org/10.1000/demo.med.3',
             ],
             [
                 'year' => 2024,
@@ -3166,18 +3361,21 @@ class FacultyDemoDataService
                 'title' => 'Associations culturales et fertilité des sols d’altitude',
                 'authors' => 'Ndayishimiye A., Nsabimana C.',
                 'journal' => 'Revue Africaine d’Agroécologie',
+                'url' => 'https://doi.org/10.1000/demo.agro.1',
             ],
             [
                 'year' => 2025,
                 'title' => 'Traçabilité et qualité du café de spécialité au Burundi',
                 'authors' => 'Ndayishimiye E., Niyongabo D.',
                 'journal' => 'Journal of African Coffee Studies',
+                'url' => 'https://doi.org/10.1000/demo.agro.2',
             ],
             [
                 'year' => 2024,
                 'title' => 'Restauration de bassins versants : enseignements d’un projet pilote',
                 'authors' => 'Habiyaremye P., Bizimana T.',
                 'journal' => 'Environnement et Développement',
+                'url' => 'https://doi.org/10.1000/demo.agro.3',
             ],
             [
                 'year' => 2024,
@@ -3204,18 +3402,21 @@ class FacultyDemoDataService
                 'title' => 'Voix francophones des Grands Lacs : corpus et lectures',
                 'authors' => 'Nkurunziza B., Hakizimana B.',
                 'journal' => 'Revue de Littératures Africaines',
+                'url' => 'https://doi.org/10.1000/demo.hum.1',
             ],
             [
                 'year' => 2025,
                 'title' => 'Archives orales et écriture de l’histoire contemporaine',
                 'authors' => 'Manirakiza O., Nsabimana A.',
                 'journal' => 'Cahiers d’Histoire Régionale',
+                'url' => 'https://doi.org/10.1000/demo.hum.2',
             ],
             [
                 'year' => 2024,
                 'title' => 'Pratiques journalistiques et éthique des médias numériques',
                 'authors' => 'Nkurunziza G., Niyonkuru C.',
                 'journal' => 'Communication et Société',
+                'url' => 'https://doi.org/10.1000/demo.hum.3',
             ],
             [
                 'year' => 2024,
@@ -3252,6 +3453,8 @@ class FacultyDemoDataService
                 'funder' => 'Union Européenne',
                 'start' => 2023,
                 'end' => 2026,
+                'code' => 'DEVECO-BI',
+                'icon' => 'bi-graph-up',
             ],
             [
                 'title' => 'Inclusion financière en milieu rural',
@@ -3259,6 +3462,8 @@ class FacultyDemoDataService
                 'funder' => 'Banque Mondiale',
                 'start' => 2024,
                 'end' => 2026,
+                'code' => 'FINCL-RUR',
+                'icon' => 'bi-cash-coin',
             ],
             [
                 'title' => 'Impact des politiques agricoles sur la sécurité alimentaire',
@@ -3266,6 +3471,8 @@ class FacultyDemoDataService
                 'funder' => 'FAO – Burundi',
                 'start' => 2022,
                 'end' => 2025,
+                'code' => 'AGRI-SEC',
+                'icon' => 'bi-basket',
             ],
             [
                 'title' => 'Gouvernance et accompagnement des PME',
@@ -3273,6 +3480,8 @@ class FacultyDemoDataService
                 'funder' => 'Coopération belge (ARES)',
                 'start' => 2023,
                 'end' => 2027,
+                'code' => 'PME-GOV',
+                'icon' => 'bi-building',
             ],
             [
                 'title' => 'Réforme fiscale et développement durable',
@@ -3280,6 +3489,8 @@ class FacultyDemoDataService
                 'funder' => 'PNUD Burundi',
                 'start' => 2024,
                 'end' => 2026,
+                'code' => 'TAX-SDG',
+                'icon' => 'bi-percent',
             ],
             [
                 'title' => 'Innovation, entrepreneuriat et emploi des jeunes',
@@ -3287,6 +3498,8 @@ class FacultyDemoDataService
                 'funder' => 'Union Africaine',
                 'start' => 2025,
                 'end' => 2028,
+                'code' => 'YOUTH-ENT',
+                'icon' => 'bi-rocket-takeoff',
             ],
             ],
             'sci' => [
@@ -3296,6 +3509,8 @@ class FacultyDemoDataService
                 'funder' => 'Coopération belgo-burundaise',
                 'start' => 2023,
                 'end' => 2026,
+                'code' => 'SOLAR-CAMP',
+                'icon' => 'bi-sun',
             ],
             [
                 'title' => 'Open Data administration',
@@ -3303,6 +3518,8 @@ class FacultyDemoDataService
                 'funder' => 'Banque Mondiale',
                 'start' => 2024,
                 'end' => 2027,
+                'code' => 'OPEN-DATA',
+                'icon' => 'bi-database',
             ],
             [
                 'title' => 'IoT rural',
@@ -3310,6 +3527,8 @@ class FacultyDemoDataService
                 'funder' => 'Fonds innovation UB',
                 'start' => 2024,
                 'end' => 2026,
+                'code' => 'IOT-RURAL',
+                'icon' => 'bi-broadcast-pin',
             ],
             [
                 'title' => 'Cybersécurité campus',
@@ -3317,6 +3536,8 @@ class FacultyDemoDataService
                 'funder' => 'Partenaire télécoms',
                 'start' => 2025,
                 'end' => 2027,
+                'code' => 'CYBER-UB',
+                'icon' => 'bi-shield-lock',
             ],
             ],
             'med' => [
@@ -3326,6 +3547,8 @@ class FacultyDemoDataService
                 'funder' => 'OMS / Ministère de la Santé',
                 'start' => 2023,
                 'end' => 2026,
+                'code' => 'EPI-DIST',
+                'icon' => 'bi-clipboard-pulse',
             ],
             [
                 'title' => 'Simulation clinique étendue',
@@ -3333,6 +3556,8 @@ class FacultyDemoDataService
                 'funder' => 'Coopération française',
                 'start' => 2024,
                 'end' => 2027,
+                'code' => 'SIM-CLIN',
+                'icon' => 'bi-heart-pulse',
             ],
             [
                 'title' => 'Santé maternelle rurale',
@@ -3340,6 +3565,8 @@ class FacultyDemoDataService
                 'funder' => 'UNICEF Burundi',
                 'start' => 2022,
                 'end' => 2025,
+                'code' => 'MAT-RUR',
+                'icon' => 'bi-hospital',
             ],
             [
                 'title' => 'One Health zoonoses',
@@ -3347,6 +3574,8 @@ class FacultyDemoDataService
                 'funder' => 'FAO / OMS',
                 'start' => 2025,
                 'end' => 2028,
+                'code' => 'ONE-HEALTH',
+                'icon' => 'bi-virus',
             ],
             ],
             'agro' => [
@@ -3356,6 +3585,8 @@ class FacultyDemoDataService
                 'funder' => 'Union Européenne',
                 'start' => 2023,
                 'end' => 2026,
+                'code' => 'AGRO-ECO',
+                'icon' => 'bi-flower1',
             ],
             [
                 'title' => 'Bassins versants vivants',
@@ -3363,6 +3594,8 @@ class FacultyDemoDataService
                 'funder' => 'PNUD Burundi',
                 'start' => 2024,
                 'end' => 2027,
+                'code' => 'WATERSHED',
+                'icon' => 'bi-water',
             ],
             [
                 'title' => 'Café de spécialité',
@@ -3370,6 +3603,8 @@ class FacultyDemoDataService
                 'funder' => 'ARES / partenaires',
                 'start' => 2022,
                 'end' => 2025,
+                'code' => 'COFFEE-Q',
+                'icon' => 'bi-cup-hot',
             ],
             [
                 'title' => 'Eau agricole',
@@ -3377,6 +3612,8 @@ class FacultyDemoDataService
                 'funder' => 'Coopération néerlandaise',
                 'start' => 2025,
                 'end' => 2028,
+                'code' => 'IRRIG-EFF',
+                'icon' => 'bi-droplet',
             ],
             ],
             'hum' => [
@@ -3386,6 +3623,8 @@ class FacultyDemoDataService
                 'funder' => 'UNESCO',
                 'start' => 2023,
                 'end' => 2026,
+                'code' => 'ORAL-ARCH',
+                'icon' => 'bi-mic',
             ],
             [
                 'title' => 'Médias et citoyenneté',
@@ -3393,6 +3632,8 @@ class FacultyDemoDataService
                 'funder' => 'Fondation médias',
                 'start' => 2024,
                 'end' => 2026,
+                'code' => 'MEDIA-CIT',
+                'icon' => 'bi-newspaper',
             ],
             [
                 'title' => 'Littératures en classe',
@@ -3400,6 +3641,8 @@ class FacultyDemoDataService
                 'funder' => 'Ministère de l’Éducation',
                 'start' => 2022,
                 'end' => 2025,
+                'code' => 'LIT-CLASS',
+                'icon' => 'bi-book',
             ],
             [
                 'title' => 'Patrimoine photographique',
@@ -3407,6 +3650,8 @@ class FacultyDemoDataService
                 'funder' => 'Coopération culturelle',
                 'start' => 2025,
                 'end' => 2027,
+                'code' => 'PHOTO-HER',
+                'icon' => 'bi-camera',
             ],
             ],
         ];
@@ -3947,5 +4192,498 @@ class FacultyDemoDataService
     private function now(): string
     {
         return date('Y-m-d H:i:s');
+    }
+
+    /**
+     * @param array<string, mixed> $meta
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeThemeMeta(array $meta, string $key): array
+    {
+        $shortLabels = [
+            'eco' => 'FSEG',
+            'sci' => 'FSI',
+            'med' => 'MED',
+            'agro' => 'FABI',
+            'hum' => 'FLSH',
+        ];
+        $short = $shortLabels[$key] ?? strtoupper($key);
+
+        if (is_string($meta['mission'] ?? null)) {
+            $meta['mission'] = [
+                'icon'       => 'bi-bullseye',
+                'title'      => 'Mission',
+                'paragraphs' => $this->paragraphsFromText((string) $meta['mission']),
+            ];
+        }
+        if (is_string($meta['vision'] ?? null)) {
+            $meta['vision'] = [
+                'icon'       => 'bi-eye',
+                'title'      => 'Vision',
+                'paragraphs' => $this->paragraphsFromText((string) $meta['vision']),
+            ];
+        }
+
+        $valueIcons = ['bi-shield-check', 'bi-star', 'bi-lightbulb'];
+        $normalizedValues = [];
+        foreach (($meta['values'] ?? []) as $i => $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+            $normalizedValues[] = [
+                'icon'        => (string) ($value['icon'] ?? $valueIcons[$i % count($valueIcons)]),
+                'title'       => (string) ($value['title'] ?? ''),
+                'description' => (string) ($value['description'] ?? $value['text'] ?? ''),
+            ];
+        }
+        $meta['values'] = $normalizedValues;
+
+        $highlights = is_array($meta['highlights'] ?? null) ? $meta['highlights'] : [];
+        if (count($highlights) < 4) {
+            $highlights[] = [
+                'icon'        => 'bi-award',
+                'title'       => 'Engagement académique',
+                'description' => 'Une communauté universitaire engagée pour la réussite des étudiants.',
+            ];
+        }
+        $meta['highlights'] = $highlights;
+
+        $meta['mission_label'] ??= 'Nos valeurs fondamentales';
+        $meta['mission_title'] ??= 'Mission & Vision';
+        $meta['dean_label'] ??= 'Mot du Doyen';
+        $meta['dean_role'] ??= 'Doyen de la Faculté';
+        $meta['dean_title'] ??= 'Bienvenue à ' . $short;
+        $meta['dean_specialty'] ??= '';
+        $meta['dean_signature'] ??= $meta['dean_name'] ?? '';
+        $meta['offer_label'] ??= 'Offre académique';
+        $meta['offer_title'] ??= 'Des programmes adaptés à chaque ambition';
+        $meta['offer_text'] ??= $meta['programmes_intro'] ?? '';
+        $meta['cta_title'] ??= 'Vous souhaitez postuler ?';
+        $meta['cta_text'] ??= 'Contactez notre service des admissions pour plus d’informations sur les procédures d’inscription.';
+        $meta['cta_label'] ??= 'Nous contacter';
+        $meta['contact_label'] ??= 'Nos coordonnées';
+        $meta['contact_title'] ??= 'Prenez contact';
+        $meta['form_title'] ??= 'Formulaire de contact';
+        $meta['form_help'] ??= 'Tous les champs marqués comme obligatoires doivent être remplis.';
+        $meta['history'] ??= [
+            'label' => 'Notre parcours',
+            'title' => 'Historique de ' . $short,
+            'text'  => 'Une trajectoire académique au service du développement national.',
+        ];
+        $meta['campus'] ??= $this->campusForKey($key);
+        $meta['en'] ??= $this->englishPackForKey($key, $short);
+
+        return $meta;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function campusForKey(string $key): array
+    {
+        $maps = [
+            'eco' => [
+                'label' => 'FSEG — Campus Mutanga, Université du Burundi',
+                'address_line' => 'Campus Mutanga, Avenue de l’UNESCO',
+                'commune' => 'Mukaza',
+                'province' => 'Bujumbura Mairie',
+                'country' => 'Burundi',
+                'phone' => '+257 22 22 25 55',
+                'email_local' => 'fseg',
+                'hours' => 'Lun–Ven 07:30–16:30',
+                'lat' => -3.376061,
+                'lon' => 29.383330,
+                'zoom' => 17,
+            ],
+            'sci' => [
+                'label' => 'FSI — Campus Kiriri',
+                'address_line' => '164, Chaussée Prince Louis Rwagasore, Campus Kiriri',
+                'commune' => 'Mukaza',
+                'province' => 'Bujumbura Mairie',
+                'country' => 'Burundi',
+                'phone' => '+257 22 22 61 10',
+                'email_local' => 'fsi',
+                'hours' => 'Lun–Ven 07:30–16:30',
+                'lat' => -3.389031,
+                'lon' => 29.375322,
+                'zoom' => 17,
+            ],
+            'med' => [
+                'label' => 'Faculté de Médecine — CHUK Kamenge',
+                'address_line' => 'CHUK Kamenge, Boulevard de Mwewi Gisabo',
+                'commune' => 'Ntahangwa',
+                'province' => 'Bujumbura Mairie',
+                'country' => 'Burundi',
+                'phone' => '+257 22 23 45 67',
+                'email_local' => 'med',
+                'hours' => 'Lun–Ven 07:30–16:30',
+                'lat' => -3.355472,
+                'lon' => 29.385669,
+                'zoom' => 17,
+            ],
+            'agro' => [
+                'label' => 'FABI — Campus Zege, Gitega',
+                'address_line' => 'Campus Zege (RN15), Gitega',
+                'commune' => 'Gitega',
+                'province' => 'Gitega',
+                'country' => 'Burundi',
+                'phone' => '+257 22 40 21 30',
+                'email_local' => 'fabi',
+                'hours' => 'Lun–Ven 07:30–16:30',
+                'lat' => -3.408500,
+                'lon' => 29.934000,
+                'zoom' => 15,
+            ],
+            'hum' => [
+                'label' => 'FLSH — Campus Mutanga, Université du Burundi',
+                'address_line' => 'Campus Mutanga, Université du Burundi',
+                'commune' => 'Mukaza',
+                'province' => 'Bujumbura Mairie',
+                'country' => 'Burundi',
+                'phone' => '+257 22 22 27 80',
+                'email_local' => 'flsh',
+                'hours' => 'Lun–Ven 07:30–16:30',
+                'lat' => -3.376061,
+                'lon' => 29.383330,
+                'zoom' => 17,
+            ],
+        ];
+
+        $campus = $maps[$key] ?? $maps['eco'];
+        $q = rawurlencode(sprintf('%.6f,%.6f (%s)', $campus['lat'], $campus['lon'], $campus['label']));
+        $campus['map_url'] = "https://www.google.com/maps?q={$q}&hl=fr&z={$campus['zoom']}&output=embed";
+
+        return $campus;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function englishPackForKey(string $key, string $short): array
+    {
+        $packs = [
+            'eco' => [
+                'tagline' => 'Training economists, managers and finance professionals since 1973',
+                'about_title' => 'More than fifty years serving development',
+                'about' => 'The Faculty of Economics and Management of the University of Burundi trains competent, ethical and innovative professionals.',
+                'hero_title' => 'Training tomorrow’s economic decision-makers',
+                'dean_title' => 'Welcome to FSEG',
+                'dean_role' => 'Dean of the Faculty',
+                'dean_specialty' => 'Economics & Development',
+                'dean_paragraphs' => [
+                    'It is with great pleasure that I welcome you to the Faculty of Economics and Management of the University of Burundi.',
+                    'Our mission is clear: to train competent, ethical and innovative professionals who contribute to national development.',
+                    'I invite you to explore our programmes, discover our research and join our academic community.',
+                ],
+                'mission_label' => 'Our core values',
+                'mission_title' => 'Mission & Vision',
+                'mission' => [
+                    'icon' => 'bi-bullseye',
+                    'title' => 'Mission',
+                    'paragraphs' => [
+                        'Train high-level economists, managers and finance professionals able to analyse economic issues and support sustainable development.',
+                    ],
+                ],
+                'vision' => [
+                    'icon' => 'bi-eye',
+                    'title' => 'Vision',
+                    'paragraphs' => [
+                        'Become a leading faculty in Central Africa for economics and management education and research.',
+                    ],
+                ],
+                'offer_title' => 'Programmes tailored to every ambition',
+                'offer_text' => 'From bachelor to doctorate, FSEG offers complete pathways in economics, management and finance.',
+                'cta_title' => 'Ready to apply?',
+                'cta_text' => 'Contact our admissions office for information on enrolment procedures.',
+                'contact_title' => 'Get in touch',
+                'form_title' => 'Contact form',
+                'form_help' => 'All required fields must be completed.',
+                'hours' => 'Mon–Fri, 07:30–16:30',
+                'footer' => 'Faculty of Economics and Management — University of Burundi.',
+                'seo_title' => 'FSEG | University of Burundi',
+                'seo_description' => 'Official website of the Faculty of Economics and Management.',
+            ],
+            'sci' => [
+                'tagline' => 'Science, technology and engineering for Burundi',
+                'about_title' => 'Training responsible scientists and engineers',
+                'about' => 'The Faculty of Science and Engineering prepares graduates to solve complex problems for national development.',
+                'hero_title' => 'Science and engineering for the country',
+                'dean_title' => 'Welcome to FSI',
+                'dean_role' => 'Dean of the Faculty',
+                'dean_specialty' => 'Computer Science & Systems',
+                'dean_paragraphs' => [
+                    'Welcome to the Faculty of Science and Engineering.',
+                    'Here scientific curiosity meets experimental rigor to deliver useful answers for Burundi.',
+                ],
+                'mission_label' => 'Our core values',
+                'mission_title' => 'Mission & Vision',
+                'mission' => ['icon' => 'bi-bullseye', 'title' => 'Mission', 'paragraphs' => ['Transmit scientific culture and train professionals able to design adapted technological solutions.']],
+                'vision' => ['icon' => 'bi-eye', 'title' => 'Vision', 'paragraphs' => ['Be a recognised science and engineering faculty in the Great Lakes region.']],
+                'offer_title' => 'Scientific and technological pathways',
+                'offer_text' => 'Bachelor, master and doctoral programmes in mathematics, computing, physics and engineering.',
+                'cta_title' => 'Ready to apply?',
+                'cta_text' => 'Contact admissions for enrolment information.',
+                'contact_title' => 'Get in touch',
+                'form_title' => 'Contact form',
+                'form_help' => 'All required fields must be completed.',
+                'hours' => 'Mon–Fri, 07:30–16:30',
+                'footer' => 'Faculty of Science and Engineering — University of Burundi.',
+                'seo_title' => 'FSI | University of Burundi',
+                'seo_description' => 'Official website of the Faculty of Science and Engineering.',
+            ],
+            'med' => [
+                'tagline' => 'Training competent and humane health professionals',
+                'about_title' => 'Clinical excellence and community service',
+                'about' => 'The Faculty of Medicine trains physicians and health professionals with competence and humanity.',
+                'hero_title' => 'Care with competence and humanity',
+                'dean_title' => 'Welcome to the Faculty of Medicine',
+                'dean_role' => 'Dean of the Faculty',
+                'dean_specialty' => 'Public health & epidemiology',
+                'dean_paragraphs' => [
+                    'Our mission is to train dedicated caregivers able to meet Burundi’s health challenges with competence and compassion.',
+                ],
+                'mission_label' => 'Our core values',
+                'mission_title' => 'Mission & Vision',
+                'mission' => ['icon' => 'bi-bullseye', 'title' => 'Mission', 'paragraphs' => ['Train dedicated caregivers from frontline care to biomedical research.']],
+                'vision' => ['icon' => 'bi-eye', 'title' => 'Vision', 'paragraphs' => ['Contribute to a resilient health system through excellent clinical training.']],
+                'offer_title' => 'Medical and paramedical pathways',
+                'offer_text' => 'Medicine, nursing, pharmacy and public health rooted in hospital practice.',
+                'cta_title' => 'Ready to apply?',
+                'cta_text' => 'Contact the faculty secretariat for admissions information.',
+                'contact_title' => 'Get in touch',
+                'form_title' => 'Contact form',
+                'form_help' => 'All required fields must be completed.',
+                'hours' => 'Mon–Fri, 07:30–16:30',
+                'footer' => 'Faculty of Medicine — University of Burundi.',
+                'seo_title' => 'MED | University of Burundi',
+                'seo_description' => 'Official website of the Faculty of Medicine.',
+            ],
+            'agro' => [
+                'tagline' => 'Agriculture, environment and rural development',
+                'about_title' => 'Agronomic sciences for food security',
+                'about' => 'FABI trains engineers able to modernise agricultural systems and protect natural resources.',
+                'hero_title' => 'Acting for food security',
+                'dean_title' => 'Welcome to FABI',
+                'dean_role' => 'Dean of the Faculty',
+                'dean_specialty' => 'Agroecology & crop production',
+                'dean_paragraphs' => [
+                    'Together, let us cultivate sustainable solutions for food security.',
+                ],
+                'mission_label' => 'Our core values',
+                'mission_title' => 'Mission & Vision',
+                'mission' => ['icon' => 'bi-bullseye', 'title' => 'Mission', 'paragraphs' => ['Train professionals able to design sustainable agricultural systems.']],
+                'vision' => ['icon' => 'bi-eye', 'title' => 'Vision', 'paragraphs' => ['Be a regional reference in agroecology and rural innovation.']],
+                'offer_title' => 'Agronomy, environment and bioengineering',
+                'offer_text' => 'Field-oriented programmes combining life sciences and sustainable resource management.',
+                'cta_title' => 'Ready to apply?',
+                'cta_text' => 'Contact the secretariat for admissions and field placements.',
+                'contact_title' => 'Get in touch',
+                'form_title' => 'Contact form',
+                'form_help' => 'All required fields must be completed.',
+                'hours' => 'Mon–Fri, 07:30–16:30',
+                'footer' => 'Faculty of Agronomy and Bioengineering — University of Burundi.',
+                'seo_title' => 'FABI | University of Burundi',
+                'seo_description' => 'Official website of the Faculty of Agronomy and Bioengineering.',
+            ],
+            'hum' => [
+                'tagline' => 'Letters, languages and humanities',
+                'about_title' => 'Understanding societies, transmitting cultures',
+                'about' => 'FLSH trains critical minds able to analyse societies and transmit cultural heritage.',
+                'hero_title' => 'Humanities to illuminate the present',
+                'dean_title' => 'Welcome to FLSH',
+                'dean_role' => 'Dean of the Faculty',
+                'dean_specialty' => 'Francophone literatures',
+                'dean_paragraphs' => [
+                    'The humanities illuminate the present and prepare responsible citizens.',
+                ],
+                'mission_label' => 'Our core values',
+                'mission_title' => 'Mission & Vision',
+                'mission' => ['icon' => 'bi-bullseye', 'title' => 'Mission', 'paragraphs' => ['Train educated citizens, teachers, communicators and researchers.']],
+                'vision' => ['icon' => 'bi-eye', 'title' => 'Vision', 'paragraphs' => ['Make FLSH a regional centre of excellence in the humanities.']],
+                'offer_title' => 'Letters, languages and humanities',
+                'offer_text' => 'Pathways open to teaching, culture, media and research.',
+                'cta_title' => 'Ready to apply?',
+                'cta_text' => 'Contact the secretariat for admissions information.',
+                'contact_title' => 'Get in touch',
+                'form_title' => 'Contact form',
+                'form_help' => 'All required fields must be completed.',
+                'hours' => 'Mon–Fri, 07:30–16:30',
+                'footer' => 'Faculty of Arts and Humanities — University of Burundi.',
+                'seo_title' => 'FLSH | University of Burundi',
+                'seo_description' => 'Official website of the Faculty of Arts and Humanities.',
+            ],
+        ];
+
+        return $packs[$key] ?? $packs['eco'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function paragraphsFromText(string $value): array
+    {
+        $value = trim(str_replace(["\r\n", "\r"], "\n", $value));
+        if ($value === '') {
+            return [];
+        }
+
+        $parts = preg_split('/\n{2,}/', $value) ?: [];
+        if (count($parts) === 1 && str_contains($value, '. ')) {
+            $sentences = preg_split('/(?<=\.)\s+/', $value) ?: [$value];
+            if (count($sentences) > 2) {
+                $mid = (int) ceil(count($sentences) / 2);
+                $parts = [
+                    implode(' ', array_slice($sentences, 0, $mid)),
+                    implode(' ', array_slice($sentences, $mid)),
+                ];
+            }
+        }
+
+        return array_values(array_filter(
+            array_map(
+                static fn (string $paragraph): string => preg_replace('/[ \t]*\n[ \t]*/', ' ', trim($paragraph)) ?? trim($paragraph),
+                $parts,
+            ),
+            static fn (string $paragraph): bool => $paragraph !== '',
+        ));
+    }
+
+    /**
+     * @param array<string, mixed> $theme
+     */
+    private function seedEnglishTranslations(int $siteId, array $theme): void
+    {
+        if (! $this->db->tableExists('content_translations')) {
+            return;
+        }
+
+        $en = is_array($theme['en'] ?? null) ? $theme['en'] : [];
+        if ($en === []) {
+            return;
+        }
+
+        $home = $this->db->table('home_content')->where('site_id', $siteId)->get()->getRowArray();
+        if (is_array($home)) {
+            $homeId = (int) $home['id'];
+            $map = [
+                'hero_title'       => $en['hero_title'] ?? null,
+                'hero_text'        => $en['tagline'] ?? null,
+                'about_title'      => $en['about_title'] ?? null,
+                'about_body'       => $en['about'] ?? null,
+                'research_title'   => $en['research_title'] ?? null,
+                'research_body'    => $en['research_body'] ?? null,
+                'programmes_title' => $en['offer_title'] ?? null,
+                'programmes_text'  => $en['offer_text'] ?? null,
+                'seo_title'        => $en['seo_title'] ?? null,
+                'seo_description'  => $en['seo_description'] ?? null,
+            ];
+            foreach ($map as $field => $value) {
+                if (is_string($value) && $value !== '') {
+                    $this->insertTranslation($siteId, 'home_content', $homeId, $field, $value);
+                }
+            }
+        }
+
+        $pages = $this->db->table('pages')->where('site_id', $siteId)->get()->getResultArray();
+        foreach ($pages as $page) {
+            $key = (string) $page['key'];
+            $content = json_decode((string) $page['content'], true);
+            if (! is_array($content)) {
+                $content = [];
+            }
+            $translated = $content;
+
+            if ($key === 'faculty') {
+                $translated['banner_subtitle'] = $en['faculty_banner'] ?? ($en['seo_title'] ?? ($translated['banner_subtitle'] ?? ''));
+                $translated['mission_label'] = $en['mission_label'] ?? ($translated['mission_label'] ?? '');
+                $translated['mission_title'] = $en['mission_title'] ?? ($translated['mission_title'] ?? '');
+                if (isset($en['mission'])) {
+                    $translated['mission'] = $en['mission'];
+                }
+                if (isset($en['vision'])) {
+                    $translated['vision'] = $en['vision'];
+                }
+                if (isset($translated['dean']) && is_array($translated['dean'])) {
+                    $translated['dean']['title'] = $en['dean_title'] ?? $translated['dean']['title'];
+                    $translated['dean']['role'] = $en['dean_role'] ?? $translated['dean']['role'];
+                    $translated['dean']['specialty'] = $en['dean_specialty'] ?? $translated['dean']['specialty'];
+                    $translated['dean']['label'] = 'Dean’s message';
+                    if (isset($en['dean_paragraphs']) && is_array($en['dean_paragraphs'])) {
+                        $translated['dean']['paragraphs'] = $en['dean_paragraphs'];
+                    }
+                }
+                if (isset($translated['history']) && is_array($translated['history'])) {
+                    $translated['history']['label'] = 'Our journey';
+                    $translated['history']['title'] = $en['history_title'] ?? ($translated['history']['title'] ?? '');
+                    $translated['history']['text'] = $en['history_text'] ?? ($translated['history']['text'] ?? '');
+                }
+            }
+
+            if ($key === 'formations') {
+                $translated['offer_title'] = $en['offer_title'] ?? ($translated['offer_title'] ?? '');
+                $translated['offer_text'] = $en['offer_text'] ?? ($translated['offer_text'] ?? '');
+                $translated['offer_label'] = 'Academic offer';
+                $translated['cta_title'] = $en['cta_title'] ?? ($translated['cta_title'] ?? '');
+                $translated['cta_text'] = $en['cta_text'] ?? ($translated['cta_text'] ?? '');
+                $translated['cta_label'] = 'Contact us';
+            }
+
+            if ($key === 'contact') {
+                $translated['contact_label'] = 'Our details';
+                $translated['contact_title'] = $en['contact_title'] ?? ($translated['contact_title'] ?? '');
+                $translated['form_title'] = $en['form_title'] ?? ($translated['form_title'] ?? '');
+                $translated['form_help'] = $en['form_help'] ?? ($translated['form_help'] ?? '');
+                $translated['banner_subtitle'] = $en['contact_banner'] ?? ($translated['banner_subtitle'] ?? '');
+            }
+
+            $json = json_encode($translated, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($json !== false) {
+                $this->insertTranslation($siteId, 'pages', (int) $page['id'], 'content', $json);
+            }
+        }
+
+        $programmes = $this->db->table('programmes')->where('site_id', $siteId)->get()->getResultArray();
+        foreach ($programmes as $programme) {
+            $this->insertTranslation($siteId, 'programmes', (int) $programme['id'], 'title', (string) $programme['title']);
+            $this->insertTranslation($siteId, 'programmes', (int) $programme['id'], 'summary', (string) $programme['summary']);
+        }
+
+        $posts = $this->db->table('posts')->where('site_id', $siteId)->orderBy('id', 'ASC')->limit(6)->get()->getResultArray();
+        foreach ($posts as $post) {
+            $this->insertTranslation($siteId, 'posts', (int) $post['id'], 'title', (string) $post['title']);
+            $this->insertTranslation($siteId, 'posts', (int) $post['id'], 'excerpt', (string) $post['excerpt']);
+        }
+
+        $settings = $this->db->table('settings')->where('site_id', $siteId)->whereIn('key', [
+            'footer.text', 'seo.default_title', 'seo.default_description', 'contact.hours',
+        ])->get()->getResultArray();
+        foreach ($settings as $setting) {
+            $key = (string) $setting['key'];
+            $value = match ($key) {
+                'footer.text' => $en['footer'] ?? null,
+                'seo.default_title' => $en['seo_title'] ?? null,
+                'seo.default_description' => $en['seo_description'] ?? null,
+                'contact.hours' => $en['hours'] ?? null,
+                default => null,
+            };
+            if (is_string($value) && $value !== '') {
+                $this->insertTranslation($siteId, 'settings', (int) $setting['id'], 'value', $value);
+            }
+        }
+    }
+
+    private function insertTranslation(int $siteId, string $resourceType, int $resourceId, string $field, string $value): void
+    {
+        $this->db->table('content_translations')->insert([
+            'site_id'       => $siteId,
+            'resource_type' => $resourceType,
+            'resource_id'   => $resourceId,
+            'locale'        => 'en',
+            'field'         => $field,
+            'value'         => $value,
+            'created_at'    => $this->now(),
+            'updated_at'    => $this->now(),
+        ]);
     }
 }

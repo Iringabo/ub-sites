@@ -32,8 +32,9 @@ Ce dossier est le **modèle** de la plateforme. État du système :
 
 ## Guides
 
-- [Guide administrateur](GUIDE_ADMINISTRATEUR.md) : menu Accueil / Pages du
-  site / Messages / Comptes / Identité, rôles, superadmin in situ.
+- [Guide administrateur](GUIDE_ADMINISTRATEUR.md) : menu en quatre sections
+  (Au quotidien, Pages du site, Paramètres du site, Administration),
+  recherche Ctrl+K, rôles, superadmin in situ.
 - [Guide du site public](GUIDE_UTILISATEUR_CLIENT.md)
 - [Cahier des charges](CAHIER_DES_CHARGES.md) : besoins d’origine (référence
   client, pas l’état du code).

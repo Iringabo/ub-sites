@@ -32,6 +32,7 @@ $footerItems = [
                     </div>
                 </div>
                 <p class="small"><?= esc(site_text_or_placeholder($siteSettings['footer.text'] ?? null)) ?></p>
+                <p class="small footer-university mb-0"><i class="bi bi-mortarboard me-1" aria-hidden="true"></i><?= esc(lang('Site.footer.university', [$brandSub])) ?></p>
             </div>
             <div class="col-lg-2 col-6">
                 <h6><?= esc(lang('Site.footer.quickLinks')) ?></h6>

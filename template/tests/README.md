@@ -28,8 +28,8 @@ php spark testdb:seed TemplateStarterSeeder
 ## Types De Tests Présents
 
 - Tests base de données : schéma, seeders et indépendance des modules.
-- Tests feature : routes publiques, administration (menu Accueil / Pages du site / Messages / Comptes / Identité, utilisateurs facultaires, sélecteur superadmin, session, onboarding), messages, contenus, sécurité, multi-site.
-- Tests unitaires : helpers, médias, notifications, santé, production readiness, nom du cookie de session, responsive/accessibilité.
+- Tests feature : routes publiques, administration (menu en quatre sections, catégories de texte `admin/textes/*` et bandeaux, paramètres découpés, rôles administrateur/éditeur facultaires, sélecteur superadmin, session, onboarding), messages, contenus, sécurité, multi-site.
+- Tests unitaires : helpers, médias, notifications, santé, production readiness, nom du cookie de session, responsive/accessibilité, palette par faculté (`SiteThemeServiceTest` : dérivation des nuances, contraste AA, couleur secondaire, accent ; `AccessibilityResponsiveTest` vérifie qu'aucune couleur de marque n'est codée en dur dans `style.css` hors `:root`).
 
 ## Bonnes Pratiques
 

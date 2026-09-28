@@ -2,12 +2,13 @@
 
 <?= $this->section('content') ?>
 <?= view('partials/page_banner', [
-    'pageTitle'    => $pageTitle ?? lang('Site.pageTitles.programmes'),
-    'pageSubtitle' => $content['banner_subtitle'] ?? '',
-    'bannerImage'  => $content['banner_image'] ?? '',
+    'pageTitle'       => site_text_or_placeholder((string) ($content['banner_title'] ?? ''), $pageTitle ?? lang('Site.pageTitles.programmes')),
+    'breadcrumbTitle' => $pageTitle ?? lang('Site.pageTitles.programmes'),
+    'pageSubtitle'    => $content['banner_subtitle'] ?? '',
+    'bannerImage'     => $content['banner_image'] ?? '',
 ]) ?>
 
-<section class="section-pad-sm bg-white">
+<section id="offre" class="section-pad-sm bg-white">
     <div class="container">
         <div class="text-center mx-auto mb-4" style="max-width: 640px;">
             <span class="section-label"><?= esc($content['offer_label'] ?? lang('Site.programmes.offerLabel')) ?></span>
@@ -20,6 +21,7 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link<?= $index === 0 ? ' active' : '' ?>" id="<?= esc($level, 'attr') ?>-tab" data-bs-toggle="tab" data-bs-target="#<?= esc($level, 'attr') ?>" type="button" role="tab" aria-controls="<?= esc($level, 'attr') ?>" aria-selected="<?= $index === 0 ? 'true' : 'false' ?>">
                         <?= esc(site_level_label($level)) ?>
+                        <span class="tab-count" aria-hidden="true"><?= count($programmes[$level] ?? []) ?></span>
                     </button>
                 </li>
             <?php endforeach ?>
@@ -31,11 +33,12 @@
                     <div class="row g-4 <?= $level === 'doctorat' ? 'justify-content-center' : '' ?>">
                         <?php foreach ($programmes[$level] ?? [] as $programme): ?>
                             <div class="<?= $level === 'doctorat' ? 'col-lg-5' : 'col-lg-4' ?>">
-                                <article class="formation-card h-100">
-                                    <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
-                                        <h3 class="h6 fw-bold mb-0"><?= esc($programme->title) ?></h3>
-                                        <span class="badge-news badge-actualite"><?= esc($programme->duration) ?></span>
+                                <article class="formation-card h-100 d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                                        <span class="badge-level"><?= esc(site_level_label($level)) ?></span>
+                                        <span class="small text-muted"><i class="bi bi-clock me-1" aria-hidden="true"></i><?= esc($programme->duration) ?></span>
                                     </div>
+                                    <h3 class="h6 fw-bold mb-2"><?= esc($programme->title) ?></h3>
                                     <p class="small text-muted"><?= esc($programme->summary) ?></p>
                                     <?php $outcomes = is_array($programme->career_outcomes) ? $programme->career_outcomes : []; ?>
                                     <?php if ($outcomes !== []): ?>
@@ -49,7 +52,7 @@
                                     <div class="bg-light rounded p-2 small mb-3">
                                         <strong><?= esc(lang('Site.programmes.admissionConditions')) ?> :</strong> <?= esc($programme->admission_conditions) ?>
                                     </div>
-                                    <a href="<?= site_url('formations/' . $programme->slug) ?>" class="small fw-semibold text-success"><?= esc(lang('Site.common.viewDetails')) ?></a>
+                                    <a href="<?= site_url('formations/' . $programme->slug) ?>" class="btn btn-outline-green btn-sm mt-auto align-self-start"><?= esc(lang('Home.viewProgramme')) ?></a>
                                 </article>
                             </div>
                         <?php endforeach ?>
@@ -60,7 +63,7 @@
     </div>
 </section>
 
-<section class="section-pad-sm section-alt">
+<section id="appel" class="section-pad-sm section-alt">
     <div class="container text-center">
         <h2 class="h4 fw-bold"><?= esc($content['cta_title'] ?? lang('Site.programmes.applyQuestion')) ?></h2>
         <p class="section-subtitle mx-auto mb-4"><?= esc($content['cta_text'] ?? '') ?></p>

@@ -44,7 +44,7 @@ if (is_array($postedSiteRoles)) {
             <?php if ($isNew): ?>
                 <?= $currentActorIsSuperAdmin
                     ? 'Attribuez un administrateur, un éditeur ou un superadministrateur, puis choisissez la faculté concernée.'
-                    : 'Créez un éditeur pour cette faculté. Seul un superadministrateur peut créer un administrateur.' ?>
+                    : 'Créez un administrateur ou un éditeur pour cette faculté.' ?>
             <?php else: ?>
                 Modifiez le compte, son rôle et son accès à la faculté.
             <?php endif ?>
@@ -159,26 +159,28 @@ if (is_array($postedSiteRoles)) {
                     <?php $onlySite = $sites[0] ?? null; ?>
                     <?php if ($onlySite !== null): ?>
                         <?php
+                        $onlySiteId = (string) $onlySite->id;
                         $selectedRole = (string) ($selectedSiteRoles[(int) $onlySite->id] ?? 'editor');
-                        $isSelfAdminEdit = ! $isNew && $isCurrentUser && $selectedRole === 'site_admin';
+                        $roleDescriptions = [
+                            'site_admin' => 'Gère les comptes, les paramètres et tous les contenus de cette faculté.',
+                            'editor'     => 'Rédige et met à jour les contenus (pages, actualités, listes).',
+                        ];
                         ?>
-                        <input type="hidden" name="site_ids[]" value="<?= esc((string) $onlySite->id, 'attr') ?>">
+                        <input type="hidden" name="site_ids[]" value="<?= esc($onlySiteId, 'attr') ?>">
                         <p class="mb-3">Ce compte n’aura accès qu’à <strong><?= esc($onlySite->name) ?></strong>.</p>
-                        <?php if ($isSelfAdminEdit): ?>
-                            <input type="hidden" name="site_roles[<?= esc((string) $onlySite->id, 'attr') ?>]" value="site_admin">
-                            <input type="hidden" name="groups[]" value="admin">
-                            <div class="border rounded-3 p-3" style="max-width: 28rem;">
-                                <span class="fw-semibold">Administrateur de cette faculté</span>
-                                <span class="text-muted small d-block">Votre rôle administrateur est conservé. Seul un superadministrateur peut créer d’autres administrateurs.</span>
-                            </div>
-                        <?php else: ?>
-                            <input type="hidden" name="site_roles[<?= esc((string) $onlySite->id, 'attr') ?>]" value="editor">
-                            <input type="hidden" name="groups[]" value="editor">
-                            <div class="border rounded-3 p-3" style="max-width: 28rem;">
-                                <span class="fw-semibold">Éditeur de cette faculté</span>
-                                <span class="text-muted small d-block">Peut rédiger et mettre à jour les contenus autorisés. Pour créer un administrateur, utilisez l’instance superadmin.</span>
-                            </div>
-                        <?php endif ?>
+                        <div class="row g-2">
+                            <?php foreach ($siteRoleOptions as $roleKey => $roleLabel): ?>
+                                <div class="col-md-6">
+                                    <div class="form-check border rounded-3 p-3 h-100">
+                                        <input class="form-check-input ms-0 me-2" type="radio" name="site_roles[<?= esc($onlySiteId, 'attr') ?>]" id="site_role_<?= esc($roleKey, 'attr') ?>" value="<?= esc($roleKey, 'attr') ?>" <?= $selectedRole === $roleKey ? 'checked' : '' ?>>
+                                        <label class="form-check-label" for="site_role_<?= esc($roleKey, 'attr') ?>">
+                                            <span class="fw-semibold"><?= esc($roleLabel) ?></span>
+                                            <span class="text-muted small d-block"><?= esc($roleDescriptions[$roleKey] ?? '') ?></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            <?php endforeach ?>
+                        </div>
                     <?php endif ?>
                 <?php else: ?>
                 <div class="row g-2">
@@ -202,7 +204,7 @@ if (is_array($postedSiteRoles)) {
                         </div>
                     <?php endforeach ?>
                 </div>
-                <p class="form-text mb-0 mt-2">Cochez la faculté active par défaut. Un administrateur gère comptes et réglages ; un éditeur rédige les contenus. Seul le superadmin peut créer des administrateurs de faculté.</p>
+                <p class="form-text mb-0 mt-2">Cochez la faculté active par défaut. Un administrateur gère comptes et réglages ; un éditeur rédige les contenus.</p>
                 <?php endif ?>
             </fieldset>
         </div>

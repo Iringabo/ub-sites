@@ -36,11 +36,12 @@ $configList = static function (mixed $value): array {
 $enabledSections = $configList($activeSite->enabled_sections ?? null);
 $defaultSectionOrder = [
     'hero',
+    'quick_links',
     'statistics',
     'about',
     'programmes_preview',
-    'research_labs',
     'news_preview',
+    'research_labs',
     'dean_message',
     'staff_preview',
     'custom_text',
@@ -226,6 +227,16 @@ $sectionBand = static function (string $key) use ($sectionCssOrder): string {
     return ($sectionCssOrder($key) % 2) === 0 ? 'bg-white' : 'section-alt';
 };
 $highlights = array_values($highlights ?? []);
+$siteSettings = $siteSettings ?? service('settingsService')->all();
+$contactAddress = trim((string) site_contact_address($siteSettings));
+$contactHours = trim((string) ($siteSettings['contact.hours'] ?? ''));
+$contactPhone = trim((string) ($siteSettings['contact.phone'] ?? ''));
+$quickLinks = [
+    ['key' => 'programmes', 'icon' => 'bi-mortarboard', 'url' => site_url('formations')],
+    ['key' => 'research', 'icon' => 'bi-search', 'url' => site_url('recherche')],
+    ['key' => 'posts', 'icon' => 'bi-calendar-event', 'url' => site_url('actualites')],
+    ['key' => 'contact', 'icon' => 'bi-envelope', 'url' => site_url('contact')],
+];
 ?>
 <div class="home-sections-stack">
 <?php if ($sectionEnabled('hero')): ?>
@@ -284,7 +295,7 @@ $highlights = array_values($highlights ?? []);
                                     <h1><?= nl2br(esc($slideTitle)) ?></h1>
                                     <p class="lead"><?= esc($slideText) ?></p>
                                     <?php if ($primaryCta !== null || $secondaryCta !== null): ?>
-                                        <div class="d-flex flex-wrap gap-3">
+                                        <div class="hero-actions">
                                             <?php if ($primaryCta !== null): ?>
                                                 <a href="<?= esc($primaryCta['url'], 'attr') ?>" class="btn-hero-primary"><?= esc($primaryCta['label']) ?></a>
                                             <?php endif ?>
@@ -314,6 +325,26 @@ $highlights = array_values($highlights ?? []);
     <div class="hero-shape hero-shape-lg"></div>
     <div class="hero-shape hero-shape-sm"></div>
 </section>
+<?php endif ?>
+
+<?php if ($sectionEnabled('quick_links')): ?>
+    <section class="quick-links" style="order: <?= $sectionCssOrder('quick_links') ?>" aria-label="<?= esc(lang('Site.home.quickLinksLabel'), 'attr') ?>">
+        <div class="container">
+            <div class="row g-3">
+                <?php foreach ($quickLinks as $link): ?>
+                    <div class="col-6 col-lg-3">
+                        <a href="<?= esc($link['url'], 'attr') ?>" class="quick-link h-100">
+                            <span class="quick-link-icon" aria-hidden="true"><i class="bi <?= esc($link['icon'], 'attr') ?>"></i></span>
+                            <span>
+                                <span class="quick-link-title"><?= esc(lang('Site.home.quickLinks.' . $link['key'] . '.title')) ?></span>
+                                <span class="quick-link-text"><?= esc(lang('Site.home.quickLinks.' . $link['key'] . '.text')) ?></span>
+                            </span>
+                        </a>
+                    </div>
+                <?php endforeach ?>
+            </div>
+        </div>
+    </section>
 <?php endif ?>
 
 <?php if ($sectionEnabled('statistics') && $mainStats !== []): ?>
@@ -395,11 +426,13 @@ $highlights = array_values($highlights ?? []);
                 <span class="section-label"><?= esc((string) ($deanMessage['label'] ?? lang('Site.faculty.deanLabelFallback'))) ?></span>
                 <h2 class="section-title"><?= esc($deanTitle) ?></h2>
                 <div class="divider-green"></div>
-                <?php foreach (site_paragraphs($deanBlockText) as $paragraph): ?>
-                    <p><?= esc($paragraph) ?></p>
-                <?php endforeach ?>
+                <blockquote class="dean-quote">
+                    <?php foreach (site_paragraphs($deanBlockText) as $paragraph): ?>
+                        <p><?= esc($paragraph) ?></p>
+                    <?php endforeach ?>
+                </blockquote>
                 <?php if (! empty($deanMessage['signature'])): ?>
-                    <p class="fw-semibold mb-0"><?= esc((string) $deanMessage['signature']) ?></p>
+                    <p class="dean-signature fw-semibold mb-0"><?= esc((string) $deanMessage['signature']) ?></p>
                 <?php endif ?>
             </div>
         </div>
@@ -410,29 +443,37 @@ $highlights = array_values($highlights ?? []);
 <?php if ($sectionEnabled('programmes_preview') && $programmeGroups !== []): ?>
 <section class="section-pad <?= esc($sectionBand('programmes_preview'), 'attr') ?>" style="order: <?= $sectionCssOrder('programmes_preview') ?>">
     <div class="container">
-        <div class="text-center mx-auto mb-5" style="max-width: 640px">
-            <span class="section-label"><?= esc($programmesLabel) ?></span>
-            <h2 class="section-title"><?= esc($programmesTitle) ?></h2>
-            <p class="section-subtitle mx-auto">
-                <?= esc($programmesText) ?>
-            </p>
+        <div class="section-head">
+            <div class="text-measure">
+                <span class="section-label"><?= esc($programmesLabel) ?></span>
+                <h2 class="section-title"><?= esc($programmesTitle) ?></h2>
+                <p class="section-subtitle">
+                    <?= esc($programmesText) ?>
+                </p>
+            </div>
+            <a href="<?= esc($programmesButtonUrl, 'attr') ?>" class="btn btn-outline-green d-none d-md-inline-flex">
+                <?= esc($programmesButtonLabel) ?>
+            </a>
         </div>
         <div class="row g-4">
             <?php foreach ($programmeGroups as $group): ?>
-                <div class="col-lg-4">
-                    <article class="card-faculte h-100">
-                        <div class="card-icon"><i class="bi <?= esc($group['icon'], 'attr') ?>"></i></div>
-                        <h3 class="h5"><?= esc($group['label']) ?></h3>
-                        <p class="text-muted small mb-2">
-                            <?= esc(($group['duration'] ?? '') . ' · ' . $group['orientation']) ?>
+                <div class="col-md-6 col-lg-4">
+                    <article class="card-faculte h-100 d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                            <div class="card-icon mb-0"><i class="bi <?= esc($group['icon'], 'attr') ?>"></i></div>
+                            <span class="badge-level"><?= esc($group['label']) ?></span>
+                        </div>
+                        <h3 class="h5 mb-1"><?= esc($group['orientation']) ?></h3>
+                        <p class="text-muted small mb-3">
+                            <?= esc(trim(($group['duration'] ?? '') . ' · ' . lang('Site.home.programmesCount', [count($group['programmes'])]), ' ·')) ?>
                         </p>
                         <ul class="small text-body mb-3 ps-3">
-                            <?php foreach ($group['programmes'] as $programme): ?>
-                                <li><?= esc($programme->title) ?></li>
+                            <?php foreach (array_slice($group['programmes'], 0, 4) as $programme): ?>
+                                <li><a href="<?= site_url('formations/' . $programme->slug) ?>" class="link-body-emphasis text-decoration-none"><?= esc($programme->title) ?></a></li>
                             <?php endforeach ?>
                         </ul>
-                        <a href="<?= esc($programmesButtonUrl, 'attr') ?>" class="btn btn-outline-green btn-sm">
-                            <?= esc($programmesButtonLabel) ?>
+                        <a href="<?= esc($programmesButtonUrl, 'attr') ?>" class="btn btn-outline-green btn-sm mt-auto align-self-start">
+                            <?= esc(lang('Home.viewProgramme')) ?>
                         </a>
                     </article>
                 </div>
@@ -454,7 +495,7 @@ $highlights = array_values($highlights ?? []);
                 <div class="d-flex flex-wrap gap-4 mb-4">
                     <?php foreach ($researchStats as $stat): ?>
                         <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-file-earmark-text text-success fs-4"></i>
+                            <i class="bi bi-file-earmark-text text-brand fs-4"></i>
                             <div>
                                 <div class="fw-bold"><?= esc((string) $stat->value . ($stat->suffix ?? '')) ?></div>
                                 <div class="small text-muted"><?= esc($stat->label) ?></div>
@@ -473,7 +514,7 @@ $highlights = array_values($highlights ?? []);
                     <?php foreach ($featuredLaboratories as $lab): ?>
                         <div class="col-md-6">
                             <article class="lab-card h-100">
-                                <i class="bi <?= esc($lab->icon ?? 'bi-diagram-3', 'attr') ?> text-success fs-4 mb-2 d-block"></i>
+                                <i class="bi <?= esc($lab->icon ?? 'bi-diagram-3', 'attr') ?> text-brand fs-4 mb-2 d-block"></i>
                                 <p class="fw-bold mb-0"><?= esc($lab->abbreviation) ?></p>
                                 <p class="small text-muted mb-0"><?= esc($lab->name) ?></p>
                             </article>
@@ -535,46 +576,35 @@ $highlights = array_values($highlights ?? []);
             </a>
         </div>
         <div class="row g-4">
-            <?php
-            $homeEvents = [];
-            $homeNews = [];
-            foreach ($featuredPosts as $post) {
-                if (($post->type ?? '') === 'event') {
-                    $homeEvents[] = $post;
-                } else {
-                    $homeNews[] = $post;
-                }
-            }
-            $renderHomePost = static function (object $post): void {
-                $cover = site_person_media($post->cover_image ?? null);
-                ?>
-                <div class="col-lg-4">
+            <?php foreach ($featuredPosts as $post): ?>
+                <?php $cover = site_person_media($post->cover_image ?? null); ?>
+                <div class="col-md-6 col-lg-4">
                     <article class="news-card h-100">
                         <?php if ($cover !== null): ?>
                             <img src="<?= esc(site_media_url($cover), 'attr') ?>" class="news-card-cover" alt="<?= esc($post->title, 'attr') ?>">
                         <?php endif ?>
                         <div class="news-card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                            <?php $isEvent = $post->type === 'event'; ?>
+                            <?php $postDate = $isEvent ? ($post->event_starts_at ?? $post->published_at) : $post->published_at; ?>
+                            <div class="news-card-meta">
+                                <?php $dateParts = $isEvent ? site_date_parts($postDate) : null; ?>
+                                <?php if ($dateParts !== null): ?>
+                                    <time class="date-block" datetime="<?= esc($dateParts['iso'], 'attr') ?>">
+                                        <span class="date-block-day"><?= esc($dateParts['day']) ?></span>
+                                        <span class="date-block-month"><?= esc($dateParts['month']) ?></span>
+                                    </time>
+                                <?php else: ?>
+                                    <span class="small text-muted"><?= esc(site_format_date($postDate, false)) ?></span>
+                                <?php endif ?>
                                 <span class="badge-news badge-<?= esc(site_post_category($post->type), 'attr') ?>"><?= esc(site_post_type_label($post->type)) ?></span>
-                                <span class="small text-muted"><?= esc(site_format_date($post->type === 'event' ? ($post->event_starts_at ?? $post->published_at) : $post->published_at, $post->type === 'event')) ?></span>
                             </div>
                             <h3 class="h6 fw-bold"><?= esc($post->title) ?></h3>
                             <p class="small text-muted"><?= esc($post->excerpt) ?></p>
-                            <a href="<?= site_url('actualites/' . $post->slug) ?>" class="small fw-semibold text-success"><?= esc(lang('Home.readMore')) ?></a>
+                            <a href="<?= site_url('actualites/' . $post->slug) ?>" class="stretched-link small fw-semibold text-brand text-decoration-none"><?= esc(lang('Home.readMore')) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                         </div>
                     </article>
                 </div>
-                <?php
-            };
-            ?>
-            <?php if ($homeEvents !== []): ?>
-                <div class="col-12"><h3 class="h5 mb-0"><?= esc(lang('Site.posts.upcoming')) ?></h3></div>
-                <?php foreach ($homeEvents as $post) { $renderHomePost($post); } ?>
-            <?php endif ?>
-            <?php if ($homeNews !== []): ?>
-                <div class="col-12"><h3 class="h5 mb-0"><?= esc(lang('Site.posts.news')) ?></h3></div>
-                <?php foreach ($homeNews as $post) { $renderHomePost($post); } ?>
-            <?php endif ?>
+            <?php endforeach ?>
         </div>
     </div>
 </section>
@@ -635,17 +665,42 @@ $highlights = array_values($highlights ?? []);
 <?php if ($optionalSectionEnabled('contact_cta', 'contact_cta')): ?>
 <section class="section-pad <?= esc($sectionBand('contact_cta'), 'attr') ?>" style="order: <?= $sectionCssOrder('contact_cta') ?>">
     <div class="container">
-        <div class="row justify-content-center text-center">
-            <div class="col-lg-8">
-                <span class="section-label">Contact</span>
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="section-label"><?= esc(lang('Site.home.contactLabel')) ?></span>
                 <h2 class="section-title"><?= esc($contactCtaTitle) ?></h2>
+                <div class="divider-green"></div>
                 <?php foreach (site_paragraphs($contactCtaText) as $paragraph): ?>
-                    <p class="section-subtitle mx-auto"><?= esc($paragraph) ?></p>
+                    <p class="section-subtitle"><?= esc($paragraph) ?></p>
                 <?php endforeach ?>
                 <a href="<?= esc($contactCtaUrl, 'attr') ?>" class="btn btn-primary-green">
                     <?= esc($contactCtaLabel) ?>
                 </a>
             </div>
+            <?php if ($contactAddress !== '' || $contactHours !== '' || $contactPhone !== ''): ?>
+                <div class="col-lg-6">
+                    <div class="d-grid gap-3">
+                        <?php if ($contactAddress !== ''): ?>
+                            <div class="info-card">
+                                <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                                <div><strong><?= esc(lang('Site.contact.address')) ?></strong><span><?= esc($contactAddress) ?></span></div>
+                            </div>
+                        <?php endif ?>
+                        <?php if ($contactHours !== ''): ?>
+                            <div class="info-card">
+                                <i class="bi bi-clock" aria-hidden="true"></i>
+                                <div><strong><?= esc(lang('Site.contact.hours')) ?></strong><span><?= esc($contactHours) ?></span></div>
+                            </div>
+                        <?php endif ?>
+                        <?php if ($contactPhone !== ''): ?>
+                            <div class="info-card">
+                                <i class="bi bi-telephone" aria-hidden="true"></i>
+                                <div><strong><?= esc(lang('Site.contact.phone')) ?></strong><span><?= esc($contactPhone) ?></span></div>
+                            </div>
+                        <?php endif ?>
+                    </div>
+                </div>
+            <?php endif ?>
         </div>
     </div>
 </section>

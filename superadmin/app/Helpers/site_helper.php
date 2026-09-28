@@ -189,6 +189,43 @@ if (! function_exists('site_format_date')) {
     }
 }
 
+if (! function_exists('site_date_parts')) {
+    /**
+     * Day number and short localized month for event date blocks.
+     *
+     * @return array{day:string,month:string,iso:string}|null
+     */
+    function site_date_parts(mixed $value): ?array
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof Time || $value instanceof DateTimeInterface) {
+            $timestamp = $value->getTimestamp();
+        } else {
+            $timestamp = strtotime((string) $value);
+        }
+
+        if ($timestamp === false) {
+            return null;
+        }
+
+        $locale = site_current_locale();
+        $format = new IntlDateFormatter($locale === 'en' ? 'en_US' : 'fr_FR', IntlDateFormatter::SHORT, IntlDateFormatter::NONE);
+        $format->setTimeZone(app_timezone());
+        $format->setPattern('MMM');
+        $month = rtrim((string) $format->format($timestamp), '.');
+
+        $format->setPattern('dd');
+        $day = (string) $format->format($timestamp);
+
+        $format->setPattern('yyyy-MM-dd');
+
+        return ['day' => $day, 'month' => $month, 'iso' => (string) $format->format($timestamp)];
+    }
+}
+
 if (! function_exists('site_level_label')) {
     function site_level_label(?string $level): string
     {

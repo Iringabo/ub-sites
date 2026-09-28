@@ -24,6 +24,7 @@ return [
         'quickLinks' => 'Quick links',
         'contact'    => 'Contact',
         'followUs'   => 'Follow us',
+        'university' => 'A faculty of the {0}',
     ],
     'common' => [
         'home'                 => 'Home',
@@ -104,9 +105,19 @@ return [
         'deanLabelFallback' => 'Dean’s message',
     ],
     'home' => [
+        'contactLabel'    => 'Contact',
         'contactCtaTitle' => 'Contact the faculty',
         'contactCtaText'  => 'Send us your questions and information requests.',
         'gallery'         => 'Gallery',
+        'quickLinksLabel' => 'Quick access',
+        'quickLinks'      => [
+            'programmes' => ['title' => 'Programmes', 'text' => 'Bachelor’s, master’s and doctoral degrees'],
+            'research'   => ['title' => 'Research', 'text' => 'Laboratories, projects and publications'],
+            'posts'      => ['title' => 'News & events', 'text' => 'Life at the faculty'],
+            'contact'    => ['title' => 'Contact', 'text' => 'Address, opening hours and form'],
+        ],
+        'programmesCount' => '{0, plural, =1{1 programme} other{# programmes}}',
+        'deanQuoteLabel'  => 'Message from the Dean',
     ],
     'staff' => [
         'all'            => 'All',
@@ -131,7 +142,7 @@ return [
         'upcoming'          => 'Upcoming',
         'newsSingular'      => 'News',
         'eventSingular'     => 'Event',
-        'noResults'         => 'No news item matches your search.',
+        'noResults'         => 'No results found.',
         'eventInfo'         => 'Event information',
         'start'             => 'Start',
         'end'               => 'End',

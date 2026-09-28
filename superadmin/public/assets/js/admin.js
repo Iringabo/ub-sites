@@ -100,6 +100,21 @@ document.querySelectorAll('input[type="color"][id]').forEach((field) => {
     update();
 });
 
+document.querySelectorAll('input[data-icon-input][id]').forEach((field) => {
+    const preview = document.querySelector(`[data-icon-preview="${field.id}"]`);
+    if (!preview) {
+        return;
+    }
+
+    const update = () => {
+        const value = field.value.trim();
+        preview.className = `bi ${/^bi-[a-z0-9-]+$/.test(value) ? value : 'bi-star'}`;
+    };
+
+    field.addEventListener('input', update);
+    update();
+});
+
 document.querySelectorAll('.admin-preview-toggle').forEach((toggle) => {
     toggle.addEventListener('click', () => {
         const row = document.getElementById(toggle.getAttribute('data-target'));
@@ -294,17 +309,24 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
 
     const items = [];
 
+    const normalize = (value) => value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[’']/g, ' ')
+        .toLowerCase();
+
     const collect = () => {
         items.length = 0;
-        document.querySelectorAll('.admin-nav-section').forEach((section) => {
-            const toggle = section.querySelector('.admin-nav-group-toggle');
-            const groupTitle = toggle ? toggle.textContent.trim() : 'Navigation';
-            section.querySelectorAll('a.admin-nav-link[href]').forEach((link) => {
-                items.push({
-                    title: link.textContent.trim(),
-                    group: groupTitle,
-                    href: link.getAttribute('href'),
-                });
+        document.querySelectorAll('.admin-nav a.admin-nav-link[href]').forEach((link) => {
+            const label = link.querySelector('.admin-nav-label');
+            const title = (label ? label.textContent : link.textContent).trim();
+            const group = link.dataset.navGroup || 'Navigation';
+            items.push({
+                title,
+                group,
+                href: link.getAttribute('href'),
+                titleKey: normalize(title),
+                haystack: normalize(`${title} ${group} ${link.dataset.keywords || ''}`),
             });
         });
     };
@@ -314,8 +336,13 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
         if (!list) {
             return;
         }
-        const q = query.trim().toLowerCase();
-        const matches = q ? items.filter((item) => (item.title + ' ' + item.group).toLowerCase().includes(q)) : items;
+        const terms = normalize(query).split(/\s+/).filter(Boolean);
+        const titleHits = (item) => terms.filter((term) => item.titleKey.includes(term)).length;
+        const matches = terms.length
+            ? items
+                .filter((item) => terms.every((term) => item.haystack.includes(term)))
+                .sort((a, b) => titleHits(b) - titleHits(a))
+            : items;
 
         list.replaceChildren();
         matches.slice(0, 12).forEach((item) => {
@@ -367,7 +394,7 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
             <div class="admin-palette-inner" role="search">
                 <div class="d-flex align-items-center gap-2 border-bottom px-3 py-2">
                     <i class="bi bi-search" aria-hidden="true"></i>
-                    <input id="adminPaletteInput" type="text" class="form-control border-0 shadow-none" placeholder="Rechercher un module… (Ctrl+K)" aria-label="Recherche">
+                    <input id="adminPaletteInput" type="text" class="form-control border-0 shadow-none" placeholder="Rechercher un texte ou un module… (Ctrl+K)" aria-label="Recherche">
                 </div>
                 <div id="adminPaletteResults" class="admin-palette-results"></div>
             </div>`;
@@ -382,6 +409,16 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
 
         const input = document.getElementById('adminPaletteInput');
         input.addEventListener('input', () => renderResults(input.value));
+        input.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') {
+                return;
+            }
+            const first = document.querySelector('#adminPaletteResults button');
+            if (first) {
+                event.preventDefault();
+                first.click();
+            }
+        });
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'ArrowDown') {
@@ -403,7 +440,7 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
                 event.preventDefault();
                 const current = document.activeElement;
                 const idx = buttons.indexOf(current);
-                const prev = buttons[(idx === -1 ? 0 : idx) - 1 + buttons.length];
+                const prev = buttons[((idx === -1 ? 0 : idx) - 1 + buttons.length) % buttons.length];
                 prev.focus();
             }
         });

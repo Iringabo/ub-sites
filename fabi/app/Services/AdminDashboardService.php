@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Controllers\Admin\SettingsController;
 use App\Models\ContactMessageModel;
 use App\Models\HomeContentModel;
 use App\Models\HomeHeroSlideModel;
-use App\Models\HomeHighlightModel;
 use App\Models\PageModel;
 use App\Models\PostModel;
 use App\Models\ProgrammeModel;
@@ -32,7 +32,7 @@ class AdminDashboardService
         $homeRaw = $home === null ? '' : strtolower(($home->hero_title ?? '') . ' ' . ($home->about_body ?? '') . ' ' . ($home->about_title ?? ''));
         $items[] = [
             'label'      => 'Personnaliser les textes de l’accueil',
-            'url'        => site_url('admin/home-content'),
+            'url'        => site_url('admin/textes/accueil/presentation'),
             'permission' => 'home.manage',
             'done'       => $home !== null && ! str_contains($homeRaw, 'bienvenue sur le site de') && ! str_contains($homeRaw, 'à remplacer'),
         ];
@@ -51,7 +51,7 @@ class AdminDashboardService
             && ! str_contains(strtolower(site_contact_address($settings)), 'compléter');
         $items[] = [
             'label'      => 'Renseigner les coordonnées de la faculté',
-            'url'        => site_url('admin/settings/global'),
+            'url'        => site_url('admin/settings/contact'),
             'permission' => 'settings.manage',
             'done'       => $contactDone,
         ];
@@ -322,20 +322,8 @@ class AdminDashboardService
                 'title'      => $home->hero_title ?: 'Contenu d’accueil',
                 'detail'     => $home->about_title ?: 'Héros, présentation et sections éditoriales',
                 'updated_at' => $home->updated_at ?? $home->created_at ?? null,
-                'url'        => site_url('admin/home-content/' . $home->id . '/edit'),
+                'url'        => site_url('admin/textes/accueil/presentation'),
                 'icon'       => 'bi-house',
-            ];
-        }
-
-        $highlight = model(HomeHighlightModel::class, false)->forSite()->orderBy('updated_at', 'DESC')->orderBy('id', 'DESC')->first();
-        if ($highlight !== null) {
-            $items[] = [
-                'label'      => 'Atouts',
-                'title'      => $highlight->title,
-                'detail'     => $highlight->description ?: 'Atout mis en avant',
-                'updated_at' => $highlight->updated_at ?? $highlight->created_at ?? null,
-                'url'        => site_url('admin/home-highlights/' . $highlight->id . '/edit'),
-                'icon'       => 'bi-star',
             ];
         }
 
@@ -382,7 +370,7 @@ class AdminDashboardService
                 'title'      => $page->title,
                 'detail'     => $page->key,
                 'updated_at' => $page->updated_at ?? $page->created_at ?? null,
-                'url'        => site_url('admin/pages/' . $page->id . '/edit'),
+                'url'        => site_url($this->pageTextsUrl((string) $page->key)),
                 'icon'       => 'bi-file-earmark-text',
             ];
         }
@@ -406,12 +394,34 @@ class AdminDashboardService
                 'title'      => $setting->key,
                 'detail'     => $setting->context ?: 'Configuration',
                 'updated_at' => $setting->updated_at ?? $setting->created_at ?? null,
-                'url'        => site_url('admin/settings/' . $setting->id . '/edit'),
+                'url'        => site_url($this->settingsUrl((string) $setting->context)),
                 'icon'       => 'bi-gear',
             ];
         }
 
         return $items;
+    }
+
+    private function pageTextsUrl(string $pageKey): string
+    {
+        foreach (service('pageTextCatalog')->pages() as $slug => $page) {
+            if (($page['page_key'] ?? null) === $pageKey) {
+                return 'admin/textes/' . $slug;
+            }
+        }
+
+        return 'admin';
+    }
+
+    private function settingsUrl(string $context): string
+    {
+        foreach (SettingsController::PAGES as $slug => $page) {
+            if (in_array($context, $page['contexts'], true)) {
+                return 'admin/settings/' . $slug;
+            }
+        }
+
+        return $context === 'home' ? 'admin/home-hero-slides' : 'admin/settings/identity';
     }
 
     /**

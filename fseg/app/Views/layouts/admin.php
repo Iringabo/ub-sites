@@ -16,7 +16,10 @@ $adminUser = auth()->user();
 $activeSite = service('siteResolver')->activeSite();
 $availableSites = $nav->availableSites($adminUser);
 $brand = $nav->brand();
-$navGroups = $nav->groups($adminUser);
+$navSections = $nav->sections($adminUser);
+$currentAdmin = (string) ($activeAdmin ?? 'dashboard');
+$isNavLinkActive = static fn (array $link): bool => (string) $link['key'] === $currentAdmin
+    || ((string) $link['key'] === '' && $currentAdmin === 'dashboard');
 $previewUrl = $nav->previewUrl();
 $brandTitle = $brand['title'];
 $brandSubtitle = $brand['subtitle'];
@@ -42,39 +45,65 @@ $brandSubtitle = $brand['subtitle'];
                 </a>
 
                 <nav class="admin-nav" aria-label="Modules">
-                    <a class="admin-nav-link <?= ($activeAdmin ?? 'dashboard') === 'dashboard' ? 'active' : '' ?>" href="<?= $nav->dashboardUrl() ?>" <?= ($activeAdmin ?? 'dashboard') === 'dashboard' ? 'aria-current="page"' : '' ?>>
-                        <i class="bi bi-speedometer2" aria-hidden="true"></i>
-                        <span><?= $isCentralAdmin ? 'Tableau de bord plateforme' : 'Tableau de bord' ?></span>
-                    </a>
-
-                    <?php foreach ($navGroups as $group): ?>
-                        <?php
-                        $visibleLinks = $group['links'];
-                        $activeKeys = array_map(static fn (array $link): string => (string) $link['key'], $visibleLinks);
-                        $isGroupActive = in_array((string) ($activeAdmin ?? ''), $activeKeys, true);
-                        $groupId = 'adminNavGroup' . preg_replace('/[^A-Za-z0-9]+/', '', (string) $group['id']);
-                        ?>
-                        <section class="admin-nav-section">
-                            <button class="admin-nav-group-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#<?= esc($groupId, 'attr') ?>" aria-expanded="<?= $isGroupActive ? 'true' : 'false' ?>" aria-controls="<?= esc($groupId, 'attr') ?>">
-                                <span>
-                                    <i class="bi <?= esc((string) $group['icon'], 'attr') ?>" aria-hidden="true"></i>
-                                    <?= esc((string) $group['label']) ?>
-                                </span>
-                                <i class="bi bi-chevron-down admin-nav-chevron" aria-hidden="true"></i>
-                            </button>
-                            <div id="<?= esc($groupId, 'attr') ?>" class="collapse <?= $isGroupActive ? 'show' : '' ?>">
-                                <ul class="admin-nav-list">
-                                    <?php foreach ($visibleLinks as $link): ?>
-                                        <?php $isActive = ($activeAdmin ?? '') === $link['key']; ?>
-                                        <li>
-                                            <a class="admin-nav-link <?= $isActive ? 'active' : '' ?>" href="<?= site_url('admin/' . $link['key']) ?>" <?= $isActive ? 'aria-current="page"' : '' ?>>
-                                                <i class="bi <?= esc((string) $link['icon'], 'attr') ?>" aria-hidden="true"></i>
-                                                <span><?= esc((string) $link['label']) ?></span>
-                                            </a>
-                                        </li>
+                    <?php foreach ($navSections as $section): ?>
+                        <?php $headingId = 'adminNavHeading' . preg_replace('/[^A-Za-z0-9]+/', '', ucfirst((string) $section['id'])); ?>
+                        <section class="admin-nav-section" aria-labelledby="<?= esc($headingId, 'attr') ?>">
+                            <h2 class="admin-nav-heading" id="<?= esc($headingId, 'attr') ?>"><?= esc((string) $section['label']) ?></h2>
+                            <?php if (! empty($section['hint'])): ?>
+                                <p class="admin-nav-hint"><?= esc((string) $section['hint']) ?></p>
+                            <?php endif ?>
+                            <?php if ($section['items'] !== []): ?>
+                                <ul class="admin-nav-items">
+                                    <?php foreach ($section['items'] as $item): ?>
+                                        <?php if ($item['type'] === 'link'): ?>
+                                            <?= view('admin/partials/nav_link', [
+                                                'link'     => $item,
+                                                'group'    => (string) $section['label'],
+                                                'isActive' => $isNavLinkActive($item),
+                                            ]) ?>
+                                        <?php else: ?>
+                                            <?php
+                                            $pageKeys = $nav->pageItemKeys($item);
+                                            $isPageOpen = in_array($currentAdmin, $pageKeys, true);
+                                            $pageCollapseId = 'adminNavPage' . preg_replace('/[^A-Za-z0-9]+/', '', ucwords((string) $item['id'], '-'));
+                                            ?>
+                                            <li class="admin-nav-page">
+                                                <div class="admin-nav-page-head">
+                                                    <button class="admin-nav-group-toggle admin-nav-page-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#<?= esc($pageCollapseId, 'attr') ?>" aria-expanded="<?= $isPageOpen ? 'true' : 'false' ?>" aria-controls="<?= esc($pageCollapseId, 'attr') ?>">
+                                                        <span>
+                                                            <i class="bi <?= esc((string) $item['icon'], 'attr') ?>" aria-hidden="true"></i>
+                                                            <?= esc((string) $item['label']) ?>
+                                                        </span>
+                                                        <i class="bi bi-chevron-down admin-nav-chevron" aria-hidden="true"></i>
+                                                    </button>
+                                                    <?php if ($item['public_url'] !== null): ?>
+                                                        <a class="admin-nav-page-view" href="<?= esc((string) $item['public_url'], 'attr') ?>" target="_blank" rel="noopener" title="Voir la page « <?= esc((string) $item['label'], 'attr') ?> » sur le site">
+                                                            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                                                            <span class="visually-hidden">Voir la page <?= esc((string) $item['label']) ?> sur le site</span>
+                                                        </a>
+                                                    <?php endif ?>
+                                                </div>
+                                                <div id="<?= esc($pageCollapseId, 'attr') ?>" class="collapse <?= $isPageOpen ? 'show' : '' ?>">
+                                                    <?php foreach (['sections' => 'Sections de la page', 'lists' => 'Listes'] as $part => $partLabel): ?>
+                                                        <?php if ($item[$part] !== []): ?>
+                                                            <p class="admin-nav-sublabel"><?= esc($partLabel) ?></p>
+                                                            <ul class="admin-nav-list">
+                                                                <?php foreach ($item[$part] as $link): ?>
+                                                                    <?= view('admin/partials/nav_link', [
+                                                                        'link'     => $link + ['keywords' => []],
+                                                                        'group'    => (string) $item['label'],
+                                                                        'isActive' => $isNavLinkActive($link),
+                                                                    ]) ?>
+                                                                <?php endforeach ?>
+                                                            </ul>
+                                                        <?php endif ?>
+                                                    <?php endforeach ?>
+                                                </div>
+                                            </li>
+                                        <?php endif ?>
                                     <?php endforeach ?>
                                 </ul>
-                            </div>
+                            <?php endif ?>
                         </section>
                     <?php endforeach ?>
                 </nav>
@@ -95,7 +124,7 @@ $brandSubtitle = $brand['subtitle'];
                     </span>
                 </div>
                 <div class="admin-topbar-actions">
-                    <button type="button" class="btn btn-outline-green btn-sm" id="adminPaletteHint" data-admin-palette-open title="Rechercher un module (Ctrl+K)">
+                    <button type="button" class="btn btn-outline-green btn-sm" id="adminPaletteHint" data-admin-palette-open title="Rechercher un texte ou un module (Ctrl+K)">
                         <i class="bi bi-search" aria-hidden="true"></i>
                         <span class="d-none d-xl-inline">Rechercher</span>
                         <kbd class="d-none d-xl-inline">Ctrl+K</kbd>

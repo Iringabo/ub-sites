@@ -2,14 +2,29 @@
 
 <?= $this->section('content') ?>
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+<nav aria-label="Fil d’Ariane" class="mb-2">
+    <ol class="breadcrumb small mb-0">
+        <li class="breadcrumb-item"><span class="text-muted">Paramètres du site</span></li>
+        <li class="breadcrumb-item active" aria-current="page"><?= esc($pageMeta['label']) ?></li>
+    </ol>
+</nav>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
-        <span class="section-label">Réglages</span>
-        <h1 class="h3 mb-1">Coordonnées & identité</h1>
-        <p class="text-muted mb-0">Modifiez en une seule page les informations affichées sur le site public.</p>
+        <h1 class="h3 mb-1"><?= esc($pageMeta['label']) ?></h1>
+        <p class="text-muted mb-0"><?= esc($pageMeta['description']) ?></p>
     </div>
-    <a href="<?= site_url('admin') ?>" class="btn btn-outline-secondary">Tableau de bord</a>
 </div>
+
+<?php if ($page === 'contact' && (auth()->user()?->can('pages.manage') ?? false)): ?>
+    <div class="alert alert-info d-flex align-items-start gap-2">
+        <i class="bi bi-info-circle mt-1" aria-hidden="true"></i>
+        <div>
+            Les titres du bloc d’adresse sur la page Contact se modifient dans Pages du site › Contact › Bloc coordonnées.
+            <a href="<?= site_url('admin/textes/contact/bloc-coordonnees') ?>" class="alert-link ms-1">Y aller</a>
+        </div>
+    </div>
+<?php endif ?>
 
 <?php
 $errors = session('errors') ?? [];
@@ -21,14 +36,16 @@ $oldValue = static function (string $key, ?string $current) use ($errors, $input
 };
 ?>
 
-<form method="post" action="<?= site_url('admin/settings/global') ?>" enctype="multipart/form-data" class="card-faculte" data-unsaved-guard>
+<form method="post" action="<?= site_url('admin/settings/' . $page) ?>" enctype="multipart/form-data" class="card-faculte" data-unsaved-guard>
     <?= csrf_field() ?>
 
     <?php foreach ($groups as $group): ?>
-        <section class="admin-form-section" aria-labelledby="settings-section-<?= esc($group['context'], 'attr') ?>">
-            <div class="admin-form-section-title">
-                <h2 id="settings-section-<?= esc($group['context'], 'attr') ?>"><?= esc($group['title']) ?></h2>
-            </div>
+        <section class="admin-form-section" id="settings-section-<?= esc($group['context'], 'attr') ?>">
+            <?php if ($showGroupTitles): ?>
+                <div class="admin-form-section-title">
+                    <h2><?= esc($group['title']) ?></h2>
+                </div>
+            <?php endif ?>
 
             <div class="row g-4">
                 <?php foreach ($group['fields'] as $field): ?>
@@ -36,13 +53,37 @@ $oldValue = static function (string $key, ?string $current) use ($errors, $input
                     $key = $field['key'];
                     $name = $inputKey($key);
                     $id = 'field_' . preg_replace('/[^a-zA-Z0-9_]+/', '_', $key);
-                    $value = $oldValue($key, $field['value']);
+                    $value = $oldValue($key, is_array($field['value'] ?? null) ? '' : ($field['value'] ?? null));
                     $type = $field['type'];
                     ?>
-                    <div class="<?= in_array($type, ['text', 'path'], true) ? 'col-12' : 'col-md-6' ?>">
+                    <div class="<?= in_array($type, ['text', 'path', 'social_links'], true) ? 'col-12' : 'col-md-6' ?>">
                         <label for="<?= esc($id, 'attr') ?>" class="form-label fw-semibold"><?= esc($field['label']) ?></label>
 
-                        <?php if ($type === 'path'): ?>
+                        <?php if ($type === 'social_links'): ?>
+                            <?php
+                            $links = is_array($field['value'] ?? null) ? $field['value'] : [];
+                            $networks = [
+                                'facebook' => 'Facebook',
+                                'twitter'  => 'X (Twitter)',
+                                'linkedin' => 'LinkedIn',
+                                'youtube'  => 'YouTube',
+                            ];
+                            ?>
+                            <div class="row g-3">
+                                <?php foreach ($networks as $network => $networkLabel): ?>
+                                    <?php
+                                    $networkName = $name . '_' . $network;
+                                    $networkOld = old($networkName);
+                                    $networkValue = $networkOld !== null ? (string) $networkOld : (string) ($links[$network] ?? '');
+                                    ?>
+                                    <div class="col-md-6">
+                                        <label for="<?= esc($id . '_' . $network, 'attr') ?>" class="form-label small fw-semibold"><?= esc($networkLabel) ?></label>
+                                        <input type="url" class="form-control<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id . '_' . $network, 'attr') ?>" name="<?= esc($networkName, 'attr') ?>" value="<?= esc($networkValue, 'attr') ?>" placeholder="https://…">
+                                    </div>
+                                <?php endforeach ?>
+                            </div>
+                            <p class="form-text">Laissez vide pour masquer un réseau dans le pied de page.</p>
+                        <?php elseif ($type === 'path'): ?>
                             <?php if ($value !== ''): ?>
                                 <div class="mb-2">
                                     <img src="<?= esc(site_media_url($value), 'attr') ?>" alt="<?= esc($field['label'], 'attr') ?>" class="rounded border" style="max-width: 220px; max-height: 120px; object-fit: contain; background: #fff;">

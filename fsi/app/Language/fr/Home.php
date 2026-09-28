@@ -3,9 +3,9 @@
 return [
     'configurationMissing' => 'Configuration manquante',
     'readMore'             => 'Lire la suite',
-    'viewProgramme'        => 'Voir le programme',
+    'viewProgramme'        => 'Voir la formation',
     'viewAll'              => 'Voir tout',
-    'footerCallout'        => 'Restez informé des dernières actualités et événements.',
+    'footerCallout'        => 'Suivez la faculté pour ne manquer aucune actualité ni aucun événement.',
     'heroCarouselLabel'    => 'Images principales de la faculté',
     'showHeroSlide'        => 'Afficher l’image {0}',
     'previousHeroSlide'    => 'Image précédente',

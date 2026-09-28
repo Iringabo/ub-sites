@@ -162,19 +162,29 @@ $currentUser = auth()->user();
     </div>
     <div class="col-lg-5">
         <article class="card-faculte h-100">
-            <h2 class="h5">Raccourcis utiles</h2>
+            <h2 class="h5">Actions rapides</h2>
             <div class="d-grid gap-2">
                 <?php if ($currentUser?->can('news.manage')): ?>
-                    <a href="<?= site_url('admin/posts/new?type=news') ?>" class="btn btn-outline-green">Créer une actualité</a>
+                    <a href="<?= site_url('admin/posts/new?type=news') ?>" class="btn btn-outline-green"><i class="bi bi-newspaper me-1" aria-hidden="true"></i>Publier une actualité</a>
                 <?php endif ?>
                 <?php if ($currentUser?->can('events.manage')): ?>
-                    <a href="<?= site_url('admin/posts/new?type=event') ?>" class="btn btn-outline-green">Créer un événement</a>
+                    <a href="<?= site_url('admin/posts/new?type=event') ?>" class="btn btn-outline-green"><i class="bi bi-calendar-event me-1" aria-hidden="true"></i>Ajouter un événement</a>
+                <?php endif ?>
+                <?php if ($currentUser?->can('messages.manage')): ?>
+                    <?php $unreadMessages = service('adminNavigation')->unreadMessages($currentUser); ?>
+                    <a href="<?= site_url('admin/messages' . ($unreadMessages > 0 ? '?status=new' : '')) ?>" class="btn btn-outline-green d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-envelope-paper" aria-hidden="true"></i>
+                        <span><?= $unreadMessages > 0 ? 'Voir les messages non lus' : 'Voir les messages reçus' ?></span>
+                        <?php if ($unreadMessages > 0): ?>
+                            <span class="admin-nav-badge"><?= esc((string) $unreadMessages) ?></span>
+                        <?php endif ?>
+                    </a>
                 <?php endif ?>
                 <?php if ($currentUser?->can('users.manage')): ?>
-                    <a href="<?= site_url('admin/users') ?>" class="btn btn-outline-secondary">Gérer les utilisateurs</a>
+                    <a href="<?= site_url('admin/users') ?>" class="btn btn-outline-secondary">Comptes & rôles</a>
                 <?php endif ?>
                 <?php if ($currentUser?->can('settings.manage')): ?>
-                    <a href="<?= site_url('admin/settings/global') ?>" class="btn btn-outline-secondary">Coordonnées & identité</a>
+                    <a href="<?= site_url('admin/settings/contact') ?>" class="btn btn-outline-secondary">Coordonnées de la faculté</a>
                 <?php endif ?>
             </div>
         </article>

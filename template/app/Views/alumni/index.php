@@ -2,12 +2,13 @@
 
 <?= $this->section('content') ?>
 <?= view('partials/page_banner', [
-    'pageTitle'    => $pageTitle ?? lang('Site.pageTitles.alumni'),
-    'pageSubtitle' => $content['banner_subtitle'] ?? '',
-    'bannerImage'  => $content['banner_image'] ?? '',
+    'pageTitle'       => site_text_or_placeholder((string) ($content['banner_title'] ?? ''), $pageTitle ?? lang('Site.pageTitles.alumni')),
+    'breadcrumbTitle' => $pageTitle ?? lang('Site.pageTitles.alumni'),
+    'pageSubtitle'    => $content['banner_subtitle'] ?? '',
+    'bannerImage'     => $content['banner_image'] ?? '',
 ]) ?>
 
-<section class="section-pad bg-white">
+<section id="introduction" class="section-pad bg-white">
     <div class="container">
         <div class="row align-items-center g-5">
             <div class="col-lg-6">
@@ -26,7 +27,7 @@
                     <?php foreach ($stats as $stat): ?>
                         <div class="col-4">
                             <article class="card-faculte h-100 p-3">
-                                <div class="stat-number text-success" style="font-size:1.9rem;" data-count="<?= esc((string) $stat->value, 'attr') ?>">0</div>
+                                <div class="stat-number text-brand" style="font-size:1.9rem;" data-count="<?= esc((string) $stat->value, 'attr') ?>">0</div>
                                 <p class="small text-muted mb-0"><?= esc($stat->label) ?></p>
                             </article>
                         </div>
@@ -37,7 +38,7 @@
     </div>
 </section>
 
-<section class="section-pad section-alt">
+<section id="profils" class="section-pad section-alt">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px;">
             <span class="section-label"><?= esc($content['profiles_label'] ?? lang('Site.alumni.profilesLabel')) ?></span>
@@ -65,7 +66,7 @@
     </div>
 </section>
 
-<section class="section-pad bg-white">
+<section id="temoignages" class="section-pad bg-white">
     <div class="container">
         <div class="text-center mx-auto mb-5" style="max-width: 640px;">
             <span class="section-label"><?= esc($content['testimonials_label'] ?? lang('Site.alumni.testimonialsLabel')) ?></span>
@@ -74,12 +75,12 @@
         <div class="row g-4">
             <?php foreach ($testimonials as $testimonial): ?>
                 <div class="col-lg-4">
-                    <article class="card-faculte h-100">
-                        <i class="bi bi-quote text-success fs-3 d-block mb-2"></i>
-                        <p class="small text-muted fst-italic">« <?= esc($testimonial->quote) ?> »</p>
-                        <div class="d-flex align-items-center gap-2 mt-3">
+                    <article class="card-faculte testimonial-card h-100 d-flex flex-column">
+                        <i class="bi bi-quote text-brand fs-3 d-block mb-2" aria-hidden="true"></i>
+                        <blockquote class="testimonial-quote mb-0">« <?= esc($testimonial->quote) ?> »</blockquote>
+                        <div class="d-flex align-items-center gap-2 mt-auto pt-3">
                             <?php if ($testimonial->photo): ?>
-                                <img src="<?= esc(site_media_url($testimonial->photo), 'attr') ?>" alt="<?= esc($testimonial->person_name, 'attr') ?>" class="rounded-circle" width="42" height="42">
+                                <img src="<?= esc(site_media_url($testimonial->photo), 'attr') ?>" alt="<?= esc($testimonial->person_name, 'attr') ?>" class="rounded-circle object-fit-cover" width="48" height="48">
                             <?php endif ?>
                             <div>
                                 <p class="fw-bold small mb-0"><?= esc($testimonial->person_name) ?></p>
@@ -93,7 +94,7 @@
     </div>
 </section>
 
-<section class="section-pad-sm section-alt">
+<section id="appel" class="section-pad-sm section-alt">
     <div class="container text-center">
         <h2 class="h4 fw-bold"><?= esc($content['cta_title'] ?? lang('Site.alumni.ctaTitle')) ?></h2>
         <p class="section-subtitle mx-auto mb-4"><?= esc($content['cta_text'] ?? '') ?></p>

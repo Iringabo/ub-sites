@@ -48,7 +48,7 @@ correspondent à `app.baseURL`.
 | `scripts/seed-ub-faculty-data-fseg-fsi.php` | Payloads FSEG/FSI (inclus par le seeder) |
 | `scripts/update-faculty-maps.php` | Iframes Google Maps + adresses campus |
 | `scripts/ensure-faculty-admins.php` | Créer / réinitialiser les admins locaux |
-| `php spark site:seed-demo --force` (depuis `superadmin/`) | **Recommandé** : démo contenu + médias par site |
+| `php spark site:seed-demo --force` (depuis `superadmin/`) | **Recommandé** : démo contenu + pages legacy-compatibles + médias + EN par site |
 | `template/scripts/new-faculty-instance.sh` | Copie guidée d’une faculté |
 | `template/scripts/new-admin-instance.sh` | Copie guidée de la superadministration |
 

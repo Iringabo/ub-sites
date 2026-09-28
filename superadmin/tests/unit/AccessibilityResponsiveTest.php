@@ -18,7 +18,8 @@ final class AccessibilityResponsiveTest extends CIUnitTestCase
         $this->assertStringContainsString('id="contenu"', $publicLayout);
         $this->assertStringContainsString('skip-link', $adminLayout);
         $this->assertStringContainsString('admin-sidebar', $adminLayout);
-        $this->assertStringContainsString('aria-expanded="<?= $isGroupActive ? \'true\' : \'false\' ?>"', $adminLayout);
+        $this->assertStringContainsString('aria-expanded="<?= $isPageOpen ? \'true\' : \'false\' ?>"', $adminLayout);
+        $this->assertStringContainsString('class="admin-nav-heading"', $adminLayout);
         $this->assertStringContainsString('id="contenu"', $adminLayout);
         $this->assertStringContainsString('skip-link', $authLayout);
         $this->assertStringContainsString('id="contenu"', $authLayout);
@@ -36,6 +37,7 @@ final class AccessibilityResponsiveTest extends CIUnitTestCase
         $this->assertStringContainsString(':focus-visible', $css);
         $this->assertStringContainsString('prefers-reduced-motion', $css);
         $this->assertStringContainsString('.navbar-light .navbar-toggler', $css);
+        $this->assertStringContainsString('min-height: 44px', $css);
         $this->assertStringContainsString('prefers-reduced-motion', $js);
         $this->assertStringContainsString('scrollIntoView({ behavior: prefersReducedMotion ? \'auto\' : \'smooth\'', $js);
         $this->assertStringContainsString('data-site-hero-carousel', $js);
@@ -43,6 +45,35 @@ final class AccessibilityResponsiveTest extends CIUnitTestCase
         $this->assertStringNotContainsString('window.FSEG', $js);
         $this->assertStringNotContainsString('heroVideo.pause()', $js);
         $this->assertStringNotContainsString('querySelector(\'.hero-video\')', $js);
+    }
+
+    public function testPublicStylesheetUsesBrandTokensInsteadOfHardCodedGreen(): void
+    {
+        $css    = file_get_contents(ROOTPATH . 'public/assets/css/style.css');
+        $layout = file_get_contents(ROOTPATH . 'app/Views/layouts/public.php');
+
+        foreach (['--brand:', '--brand-strong:', '--brand-dark:', '--brand-deep:', '--brand-tint:', '--brand-soft:', '--accent:', '--on-brand:'] as $token) {
+            $this->assertStringContainsString($token, $css, $token . ' must be declared in :root');
+        }
+        $this->assertMatchesRegularExpression('/--green:\s+var\(--brand\)/', $css);
+        $this->assertStringContainsString('--measure:', $css);
+
+        // The only literal UB green allowed in the stylesheet is the :root default.
+        $this->assertSame(1, preg_match_all('/#0D9B49/i', $css), 'style.css must not hard-code the UB green outside :root');
+        $this->assertSame(0, preg_match_all('/rgba\(13,\s*155,\s*73/', $css));
+        $this->assertSame(1, preg_match_all('/#0B6F38/i', $css), 'only the :root --brand-dark default may hard-code the dark green');
+
+        // New visitor components exist.
+        foreach (['.quick-link', '.date-block', '.dean-quote', '.info-card', '.badge-level', '.staff-photo-lg', '.text-brand'] as $selector) {
+            $this->assertStringContainsString($selector, $css);
+        }
+
+        // Layout emits tokens from the service inside a CSP-nonced style tag.
+        $this->assertStringContainsString("service('siteTheme')->cssVariables(", $layout);
+        // CodeIgniter expands {csp-style-nonce} into the whole nonce="…" attribute.
+        $this->assertStringContainsString('<style {csp-style-nonce}>', $layout);
+        $this->assertStringNotContainsString('nonce="{csp-style-nonce}"', $layout);
+        $this->assertStringNotContainsString('--green: #0D9B49', $layout);
     }
 
     public function testVisibleEnglishLabelsAreTranslatedInPublicAndErrorPages(): void

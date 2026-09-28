@@ -38,10 +38,16 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
     $routes->match(['get', 'head'], 'site', 'DashboardController::site', ['as' => 'admin.site']);
     $routes->post('site-selection', 'SiteController::select', ['as' => 'admin.sites.select']);
 
-    $routes->group('faculty', ['filter' => 'permission:pages.manage'], static function (RouteCollection $routes): void {
-        $routes->get('profile', 'FacultyProfileController::edit', ['as' => 'admin.faculty.profile']);
-        $routes->post('profile', 'FacultyProfileController::update', ['as' => 'admin.faculty.profile.update']);
+    $routes->group('textes', ['filter' => 'permission:pages.manage,home.manage'], static function (RouteCollection $routes): void {
+        $routes->get('(:segment)', 'TextSegmentController::page/$1', ['as' => 'admin.texts.page']);
+        $routes->get('(:segment)/(:segment)', 'TextSegmentController::edit/$1/$2', ['as' => 'admin.texts.edit']);
+        $routes->post('(:segment)/(:segment)', 'TextSegmentController::update/$1/$2', ['as' => 'admin.texts.update']);
     });
+
+    // Former single-form editors now open the first text category of their page.
+    $routes->addRedirect('faculty/profile', 'admin/textes/faculte/mot-du-doyen');
+    $routes->addRedirect('pages/formations', 'admin/textes/formations/bandeau');
+    $routes->addRedirect('pages/contact', 'admin/textes/contact/bandeau');
 
     $routes->group('messages', ['filter' => 'permission:messages.manage'], static function (RouteCollection $routes): void {
         $routes->get('/', 'MessageController::index', ['as' => 'admin.messages.index']);
@@ -66,8 +72,9 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
     });
 
     $routes->group('settings', ['filter' => 'permission:settings.manage'], static function (RouteCollection $routes): void {
-        $routes->get('global', 'SettingsController::index', ['as' => 'admin.settings.overview']);
-        $routes->post('global', 'SettingsController::update', ['as' => 'admin.settings.overview.update']);
+        $routes->addRedirect('global', 'admin/settings/identity');
+        $routes->get('(identity|contact|social|footer|seo)', 'SettingsController::index/$1', ['as' => 'admin.settings.page']);
+        $routes->post('(identity|contact|social|footer|seo)', 'SettingsController::update/$1', ['as' => 'admin.settings.page.update']);
     });
 
     $routes->group('posts', ['filter' => 'permission:news.manage,events.manage'], static function (RouteCollection $routes): void {

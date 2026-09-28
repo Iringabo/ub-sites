@@ -23,7 +23,7 @@
                         <div class="card-icon mx-auto" aria-hidden="true"><?= esc(site_initials($member->name)) ?></div>
                     <?php endif ?>
                     <h2 class="h5 mb-1"><?= esc($member->name) ?></h2>
-                    <p class="text-success fw-semibold small mb-1"><?= esc($member->grade ?? '') ?></p>
+                    <p class="text-brand fw-semibold small mb-1"><?= esc($member->grade ?? '') ?></p>
                     <p class="text-muted small mb-2"><?= esc($member->specialty ?? '') ?></p>
                     <?php if ($member->email): ?>
                         <a href="mailto:<?= esc($member->email, 'attr') ?>" class="btn btn-outline-green btn-sm">

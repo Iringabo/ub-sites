@@ -10,9 +10,11 @@ Les mots de passe réels ne sont **pas** dans ce document : voir
 ## Contenu démo « site terminé » (recommandé)
 
 Remplit chaque faculté avec un volume de contenu public crédible (formations,
-personnel, actualités, labs, etc.) et des **images propres au site** sous
-`public/uploads/sites/{slug}/` uniquement — sans cloner les photos des autres
-facultés dans chaque dossier.
+personnel, actualités, labs, etc.), des **pages au format legacy** (mot du
+doyen en paragraphes, mission/vision, offre formations, carte contact) et des
+**traductions anglaises** (`content_translations`), plus des **images propres
+au site** sous `public/uploads/sites/{slug}/` uniquement — sans cloner les
+photos des autres facultés dans chaque dossier.
 
 Pack source (non synchronisé) : [`template/demo-media/`](../demo-media/README.md).
 
@@ -25,8 +27,24 @@ php spark site:seed-demo --force
 php spark site:seed-demo --slug=fseg --force
 ```
 
+Après le seed, actualiser les cartes campus :
+
+```bash
+php scripts/update-faculty-maps.php
+```
+
+Éditeurs admin pour maintenir ce contenu (sans rouvrir le CRUD « pages »
+complet) :
+
+- Pages du site › La Faculté : Mot du doyen, Mission & vision, Valeurs, Historique
+- Pages du site › Formations / Contact : Bandeau et sections de la page
+- Paramètres du site › Réseaux sociaux (`social.links`)
+
 Après sync du code : `cd template && ./scripts/sync-instances.sh` (ne copie plus
 `assets/images/faculties/` ; le pack reste dans `template/demo-media/`).
+
+Le dossier `legacy/` à la racine du dépôt est une **référence** (JSON + seeder
+historique FSEG) ; il n’est pas servi en local.
 
 ## Contenu facultaire UB (script legacy)
 

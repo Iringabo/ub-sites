@@ -3,6 +3,7 @@
 use App\Controllers\Admin\HomeSectionsController;
 use App\Database\Seeds\TemplateStarterSeeder;
 use App\Models\SiteModel;
+use App\Services\FacultyDemoDataService;
 use App\Services\HomePageService;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
@@ -51,12 +52,66 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
 
         $result = $this->get('/admin');
         $result->assertOK();
-        $result->assertSee('Accueil');
-        $result->assertSee('Pages du site');
-        $result->assertSee('Héros (slides)');
-        $result->assertSee('Sections &amp; ordre');
+        $body = (string) $result->response()->getBody();
+
+        $headings = [];
+        preg_match_all('/<h2 class="admin-nav-heading"[^>]*>([^<]+)<\/h2>/', $body, $headings);
+        $this->assertSame(['Au quotidien', 'Pages du site', 'Paramètres du site', 'Administration'], $headings[1]);
+
+        foreach (['Accueil', 'La Faculté', 'Formations', 'Recherche', 'Corps enseignant', 'Alumni', 'Contact'] as $page) {
+            $result->assertSee($page);
+        }
+        $result->assertSee('Sections de la page');
+        $result->assertSee('Listes');
+        $result->assertSee('Carrousel d’images');
+        $result->assertSee('Ordre des blocs');
+        $result->assertSee('Chiffres clés');
+        $result->assertSee('Mot du doyen');
+        $this->assertStringContainsString('Identité &amp; logo', $body);
+        $result->assertSee('Messages reçus');
+        $this->assertStringContainsString('href="' . site_url('admin/textes/faculte/mot-du-doyen') . '"', $body);
+        $this->assertStringContainsString('data-keywords="', $body);
+        $this->assertStringContainsString('admin-nav-page-view', $body);
+        $result->assertDontSee('Héros (slides)');
+        $result->assertDontSee('Textes des sections');
         $result->assertDontSee('Pages institutionnelles');
         $result->assertDontSee('Blocs de page');
+    }
+
+    public function testNavOpensThePageDropdownOfTheCurrentCategory(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $body = (string) $this->get('/admin/textes/recherche/bandeau')->response()->getBody();
+
+        $this->assertMatchesRegularExpression('/id="adminNavPageRecherche" class="collapse show"/', $body);
+        $this->assertMatchesRegularExpression('/id="adminNavPageFaculte" class="collapse "/', $body);
+        $this->assertMatchesRegularExpression('/class="admin-nav-link active"[^>]+href="[^"]*admin\/textes\/recherche\/bandeau"/', $body);
+    }
+
+    public function testUnreadMessagesShowAsBadgeAndDashboardQuickAction(): void
+    {
+        $this->actingAs($this->adminUser());
+        $siteId = service('siteResolver')->activeSiteId();
+        $this->db->table('contact_messages')->where('site_id', $siteId)->update(['status' => 'read']);
+        $this->db->table('contact_messages')->insert([
+            'site_id'    => $siteId,
+            'name'       => 'Visiteur badge',
+            'email'      => 'badge@example.test',
+            'subject'    => 'Question',
+            'message'    => 'Message non lu pour le badge.',
+            'status'     => 'new',
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        $result = $this->get('/admin');
+        $result->assertOK();
+        $body = (string) $result->response()->getBody();
+        $this->assertMatchesRegularExpression('/<span class="admin-nav-badge"[^>]*>\s*1\s*<span class="visually-hidden">/', $body);
+        $result->assertSee('Publier une actualité');
+        $result->assertSee('Ajouter un événement');
+        $result->assertSee('Voir les messages non lus');
     }
 
     public function testHeroSlideAcceptsPerSlideCopyAndCtaTargets(): void
@@ -125,6 +180,7 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
         $order = [
             'contact_cta',
             'hero',
+            'quick_links',
             'about',
             'news_preview',
         ];
@@ -156,6 +212,32 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
             '/<section[^>]*class="hero"[^>]*style="order:\s*1[;"]/i',
             $body,
         );
+        // Quick links follow the saved order (third → order 2) and link to the four key sections.
+        $this->assertMatchesRegularExpression(
+            '/<section[^>]*class="quick-links"[^>]*style="order:\s*2"/i',
+            $body,
+        );
+        $decoded = html_entity_decode($body, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $this->assertStringContainsString('Accès rapides', $decoded);
+        foreach (['formations', 'recherche', 'actualites', 'contact'] as $path) {
+            $this->assertMatchesRegularExpression('#href="[^"]*/' . $path . '" class="quick-link h-100"#', $decoded);
+        }
+        $this->assertSame(4, preg_match_all('/class="quick-link h-100"/', $body));
+    }
+
+    public function testQuickLinksAreHiddenWhenNotEnabledForTheSite(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $save = $this->post('/admin/home-sections', $this->withCsrf([
+            'order'    => json_encode(['hero', 'about']),
+            'sections' => ['hero', 'about'],
+        ]));
+        $save->assertRedirect();
+
+        $home = $this->get('/');
+        $home->assertOK();
+        $this->assertStringNotContainsString('class="quick-links"', (string) $home->response()->getBody());
     }
 
     public function testHeroIndicatorSizeCanBeSavedFromSlidesIndex(): void
@@ -204,10 +286,19 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
     {
         $available = HomeSectionsController::availableSections();
         $this->assertContains('hero', $available);
+        $this->assertContains('quick_links', $available);
         $this->assertContains('dean_message', $available);
         $this->assertContains('contact_cta', $available);
         $this->assertNotContains('pages', $available);
         $this->assertNotContains('highlights', $available);
+        $this->assertArrayHasKey('quick_links', HomeSectionsController::sectionLabels());
+
+        // Provisioning and demo seed share the same visitor-first default order,
+        // and every default section is one the admin can manage.
+        $defaults = FacultyDemoDataService::DEFAULT_SECTION_ORDER;
+        $this->assertSame(['hero', 'quick_links', 'statistics'], array_slice($defaults, 0, 3));
+        $this->assertSame('contact_cta', end($defaults));
+        $this->assertSame([], array_diff($defaults, $available));
     }
 
     private function adminUser(): User

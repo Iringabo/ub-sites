@@ -243,9 +243,9 @@ class UserController extends BaseController
             return redirect()->to('/admin/users')->with('error', 'Vous ne pouvez pas modifier ce compte dans ce contexte.');
         }
 
-        $input = $this->sanitizedInput(false, $id);
+        $input = $this->sanitizedInput(false);
         $errors = $this->validateInput($input['data'], $input['groups'], $input['permissions'], $input['siteIds'], $input['siteRoles'], false, $id);
-        $errors = array_merge($errors, $this->unauthorizedAssignmentAttemptErrors($id), $this->superAdminBoundaryErrors($user, $input['groups'], $input['permissions']));
+        $errors = array_merge($errors, $this->unauthorizedAssignmentAttemptErrors(), $this->superAdminBoundaryErrors($user, $input['groups'], $input['permissions']));
 
         if ((int) $user->id === (int) auth()->id() && $this->userAdmin->wouldLockOutSelf($user, $input['groups'], $input['permissions'], $input['data']['active'])) {
             $errors['groups'] = 'Vous ne pouvez pas retirer votre propre accès à l’administration.';
@@ -438,23 +438,22 @@ class UserController extends BaseController
     /**
      * @return array{data: array{username: string, email: string, password: string, confirm: string, active: int}, groups: list<string>, permissions: list<string>, siteIds: list<int>, siteRoles: array<int, string>}
      */
-    private function sanitizedInput(bool $withPassword, ?int $targetUserId = null): array
+    private function sanitizedInput(bool $withPassword): array
     {
         $groups = $this->userAdmin->normalizeSelections((array) $this->request->getPost('groups'));
         $permissions = $this->userAdmin->normalizeSelections((array) $this->request->getPost('permissions'));
 
         if (! $this->currentActorIsSuperAdmin()) {
             $siteId = service('siteResolver')->activeSiteId();
-            // Faculty admins may only assign the editor role. Self-edit of an
-            // existing site_admin keeps the admin role so they are not demoted.
-            $groups = ['editor'];
-            $role   = 'editor';
-            if ($targetUserId !== null) {
-                $existingRole = service('adminAccess')->siteRole($targetUserId, $siteId);
-                if ($existingRole === 'site_admin' && $targetUserId === (int) (auth()->id() ?? 0)) {
-                    $groups = ['admin'];
-                    $role   = 'site_admin';
-                }
+            $groups = array_values(array_intersect($groups, ['admin', 'editor']));
+            $postedRoles = $this->siteRolesFromRequest([$siteId], in_array('admin', $groups, true) ? 'site_admin' : 'editor');
+            $role = $postedRoles[$siteId] ?? 'editor';
+            if ($role === 'site_admin' || in_array('admin', $groups, true)) {
+                $groups = ['admin'];
+                $role = 'site_admin';
+            } else {
+                $groups = ['editor'];
+                $role = 'editor';
             }
             $permissions = [];
             $siteIds = [$siteId];
@@ -563,36 +562,16 @@ class UserController extends BaseController
 
         foreach ($siteIds as $siteId) {
             $role = $siteRoles[$siteId] ?? '';
-            if (! array_key_exists($role, $this->siteRoleOptionsForValidation($role))) {
+            if (! array_key_exists($role, $this->siteRoleOptions())) {
                 return ['site_ids' => 'Un rôle facultaire sélectionné est invalide.'];
             }
 
-            if (! $this->currentActorIsSuperAdmin() && $role !== 'editor') {
-                $actorId = (int) (auth()->id() ?? 0);
-                $isSelfAdmin = $actorId > 0
-                    && service('adminAccess')->siteRole($actorId, (int) $siteId) === 'site_admin'
-                    && $role === 'site_admin';
-                if (! $isSelfAdmin) {
-                    return ['site_ids' => 'Un administrateur de faculté peut uniquement créer ou gérer des éditeurs. Seul un superadministrateur peut attribuer le rôle Administrateur.'];
-                }
+            if (! $this->currentActorIsSuperAdmin() && ! in_array($role, ['editor', 'site_admin'], true)) {
+                return ['site_ids' => 'Un administrateur de faculté peut uniquement attribuer les rôles Administrateur ou Éditeur.'];
             }
         }
 
         return [];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function siteRoleOptionsForValidation(string $role): array
-    {
-        $options = $this->siteRoleOptions();
-        // Self-admin edit may keep site_admin even though the create form only offers editor.
-        if ($role === 'site_admin') {
-            $options['site_admin'] = 'Administrateur de cette faculté';
-        }
-
-        return $options;
     }
 
     /**
@@ -713,7 +692,7 @@ class UserController extends BaseController
     /**
      * @return array<string, string>
      */
-    private function unauthorizedAssignmentAttemptErrors(?int $targetUserId = null): array
+    private function unauthorizedAssignmentAttemptErrors(): array
     {
         if ($this->currentActorIsSuperAdmin()) {
             return [];
@@ -721,40 +700,20 @@ class UserController extends BaseController
 
         $postedGroups = $this->userAdmin->normalizeSelections((array) $this->request->getPost('groups'));
         $postedPermissions = $this->userAdmin->normalizeSelections((array) $this->request->getPost('permissions'));
-        $postedRoles = (array) $this->request->getPost('site_roles');
         $errors = [];
-        $siteId = service('siteResolver')->activeSiteId();
-        $isSelfAdminPreserve = $targetUserId !== null
-            && $targetUserId === (int) (auth()->id() ?? 0)
-            && service('adminAccess')->siteRole($targetUserId, $siteId) === 'site_admin';
 
         foreach ($postedGroups as $group) {
-            if ($group === 'admin') {
-                if ($isSelfAdminPreserve) {
-                    continue;
-                }
-
-                $errors['groups'] = 'Seul un superadministrateur peut créer un administrateur de faculté. Vous pouvez uniquement créer un éditeur.';
-                break;
-            }
-
-            if ($group !== 'editor') {
-                $errors['groups'] = 'Un administrateur de faculté peut uniquement attribuer le groupe Éditeur.';
+            if (! in_array($group, ['admin', 'editor'], true)) {
+                $errors['groups'] = 'Un administrateur de faculté peut uniquement attribuer les groupes Administrateur ou Éditeur.';
                 break;
             }
         }
 
-        foreach ($postedRoles as $role) {
-            if ((string) $role !== 'site_admin') {
-                continue;
+        foreach ((array) $this->request->getPost('site_roles') as $role) {
+            if (! in_array((string) $role, ['site_admin', 'editor'], true)) {
+                $errors['site_ids'] = 'Un administrateur de faculté peut uniquement attribuer les rôles Administrateur ou Éditeur.';
+                break;
             }
-
-            if ($isSelfAdminPreserve) {
-                continue;
-            }
-
-            $errors['site_ids'] = 'Seul un superadministrateur peut attribuer le rôle Administrateur de faculté.';
-            break;
         }
 
         if ($postedPermissions !== []) {
@@ -854,6 +813,7 @@ class UserController extends BaseController
         $groups = $this->userAdmin->groups();
 
         return [
+            'admin'  => $groups['admin'],
             'editor' => $groups['editor'],
         ];
     }
@@ -883,15 +843,9 @@ class UserController extends BaseController
      */
     private function siteRoleOptions(): array
     {
-        if ($this->currentActorIsSuperAdmin()) {
-            return [
-                'site_admin' => 'Administrateur de cette faculté',
-                'editor'     => 'Éditeur de cette faculté',
-            ];
-        }
-
         return [
-            'editor' => 'Éditeur de cette faculté',
+            'site_admin' => 'Administrateur de cette faculté',
+            'editor'     => 'Éditeur de cette faculté',
         ];
     }
 

@@ -38,49 +38,58 @@ final class AdminErgonomicsTest extends CIUnitTestCase
         parent::tearDown();
     }
 
-    public function testSettingsOverviewGroupsAllContextsOnOnePage(): void
+    public function testSettingsAreSplitIntoOnePagePerTheme(): void
     {
         $this->actingAs($this->superAdminUser());
 
-        $result = $this->get('/admin/settings/global');
+        $this->get('/admin/settings/global')->assertRedirectTo(site_url('admin/settings/identity'));
 
-        $result->assertOK();
-        $result->assertSee('Coordonnées &amp; identité');
-        foreach (['Institution', 'Coordonnées', 'Pied de page', 'Identité visuelle', 'Référencement (SEO)', 'Accueil'] as $section) {
-            $result->assertSee($section);
-        }
-        $result->assertSee('Titre SEO par défaut');
-        $result->assertSee('Taille des pastilles du carrousel');
+        $identity = $this->get('/admin/settings/identity');
+        $identity->assertOK();
+        $identity->assertSee('Identité &amp; logo');
+        $identity->assertSee('name="setting_institution_faculty_name"');
+        $identity->assertSee('name="setting_file_assets_logo"');
+        $identity->assertDontSee('name="setting_seo_default_title"');
+        $identity->assertDontSee('name="setting_home_hero_indicator_size"');
+
+        $contact = $this->get('/admin/settings/contact');
+        $contact->assertOK();
+        $contact->assertSee('name="setting_contact_phone"');
+        $contact->assertSee(site_url('admin/textes/contact/bloc-coordonnees'));
+        $contact->assertDontSee('name="setting_institution_faculty_name"');
+
+        $seo = $this->get('/admin/settings/seo');
+        $seo->assertOK();
+        $seo->assertSee('name="setting_seo_default_title"');
+        $seo->assertSee('name="setting_file_seo_og_image"');
+        $seo->assertDontSee('name="setting_contact_phone"');
+
+        $this->get('/admin/settings/inconnu')->assertRedirectTo(site_url('admin/settings/identity'));
     }
 
-    public function testSettingsUpdatePersistsAValue(): void
+    public function testSettingsUpdatePersistsOnlyTheCurrentPage(): void
     {
         $this->actingAs($this->superAdminUser());
+        $siteId = (int) service('siteResolver')->activeSiteId();
+        $phoneBefore = $this->db->table('settings')->where('site_id', $siteId)->where('key', 'contact.phone')->get()->getRowArray()['value'] ?? null;
 
-        $this->post('/admin/settings/global', $this->withCsrf([
+        $this->post('/admin/settings/identity', $this->withCsrf([
             'setting_institution_faculty_name' => 'Faculté de test des coordonnées',
             'setting_institution_short_name'   => 'FT',
             'setting_institution_university'   => 'Université du Burundi',
-            'setting_contact_address_line'     => 'Avenue de la Révolution',
-            'setting_contact_address_commune'  => 'Mukaza',
-            'setting_contact_address_province' => 'Bujumbura Mairie',
-            'setting_contact_address_country'  => 'Burundi',
-            'setting_contact_phone'            => '+257 00 00 00 00',
-            'setting_contact_email'            => 'contact@example.test',
-            'setting_contact_hours'            => 'Lun-Ven 8h-17h',
-            'setting_footer_text'              => 'Pied de page de test',
-            'setting_footer_copyright'         => '© 2026 Faculté de test',
-            'setting_seo_default_title'        => 'Titre SEO de test',
-            'setting_seo_default_description'  => 'Description SEO de test.',
-            'setting_seo_theme_color'          => '#0D9B49',
-        ]))->assertRedirect();
+            'setting_contact_phone'            => '+257 99 99 99 99',
+        ]))->assertRedirectTo(site_url('admin/settings/identity'));
 
         $row = $this->db->table('settings')
+            ->where('site_id', $siteId)
             ->where('key', 'institution.faculty_name')
             ->get()
             ->getRowArray();
         $this->assertIsArray($row);
         $this->assertSame('Faculté de test des coordonnées', $row['value']);
+
+        $phoneAfter = $this->db->table('settings')->where('site_id', $siteId)->where('key', 'contact.phone')->get()->getRowArray()['value'] ?? null;
+        $this->assertSame($phoneBefore, $phoneAfter, 'Identité & logo must not touch Coordonnées.');
     }
 
     public function testSettingsUpsertFailureFlashesError(): void
@@ -117,22 +126,10 @@ final class AdminErgonomicsTest extends CIUnitTestCase
         Factories::injectMock('models', SettingModel::class, $mock);
 
         try {
-            $response = $this->post('/admin/settings/global', $this->withCsrf([
+            $response = $this->post('/admin/settings/identity', $this->withCsrf([
                 'setting_institution_faculty_name' => 'Faculté de test des coordonnées',
                 'setting_institution_short_name'   => 'FT',
                 'setting_institution_university'   => 'Université du Burundi',
-                'setting_contact_address_line'     => 'Avenue de la Révolution',
-                'setting_contact_address_commune'  => 'Mukaza',
-                'setting_contact_address_province' => 'Bujumbura Mairie',
-                'setting_contact_address_country'  => 'Burundi',
-                'setting_contact_phone'            => '+257 00 00 00 00',
-                'setting_contact_email'            => 'contact@example.test',
-                'setting_contact_hours'            => 'Lun-Ven 8h-17h',
-                'setting_footer_text'              => 'Pied de page de test',
-                'setting_footer_copyright'         => '© 2026 Faculté de test',
-                'setting_seo_default_title'        => 'Titre SEO de test',
-                'setting_seo_default_description'  => 'Description SEO de test.',
-                'setting_seo_theme_color'          => '#0D9B49',
             ]));
 
             $response->assertRedirect();
@@ -274,7 +271,9 @@ final class AdminErgonomicsTest extends CIUnitTestCase
             ['admin.access'],
         ));
 
-        $this->get('/admin/settings/global')->assertRedirect();
+        $this->get('/admin/settings/identity')->assertRedirect();
+        $this->post('/admin/settings/contact', $this->withCsrf(['setting_contact_phone' => '+257 11 11 11 11']))->assertRedirect();
+        $this->assertSame(0, $this->db->table('settings')->where('value', '+257 11 11 11 11')->countAllResults());
     }
 
     public function testEditorDoesNotSeeAdministrationZone(): void
@@ -283,11 +282,13 @@ final class AdminErgonomicsTest extends CIUnitTestCase
 
         $result = $this->get('/admin');
         $result->assertOK();
-        $result->assertSee('Accueil');
+        $result->assertSee('Au quotidien');
         $result->assertSee('Pages du site');
-        $result->assertDontSee('Messages de contact');
-        $result->assertDontSee('Coordonnées &amp; identité');
-        $result->assertDontSee('Gérer les utilisateurs');
+        $result->assertSee('Mot du doyen');
+        $result->assertDontSee('Messages reçus');
+        $result->assertDontSee('Paramètres du site');
+        $result->assertDontSee('Comptes &amp; rôles');
+        $result->assertDontSee('>Administration</h2>');
         $result->assertDontSee('Pages institutionnelles');
         $result->assertDontSee('Blocs de page');
     }
@@ -298,12 +299,16 @@ final class AdminErgonomicsTest extends CIUnitTestCase
 
         $nav = $this->get('/admin');
         $nav->assertOK();
-        $nav->assertSee('Administration');
-        $nav->assertSee('Coordonnées &amp; identité');
+        $body = (string) $nav->response()->getBody();
+        $this->assertStringContainsString('>Administration</h2>', $body);
+        $this->assertStringContainsString('>Paramètres du site</h2>', $body);
+        foreach (['identity', 'contact', 'social', 'footer', 'seo'] as $page) {
+            $this->assertStringContainsString('href="' . site_url('admin/settings/' . $page) . '"', $body);
+        }
 
-        $settings = $this->get('/admin/settings/global');
+        $settings = $this->get('/admin/settings/contact');
         $settings->assertOK();
-        $settings->assertSee('Coordonnées &amp; identité');
+        $settings->assertSee('Coordonnées');
     }
 
     private function groupedUser(string $email, string $username, string $group, string $siteRole): User

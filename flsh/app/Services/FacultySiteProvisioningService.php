@@ -34,7 +34,7 @@ class FacultySiteProvisioningService
             'menu_config'      => json_encode([
                 'items' => ['faculte', 'formations', 'recherche', 'corps-enseignant', 'actualites', 'alumni', 'contact'],
             ], JSON_UNESCAPED_SLASHES),
-            'enabled_sections' => ['hero', 'statistics', 'about', 'programmes_preview', 'research_labs', 'news_preview', 'dean_message', 'staff_preview', 'custom_text', 'contact_cta'],
+            'enabled_sections' => FacultyDemoDataService::DEFAULT_SECTION_ORDER,
         ];
 
         // Single public theme; ignore any legacy theme key from callers.
@@ -160,7 +160,7 @@ class FacultySiteProvisioningService
         return $this->insert('home_content', [
             'site_id'                  => $siteId,
             'singleton_key'            => 1,
-            'hero_badge'               => $name,
+            'hero_badge'               => $short . ' · Université du Burundi',
             'hero_title'               => 'Bienvenue sur le site de ' . $short,
             'hero_text'                => 'Texte de présentation à remplacer par l’équipe de la faculté.',
             'hero_media_type'          => 'image',
@@ -187,7 +187,7 @@ class FacultySiteProvisioningService
             'posts_label'              => 'Actualités',
             'posts_title'              => 'Actualités et événements',
             'posts_text'               => 'Publiez ici les annonces, communiqués et événements de la faculté.',
-            'posts_button_label'       => 'Voir tout',
+            'posts_button_label'       => 'Toutes les actualités',
             'posts_button_url'         => '/actualites',
             'seo_title'                => $short . ' | Université du Burundi',
             'seo_description'          => 'Site facultaire à compléter pour ' . $name . '.',
@@ -514,6 +514,7 @@ class FacultySiteProvisioningService
                 'title' => 'La Faculté',
                 'slug' => 'faculte',
                 'content' => [
+                    'banner_title'    => '',
                     'banner_subtitle' => 'Présentation à compléter pour ' . $name,
                     'dean' => [
                         'label' => 'Mot du doyen',
@@ -541,6 +542,7 @@ class FacultySiteProvisioningService
                 'title' => 'Formations',
                 'slug' => 'formations',
                 'content' => [
+                    'banner_title'    => '',
                     'banner_subtitle' => 'Offre de formation à compléter.',
                     'offer_label' => 'Offre académique',
                     'offer_title' => 'Programmes à compléter',
@@ -555,6 +557,7 @@ class FacultySiteProvisioningService
                 'title' => 'Recherche',
                 'slug' => 'recherche',
                 'content' => [
+                    'banner_title'    => '',
                     'banner_subtitle' => 'Recherche à compléter.',
                     'labs_label' => 'Laboratoires',
                     'labs_title' => 'Laboratoires à compléter',
@@ -566,12 +569,13 @@ class FacultySiteProvisioningService
                     'projects_title' => 'Projets à compléter',
                 ],
             ],
-            'staff' => ['title' => 'Corps enseignant', 'slug' => 'corps-enseignant', 'content' => ['banner_subtitle' => 'Personnel à compléter.']],
-            'posts' => ['title' => 'Actualités', 'slug' => 'actualites', 'content' => ['banner_subtitle' => 'Actualités et événements à compléter.']],
+            'staff' => ['title' => 'Corps enseignant', 'slug' => 'corps-enseignant', 'content' => ['banner_title' => '', 'banner_subtitle' => 'Personnel à compléter.']],
+            'posts' => ['title' => 'Actualités', 'slug' => 'actualites', 'content' => ['banner_title' => '', 'banner_subtitle' => 'Actualités et événements à compléter.']],
             'alumni' => [
                 'title' => 'Alumni',
                 'slug' => 'alumni',
                 'content' => [
+                    'banner_title'    => '',
                     'banner_subtitle' => 'Réseau alumni à compléter.',
                     'intro_label' => 'Communauté',
                     'intro_title' => 'Alumni à compléter',
@@ -591,6 +595,7 @@ class FacultySiteProvisioningService
                 'title' => 'Contact',
                 'slug' => 'contact',
                 'content' => [
+                    'banner_title'    => '',
                     'banner_subtitle' => 'Coordonnées à compléter.',
                     'contact_label' => 'Coordonnées',
                     'contact_title' => 'Contacter ' . $short,

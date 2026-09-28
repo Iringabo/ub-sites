@@ -24,6 +24,7 @@ return [
         'quickLinks' => 'Liens rapides',
         'contact'    => 'Contact',
         'followUs'   => 'Suivez-nous',
+        'university' => 'Faculté de l’{0}',
     ],
     'common' => [
         'home'                 => 'Accueil',
@@ -104,9 +105,19 @@ return [
         'deanLabelFallback' => 'Mot du Doyen',
     ],
     'home' => [
+        'contactLabel'    => 'Contact',
         'contactCtaTitle' => 'Contacter la faculté',
         'contactCtaText'  => 'Envoyez-nous vos questions et demandes d’information.',
         'gallery'         => 'Galerie',
+        'quickLinksLabel' => 'Accès rapides',
+        'quickLinks'      => [
+            'programmes' => ['title' => 'Formations', 'text' => 'Licences, masters et doctorats'],
+            'research'   => ['title' => 'Recherche', 'text' => 'Laboratoires, projets et publications'],
+            'posts'      => ['title' => 'Actualités & événements', 'text' => 'La vie de la faculté'],
+            'contact'    => ['title' => 'Contact', 'text' => 'Adresse, horaires et formulaire'],
+        ],
+        'programmesCount' => '{0, plural, =1{1 formation} other{# formations}}',
+        'deanQuoteLabel'  => 'Mot du Doyen',
     ],
     'staff' => [
         'all'               => 'Tous',
@@ -131,7 +142,7 @@ return [
         'upcoming'       => 'À venir',
         'newsSingular'   => 'Actualité',
         'eventSingular'  => 'Événement',
-        'noResults'      => 'Aucune actualité ne correspond à votre recherche.',
+        'noResults'      => 'Aucun résultat ne correspond à votre recherche.',
         'eventInfo'      => 'Informations sur l’événement',
         'start'          => 'Début',
         'end'            => 'Fin',

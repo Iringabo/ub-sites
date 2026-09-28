@@ -18,11 +18,12 @@ class HomeSectionsController extends BaseController
     {
         return [
             'hero',
+            'quick_links',
             'statistics',
             'about',
             'programmes_preview',
-            'research_labs',
             'news_preview',
+            'research_labs',
             'dean_message',
             'staff_preview',
             'custom_text',
@@ -38,6 +39,7 @@ class HomeSectionsController extends BaseController
     {
         return [
             'hero'                => 'Héros (carrousel)',
+            'quick_links'         => 'Accès rapides',
             'statistics'          => 'Chiffres clés',
             'about'               => 'Présentation',
             'programmes_preview'  => 'Aperçu des formations',

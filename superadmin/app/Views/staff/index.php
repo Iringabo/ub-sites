@@ -2,17 +2,22 @@
 
 <?= $this->section('content') ?>
 <?= view('partials/page_banner', [
-    'pageTitle'    => $pageTitle ?? lang('Site.pageTitles.staff'),
-    'pageSubtitle' => $content['banner_subtitle'] ?? '',
-    'bannerImage'  => $content['banner_image'] ?? '',
+    'pageTitle'       => site_text_or_placeholder((string) ($content['banner_title'] ?? ''), $pageTitle ?? lang('Site.pageTitles.staff')),
+    'breadcrumbTitle' => $pageTitle ?? lang('Site.pageTitles.staff'),
+    'pageSubtitle'    => $content['banner_subtitle'] ?? '',
+    'bannerImage'     => $content['banner_image'] ?? '',
 ]) ?>
 
 <section class="section-pad bg-white">
     <div class="container">
-        <div class="d-flex flex-wrap justify-content-center gap-2 mb-5">
-            <button class="btn btn-outline-green active" data-filter="tous"><?= esc(lang('Site.staff.all')) ?></button>
-            <button class="btn btn-outline-green" data-filter="enseignant"><?= esc(lang('Site.staff.teachers')) ?></button>
-            <button class="btn btn-outline-green" data-filter="administratif"><?= esc(lang('Site.staff.administrative')) ?></button>
+        <?php
+        $teacherCount = count(array_filter($staff, static fn ($member): bool => ($member->category ?? '') === 'enseignant'));
+        $adminCount = count(array_filter($staff, static fn ($member): bool => ($member->category ?? '') === 'administratif'));
+        ?>
+        <div class="d-flex flex-wrap justify-content-center gap-2 mb-5" role="group" aria-label="<?= esc(lang('Site.pageTitles.staff'), 'attr') ?>">
+            <button class="btn btn-outline-green rounded-pill active" data-filter="tous"><?= esc(lang('Site.staff.all')) ?> <span class="tab-count" aria-hidden="true"><?= count($staff) ?></span></button>
+            <button class="btn btn-outline-green rounded-pill" data-filter="enseignant"><?= esc(lang('Site.staff.teachers')) ?> <span class="tab-count" aria-hidden="true"><?= $teacherCount ?></span></button>
+            <button class="btn btn-outline-green rounded-pill" data-filter="administratif"><?= esc(lang('Site.staff.administrative')) ?> <span class="tab-count" aria-hidden="true"><?= $adminCount ?></span></button>
         </div>
 
         <div class="row g-4">
@@ -32,7 +37,7 @@
                         <?php if ($member->email): ?>
                             <a href="mailto:<?= esc($member->email, 'attr') ?>" class="staff-email"><i class="bi bi-envelope me-1"></i><?= esc($member->email) ?></a>
                         <?php endif ?>
-                        <a href="<?= site_url('corps-enseignant/' . $member->slug) ?>" class="d-block small fw-semibold text-success mt-2"><?= esc(lang('Site.common.viewProfile')) ?></a>
+                        <a href="<?= site_url('corps-enseignant/' . $member->slug) ?>" class="d-block small fw-semibold text-brand mt-2"><?= esc(lang('Site.common.viewProfile')) ?></a>
                     </article>
                 </div>
             <?php endforeach ?>

@@ -41,8 +41,7 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         $this->actingAs($this->superAdminUser());
 
         foreach ([
-            '/admin/home-content'      => 'Textes des sections',
-            '/admin/home-hero-slides'  => 'Héros (slides)',
+            '/admin/home-hero-slides'  => 'Carrousel d’images',
             '/admin/site-stats'        => 'Statistiques',
             '/admin/programmes'        => 'Formations',
             '/admin/staff'             => 'Personnel',
@@ -204,36 +203,28 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         $home = $this->db->table('home_content')->where('singleton_key', 1)->get()->getRowArray();
         $this->assertIsArray($home);
 
+        $retired = $this->get('/admin/home-content');
+        $retired->assertRedirectTo(site_url('admin/textes/accueil'));
         $this->post('/admin/home-content/' . $home['id'], $this->withCsrf([
-            'about_label'            => 'Présentation',
-            'about_title'            => 'Présentation administrable',
-            'about_body'             => 'Texte de présentation administrable.',
-            'about_button_label'     => 'Lire',
-            'about_button_url'       => '/faculte',
-            'research_label'         => 'Recherche',
-            'research_title'         => 'Recherche administrable',
-            'research_body'          => 'Texte recherche administrable.',
-            'research_button_label'  => 'Explorer',
-            'research_button_url'    => '/recherche',
-            'programmes_label'       => 'Programmes administrables',
-            'programmes_title'       => 'Formations administrables',
-            'programmes_text'        => 'Texte formations administrable.',
-            'programmes_button_label'=> 'Voir les formations',
-            'programmes_button_url'  => '/formations',
-            'posts_label'            => 'Actualités administrables',
-            'posts_title'            => 'Actualités et événements administrables',
-            'posts_text'             => 'Texte actualités administrable.',
-            'posts_button_label'     => 'Voir les actualités',
-            'posts_button_url'       => '/actualites',
-            'seo_title'              => 'Accueil administrable FSEG',
-            'seo_description'        => 'Description SEO administrable.',
+            'about_title' => 'Présentation par l’ancien formulaire',
+        ]))->assertRedirect();
+        $this->assertSame(
+            $home['about_title'],
+            $this->db->table('home_content')->where('id', $home['id'])->get()->getRowArray()['about_title'],
+        );
+
+        $this->post('/admin/textes/accueil/bloc-formations', $this->withCsrf([
+            'programmes_label'        => 'Programmes administrables',
+            'programmes_title'        => 'Formations administrables',
+            'programmes_text'         => 'Texte formations administrable.',
+            'programmes_button_label' => 'Voir les formations',
+            'programmes_button_url'   => '/formations',
         ]))->assertRedirect();
 
         $updatedHome = $this->db->table('home_content')->where('id', $home['id'])->get()->getRowArray();
-        $this->assertSame('Présentation administrable', $updatedHome['about_title']);
         $this->assertSame('Programmes administrables', $updatedHome['programmes_label']);
-        $this->assertSame('Actualités administrables', $updatedHome['posts_label']);
-        $this->assertNotEmpty($updatedHome['updated_by']);
+        $this->assertSame($home['about_title'], $updatedHome['about_title']);
+        $this->assertSame($home['posts_label'], $updatedHome['posts_label']);
 
         $this->post('/admin/home-highlights', $this->withCsrf([
             'icon'          => 'bi-stars',

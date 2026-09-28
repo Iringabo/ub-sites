@@ -12,10 +12,19 @@ Ce fichier est un guide opérationnel court pour les futurs agents. Il ne rempla
 
 - Ce dépôt est le **modèle (template)** de la plateforme, pas un site en production.
 - On en copie manuellement deux types d'instances : un **dossier par faculté** (site public + administration de cette seule faculté) et un **dossier superadministration** (le superadmin choisit une faculté et en édite le contenu ici).
-- Menu `/admin` : Accueil, Pages du site, Messages, Comptes, Identité
-  (+ Plateforme sur superadmin). L’admin facultaire a `settings.manage` et
-  crée uniquement des **éditeurs** de *sa* faculté. Pas de création de site
-  depuis l’UI. Modules retirés de l’UI : pages, blocs, points forts.
+- Menu `/admin` (`AdminNavigationService::sections()`) en quatre sections :
+  Au quotidien, Pages du site (un menu déroulant par page publique :
+  « Sections de la page » + « Listes »), Paramètres du site
+  (`/admin/settings/{identity|contact|social|footer|seo}`), Administration
+  (+ Plateforme en tête sur superadmin). L’admin facultaire a
+  `settings.manage` et crée un **administrateur** ou un **éditeur** de *sa*
+  faculté. Pas de création de site depuis l’UI. Modules retirés de l’UI :
+  pages, blocs, points forts, textes des sections (`home-content`).
+- Les textes de page sont de petites catégories définies dans
+  `PageTextCatalog` (source unique pour le menu, Ctrl+K et
+  `TextSegmentController`, routes `admin/textes/{page}/{section}`). Ajouter
+  un texte éditable = ajouter un champ au catalogue ; un enregistrement ne
+  fusionne que les champs de sa catégorie (FR + JSON EN complet).
 - Une seule base de données est partagée par toutes les instances ; l'isolation des contenus repose sur `site_id`.
 - Aucune identité ou contenu FSEG réel ne doit être figé dans le modèle : contenu de démarrage neutre uniquement, généré par provisionnement (`FacultySiteProvisioningService`, `php spark site:create`).
 
@@ -56,6 +65,13 @@ Ce fichier est un guide opérationnel court pour les futurs agents. Il ne rempla
 - Utiliser `SiteScopedModel::forSite()` pour les lectures de contenu.
 - Ne pas créer de relation obligatoire entre projets et laboratoires, ni entre programmes et personnel.
 - Ne réintroduire aucun repli codé en dur vers un slug de site particulier dans les services.
+
+## Thème Public
+
+- La palette d'une faculté dérive de `sites.primary_color` (et `secondary_color`) via `SiteThemeService` ; le layout public émet les variables `--brand*` dans un `<style {csp-style-nonce}>` (le placeholder est remplacé par l'attribut `nonce="…"` complet ; ne pas écrire `nonce="{csp-style-nonce}"`).
+- Dans `public/assets/css/style.css`, n'écrire aucune couleur de marque en dur : utiliser `var(--brand)`, `--brand-strong` (texte et boutons, contraste AA garanti), `--brand-dark`, `--brand-deep`, `--brand-tint`, `--brand-soft`, `--accent`. Les alias `--green`, `--green-dark`, `--red` restent disponibles. Dans les vues, préférer `.text-brand` à `text-success`.
+- Chaque couleur de faculté doit être une nuance du vert ou du rouge du logo de l'Université du Burundi ; l'accent est automatiquement l'autre couleur du logo. Les valeurs par défaut du seed démo sont dans `FacultyDemoDataService::BRAND_COLORS` ; le provisioning et le repli restent le vert institutionnel.
+- Les sections d'accueil disponibles sont dans `HomeSectionsController::availableSections()` ; l'ordre par défaut (provisioning et seed) dans `FacultyDemoDataService::DEFAULT_SECTION_ORDER`. Les libellés fixes (accès rapides, boutons) vivent dans `app/Language/{fr,en}/Site.php` et `Home.php`.
 
 ## Langues
 

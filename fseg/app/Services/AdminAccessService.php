@@ -120,14 +120,7 @@ class AdminAccessService
             return false;
         }
 
-        $targetRole = $this->siteRole((int) $target->id, $siteId);
-        // Faculty admins may edit editors (and themselves). Peer admins are
-        // reserved for the superadministrator.
-        if ((int) $target->id === (int) $actor->id) {
-            return in_array($targetRole, ['site_admin', 'editor'], true);
-        }
-
-        return $targetRole === 'editor';
+        return in_array($this->siteRole((int) $target->id, $siteId), ['site_admin', 'editor'], true);
     }
 
     /**

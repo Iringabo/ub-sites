@@ -2,6 +2,7 @@
 
 use App\Database\Seeds\TemplateStarterSeeder;
 use App\Models\PostModel;
+use App\Support\InstanceCookieNames;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
@@ -144,7 +145,52 @@ final class PostManagementTest extends CIUnitTestCase
         $newsFilter = $this->get('/actualites?type=actualite&q=Conf%C3%A9rence%20internationale');
         $newsFilter->assertOK();
         $newsFilter->assertDontSee('Conférence internationale — Développement économique en Afrique');
-        $newsFilter->assertSee('Aucune actualité ne correspond à votre recherche.');
+        $newsFilter->assertSee('Aucun résultat ne correspond à votre recherche.');
+    }
+
+    public function testAllTabMixesNewsAndEventsAndSearchesBothTypes(): void
+    {
+        $model = model(PostModel::class);
+        $model->skipValidation(true);
+        $model->insert($this->postData([
+            'type'    => 'news',
+            'title'   => 'Actualité mixte Rumonge',
+            'slug'    => 'actualite-mixte-rumonge-' . bin2hex(random_bytes(3)),
+            'excerpt' => 'Résumé de l’actualité mixte à Ngozi.',
+        ]));
+        $model->insert($this->postData([
+            'type'            => 'event',
+            'title'           => 'Colloque Gitega uniquement événement',
+            'slug'            => 'colloque-gitega-' . bin2hex(random_bytes(3)),
+            'excerpt'         => 'Un colloque organisé à Gitega avec des partenaires de Ngozi.',
+            'published_at'    => date('Y-m-d H:i:s', strtotime('-3 days')),
+            'event_starts_at' => date('Y-m-d H:i:s', strtotime('+5 days')),
+            'event_ends_at'   => date('Y-m-d H:i:s', strtotime('+5 days +2 hours')),
+            'event_location'  => 'Gitega',
+        ]));
+        $model->skipValidation(false);
+
+        $all = $this->get('/actualites?q=Ngozi');
+        $all->assertOK();
+        $all->assertSee('Actualité mixte Rumonge');
+        $all->assertSee('Colloque Gitega uniquement événement');
+
+        $eventOnly = $this->get('/actualites?q=Gitega');
+        $eventOnly->assertOK();
+        $eventOnly->assertSee('Colloque Gitega uniquement événement');
+        $eventOnly->assertDontSee('Actualité mixte Rumonge');
+        $this->assertMatchesRegularExpression('/id="newsNoResults" class="[^"]*d-none/', (string) $eventOnly->response()->getBody());
+
+        $nothing = $this->get('/actualites?q=zzz-aucun-contenu-zzz');
+        $nothing->assertOK();
+        $nothing->assertSee('Aucun résultat ne correspond à votre recherche.');
+        $this->assertDoesNotMatchRegularExpression('/id="newsNoResults" class="[^"]*d-none/', (string) $nothing->response()->getBody());
+
+        service('superglobals')->setCookie(InstanceCookieNames::locale(), 'en');
+        $nothingEn = $this->get('/actualites?q=zzz-aucun-contenu-zzz');
+        $nothingEn->assertOK();
+        $nothingEn->assertSee('No results found.');
+        service('superglobals')->setCookieArray([]);
     }
 
     public function testHomepageFeaturesNewsAndUpcomingEventsOnly(): void

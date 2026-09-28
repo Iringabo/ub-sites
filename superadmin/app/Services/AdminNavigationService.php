@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Controllers\Admin\SettingsController;
 use App\Entities\Site;
+use App\Models\ContactMessageModel;
 use CodeIgniter\Shield\Entities\User;
+use Throwable;
 
 class AdminNavigationService
 {
@@ -29,88 +32,94 @@ class AdminNavigationService
     }
 
     /**
-     * @return list<array{id: string, label: string, icon: string, links: list<array{key: string, label: string, permissions: string|list<string>, icon: string}>}>
+     * Sidebar structure, ordered by how often editors need each area:
+     * daily tasks, then one dropdown per public page (navbar order), then
+     * site-wide settings, then administration. Links the user cannot open are removed.
+     *
+     * A section holds items of type "link" or "page". A page item holds
+     * "sections" (text categories) and "lists" (add/remove modules).
+     *
+     * @return list<array<string, mixed>>
      */
-    public function groups(?User $user = null): array
+    public function sections(?User $user = null): array
     {
         $user ??= service('adminAccess')->currentUser();
-        $groups = [];
+        $central = $this->isCentral();
+        $sections = [];
 
-        if ($this->isCentral()) {
-            $groups[] = [
+        if ($central) {
+            $sections[] = [
                 'id'    => 'platform',
                 'label' => 'Plateforme',
-                'icon'  => 'bi-diagram-2',
-                'links' => [
-                    ['key' => 'site', 'label' => 'Aperçu du site', 'permissions' => 'admin.access', 'icon' => 'bi-building'],
-                    ['key' => 'sites', 'label' => 'Facultés', 'permissions' => 'sites.manage', 'icon' => 'bi-bank'],
-                    ['key' => 'users', 'label' => 'Comptes & accès', 'permissions' => 'users.manage', 'icon' => 'bi-people'],
+                'items' => [
+                    $this->link('', 'Tableau de bord plateforme', 'bi-speedometer2', 'admin.access', ['accueil', 'statistiques']),
+                    $this->link('sites', 'Facultés', 'bi-bank', 'sites.manage', ['sites', 'instances']),
+                    $this->link('users', 'Comptes & rôles', 'bi-people', 'users.manage', ['utilisateurs', 'administrateurs', 'éditeurs', 'mot de passe']),
                 ],
             ];
         }
 
-        $groups[] = [
-            'id'    => 'home',
-            'label' => 'Accueil',
-            'icon'  => 'bi-house-door',
-            'links' => [
-                ['key' => 'home-hero-slides', 'label' => 'Héros (slides)', 'permissions' => 'home.manage', 'icon' => 'bi-images'],
-                ['key' => 'home-sections', 'label' => 'Sections & ordre', 'permissions' => 'home.manage', 'icon' => 'bi-list-ol'],
-                ['key' => 'site-stats', 'label' => 'Chiffres clés', 'permissions' => 'home.manage', 'icon' => 'bi-bar-chart'],
-                ['key' => 'home-content', 'label' => 'Textes des sections', 'permissions' => 'home.manage', 'icon' => 'bi-layout-text-window'],
-            ],
-        ];
+        if ($central && ! $this->facultyContentSelected($user)) {
+            $sections[] = [
+                'id'    => 'pages',
+                'label' => 'Pages du site',
+                'hint'  => 'Choisissez une faculté en haut de l’écran pour afficher ses pages.',
+                'items' => [],
+            ];
 
-        $groups[] = [
-            'id'    => 'site-pages',
-            'label' => 'Pages du site',
-            'icon'  => 'bi-layout-text-sidebar-reverse',
-            'links' => [
-                ['key' => 'posts', 'label' => 'Actualités & événements', 'permissions' => ['news.manage', 'events.manage'], 'icon' => 'bi-megaphone'],
-                ['key' => 'programmes', 'label' => 'Formations', 'permissions' => 'programmes.manage', 'icon' => 'bi-journal-bookmark'],
-                ['key' => 'faculty/profile', 'label' => 'Présentation & mot du doyen', 'permissions' => 'pages.manage', 'icon' => 'bi-person-vcard'],
-                ['key' => 'timeline-items', 'label' => 'Historique', 'permissions' => 'pages.manage', 'icon' => 'bi-clock-history'],
-                ['key' => 'staff', 'label' => 'Personnel', 'permissions' => 'staff.manage', 'icon' => 'bi-person-badge'],
-                ['key' => 'alumni-profiles', 'label' => 'Alumni', 'permissions' => 'alumni.manage', 'icon' => 'bi-award'],
-                ['key' => 'testimonials', 'label' => 'Témoignages', 'permissions' => 'alumni.manage', 'icon' => 'bi-chat-quote'],
-                ['key' => 'laboratories', 'label' => 'Laboratoires', 'permissions' => 'research.manage', 'icon' => 'bi-diagram-3'],
-                ['key' => 'publications', 'label' => 'Publications', 'permissions' => 'research.manage', 'icon' => 'bi-journal-text'],
-                ['key' => 'research-projects', 'label' => 'Projets', 'permissions' => 'research.manage', 'icon' => 'bi-briefcase'],
-            ],
-        ];
-
-        $groups[] = [
-            'id'    => 'messages',
-            'label' => 'Messages',
-            'icon'  => 'bi-envelope',
-            'links' => [
-                ['key' => 'messages', 'label' => 'Messages de contact', 'permissions' => 'messages.manage', 'icon' => 'bi-envelope-paper'],
-            ],
-        ];
-
-        $accountLinks = [];
-        if (! $this->isCentral()) {
-            $accountLinks[] = ['key' => 'users', 'label' => 'Comptes & accès', 'permissions' => 'users.manage', 'icon' => 'bi-people'];
+            return $this->visibleSections($sections, $user);
         }
-        if ($accountLinks !== []) {
-            $groups[] = [
-                'id'    => 'accounts',
-                'label' => 'Comptes & accès',
-                'icon'  => 'bi-people',
-                'links' => $accountLinks,
+
+        $daily = [];
+        if (! $central) {
+            $daily[] = $this->link('', 'Tableau de bord', 'bi-speedometer2', 'admin.access', ['accueil admin', 'résumé']);
+        } else {
+            $daily[] = $this->link('site', 'Aperçu de la faculté', 'bi-building', 'admin.access', ['tableau de bord faculté']);
+        }
+        $daily[] = $this->link('messages', 'Messages reçus', 'bi-envelope-paper', 'messages.manage', ['contact', 'boîte de réception', 'non lus'])
+            + ['badge' => $this->unreadMessages($user)];
+
+        $sections[] = ['id' => 'daily', 'label' => 'Au quotidien', 'items' => $daily];
+        $sections[] = ['id' => 'pages', 'label' => 'Pages du site', 'items' => $this->pageItems()];
+
+        $settingsLinks = [];
+        foreach (SettingsController::PAGES as $slug => $page) {
+            $settingsLinks[] = $this->link(
+                'settings/' . $slug,
+                $page['label'],
+                $page['icon'],
+                'settings.manage',
+                array_merge($page['keywords'], SettingsController::fieldLabels($slug)),
+            );
+        }
+        $sections[] = ['id' => 'settings', 'label' => 'Paramètres du site', 'items' => $settingsLinks];
+
+        if (! $central) {
+            $sections[] = [
+                'id'    => 'admin',
+                'label' => 'Administration',
+                'items' => [
+                    $this->link('users', 'Comptes & rôles', 'bi-people', 'users.manage', ['utilisateurs', 'administrateurs', 'éditeurs', 'mot de passe']),
+                ],
             ];
         }
 
-        $groups[] = [
-            'id'    => 'identity',
-            'label' => 'Identité',
-            'icon'  => 'bi-gear',
-            'links' => [
-                ['key' => 'settings/global', 'label' => 'Coordonnées & identité', 'permissions' => 'settings.manage', 'icon' => 'bi-gear'],
-            ],
-        ];
+        return $this->visibleSections($sections, $user);
+    }
 
-        return $this->visibleGroups($groups, $user);
+    /**
+     * Admin keys covered by a page dropdown, used to open the right one.
+     *
+     * @param array<string, mixed> $page
+     *
+     * @return list<string>
+     */
+    public function pageItemKeys(array $page): array
+    {
+        return array_map(
+            static fn (array $link): string => (string) $link['key'],
+            array_merge($page['sections'] ?? [], $page['lists'] ?? []),
+        );
     }
 
     /**
@@ -120,7 +129,102 @@ class AdminNavigationService
      */
     public function retiredResourceKeys(): array
     {
-        return ['pages', 'content-blocks', 'home-highlights'];
+        return ['pages', 'content-blocks', 'home-highlights', 'home-content'];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function pageItems(): array
+    {
+        $catalog = service('pageTextCatalog');
+        $items = [];
+
+        foreach ($catalog->pages() as $pageSlug => $page) {
+            $sectionLinks = [];
+            foreach ($page['segments'] as $segmentId => $segment) {
+                $fieldLabels = array_map(static fn (array $field): string => (string) $field['label'], $segment['fields'] ?? []);
+                $link = $this->link(
+                    $catalog->activeKey($pageSlug, $segmentId),
+                    (string) $segment['label'],
+                    (string) ($segment['icon'] ?? 'bi-fonts'),
+                    isset($segment['link']) ? 'home.manage' : (string) $page['permission'],
+                    array_merge($segment['keywords'] ?? [], array_values($fieldLabels)),
+                );
+                $link['url'] = $catalog->segmentUrl($pageSlug, $segmentId);
+                $sectionLinks[] = $link;
+            }
+
+            $listLinks = [];
+            foreach ($page['lists'] as $list) {
+                $listLinks[] = $this->link($list['key'], $list['label'], $list['icon'], $list['permissions'], $list['keywords'] ?? []);
+            }
+
+            $items[] = [
+                'type'       => 'page',
+                'id'         => $pageSlug,
+                'label'      => (string) $page['label'],
+                'icon'       => (string) $page['icon'],
+                'public_url' => $this->publicPageUrl((string) $page['public_path']),
+                'sections'   => $sectionLinks,
+                'lists'      => $listLinks,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param string|list<string> $permissions
+     * @param list<string>        $keywords
+     *
+     * @return array<string, mixed>
+     */
+    private function link(string $key, string $label, string $icon, string|array $permissions, array $keywords = []): array
+    {
+        return [
+            'type'        => 'link',
+            'key'         => $key,
+            'url'         => 'admin' . ($key === '' ? '' : '/' . $key),
+            'label'       => $label,
+            'icon'        => $icon,
+            'permissions' => $permissions,
+            'keywords'    => $keywords,
+        ];
+    }
+
+    /**
+     * Public URL of a page for the site being edited; null on the central host without a faculty.
+     */
+    private function publicPageUrl(string $path): ?string
+    {
+        $base = $this->previewUrl();
+        if ($base === null) {
+            return null;
+        }
+
+        return rtrim($base, '/') . '/' . ltrim($path, '/');
+    }
+
+    private function facultyContentSelected(?User $user): bool
+    {
+        return service('siteResolver')->hasExplicitAdminSiteSelection() || count($this->availableSites($user)) <= 1;
+    }
+
+    /**
+     * Contact messages still marked "new" for the active site (0 without messages.manage).
+     */
+    public function unreadMessages(?User $user): int
+    {
+        if (! $this->userCanLink($user, 'messages.manage')) {
+            return 0;
+        }
+
+        try {
+            return model(ContactMessageModel::class, false)->forSite()->where('status', 'new')->countAllResults();
+        } catch (Throwable) {
+            return 0;
+        }
     }
 
     /**
@@ -242,26 +346,39 @@ class AdminNavigationService
     }
 
     /**
-     * @param list<array{id: string, label: string, icon: string, links: list<array{key: string, label: string, permissions: string|list<string>, icon: string}>}> $groups
+     * @param list<array<string, mixed>> $sections
      *
-     * @return list<array{id: string, label: string, icon: string, links: list<array{key: string, label: string, permissions: string|list<string>, icon: string}>}>
+     * @return list<array<string, mixed>>
      */
-    private function visibleGroups(array $groups, ?User $user): array
+    private function visibleSections(array $sections, ?User $user): array
     {
+        $canSee = fn (array $link): bool => $this->userCanLink($user, $link['permissions']);
         $visible = [];
 
-        foreach ($groups as $group) {
-            $links = array_values(array_filter(
-                $group['links'],
-                fn (array $link): bool => $this->userCanLink($user, $link['permissions']),
-            ));
+        foreach ($sections as $section) {
+            $items = [];
+            foreach ($section['items'] as $item) {
+                if ($item['type'] === 'link') {
+                    if ($canSee($item)) {
+                        $items[] = $item;
+                    }
 
-            if ($links === []) {
+                    continue;
+                }
+
+                $item['sections'] = array_values(array_filter($item['sections'], $canSee));
+                $item['lists'] = array_values(array_filter($item['lists'], $canSee));
+                if ($item['sections'] !== [] || $item['lists'] !== []) {
+                    $items[] = $item;
+                }
+            }
+
+            if ($items === [] && empty($section['hint'])) {
                 continue;
             }
 
-            $group['links'] = $links;
-            $visible[] = $group;
+            $section['items'] = $items;
+            $visible[] = $section;
         }
 
         return $visible;

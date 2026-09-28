@@ -6,11 +6,22 @@ Ce guide s'adresse aux visiteurs du site.
 
 ## Accueil
 
-La page d'accueil présente la faculté, le carrousel d'images, les
-statistiques, les formations mises en avant, la recherche et les
-actualités/événements récents. Une ancienne section « atouts » peut encore
-apparaître si des données legacy existent en base ; elle n’est plus gérée
-depuis l’administration.
+La page d'accueil se lit de haut en bas dans l'ordre suivant : carrousel
+d'images avec deux boutons d'action, **accès rapides** (Formations,
+Recherche, Actualités & événements, Contact), chiffres clés, présentation,
+formations par niveau, actualités et événements récents (les événements
+affichent un bloc date), recherche et laboratoires, mot du doyen, équipe,
+mot d'accueil, puis un bloc contact avec l'adresse, les horaires et le
+téléphone. L'administration peut masquer ou réordonner ces sections. Une
+ancienne section « atouts » peut encore apparaître si des données legacy
+existent en base ; elle n’est plus gérée depuis l’administration.
+
+## Couleurs
+
+Chaque faculté a sa propre couleur, toujours une nuance du vert ou du rouge
+du logo de l'Université du Burundi. Les textes et boutons colorés restent
+lisibles (contraste conforme WCAG AA) et le site s'adapte au téléphone, à la
+tablette et à l'ordinateur.
 
 ## Langue
 

@@ -10,9 +10,11 @@ use App\Services\AdminNavigationService;
 use App\Services\ContentTranslationService;
 use App\Services\FacultySiteProvisioningService;
 use App\Services\MediaService;
+use App\Services\PageTextCatalog;
 use App\Services\PostVisibilityService;
 use App\Services\SettingsService;
 use App\Services\SiteResolverService;
+use App\Services\SiteThemeService;
 use App\Services\UserAdministrationService;
 use App\Services\SlugService;
 use CodeIgniter\Config\BaseService;
@@ -113,6 +115,15 @@ class Services extends BaseService
         return new AdminNavigationService();
     }
 
+    public static function pageTextCatalog(bool $getShared = true): PageTextCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('pageTextCatalog');
+        }
+
+        return new PageTextCatalog();
+    }
+
     public static function userAdministrationService(bool $getShared = true): UserAdministrationService
     {
         if ($getShared) {
@@ -138,6 +149,15 @@ class Services extends BaseService
         }
 
         return new SlugService();
+    }
+
+    public static function siteTheme(bool $getShared = true): SiteThemeService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('siteTheme');
+        }
+
+        return new SiteThemeService();
     }
 
     public static function mediaService(bool $getShared = true): MediaService

@@ -57,9 +57,17 @@ final class CentralAdminLockdownTest extends CIUnitTestCase
         $central->assertOK();
         $central->assertSee('Superadministration');
         $central->assertSee('Facultés');
-        $central->assertSee('Accueil');
-        $central->assertSee('Textes des sections');
+        $central->assertSee('Plateforme');
+        $central->assertSee('Pages du site');
+        $central->assertDontSee('Textes des sections');
         $central->assertDontSee('Créer une faculté');
+
+        $body = (string) $central->response()->getBody();
+        $this->assertLessThan(
+            strpos($body, '>Pages du site</h2>'),
+            strpos($body, '>Plateforme</h2>'),
+            'La section Plateforme doit précéder les sections de la faculté.',
+        );
     }
 
     public function testContentModulesAreEditableOnCentralInstance(): void
