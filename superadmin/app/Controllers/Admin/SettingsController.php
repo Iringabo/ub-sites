@@ -4,6 +4,7 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\SettingModel;
+use App\Services\AnalyticsService;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
 use Throwable;
@@ -21,9 +22,9 @@ class SettingsController extends BaseController
         'identity' => [
             'label'       => 'Identité & logo',
             'icon'        => 'bi-building',
-            'description' => 'Nom de la faculté, sigle, université et logo affichés dans le menu et le pied de page.',
-            'contexts'    => ['institution', 'assets'],
-            'keywords'    => ['nom de la faculté', 'sigle', 'université', 'logo', 'institution'],
+            'description' => 'Nom de la faculté, sigle, université, liens externes et logo affichés dans le menu et le pied de page.',
+            'contexts'    => ['institution', 'links', 'assets'],
+            'keywords'    => ['nom de la faculté', 'sigle', 'université', 'logo', 'institution', 'doctorat', 'études doctorales', 'école doctorale'],
         ],
         'contact' => [
             'label'       => 'Coordonnées',
@@ -49,9 +50,9 @@ class SettingsController extends BaseController
         'seo' => [
             'label'       => 'Référencement & partage',
             'icon'        => 'bi-search',
-            'description' => 'Titre et description par défaut dans Google, couleur du navigateur et image affichée lors d’un partage.',
-            'contexts'    => ['seo'],
-            'keywords'    => ['google', 'seo', 'référencement', 'couleur du thème', 'image de partage', 'réseaux'],
+            'description' => 'Titre et description par défaut dans Google, couleur du navigateur, image affichée lors d’un partage et mesure d’audience facultative.',
+            'contexts'    => ['seo', 'analytics'],
+            'keywords'    => ['google', 'seo', 'référencement', 'couleur du thème', 'image de partage', 'réseaux', 'statistiques', 'matomo', 'plausible', 'audience'],
         ],
     ];
 
@@ -60,11 +61,13 @@ class SettingsController extends BaseController
      */
     private const CONTEXT_TITLES = [
         'institution' => 'Institution',
+        'links'       => 'Liens externes',
         'assets'      => 'Logo',
         'contact'     => 'Coordonnées',
         'social'      => 'Réseaux sociaux',
         'footer'      => 'Pied de page',
         'seo'         => 'Référencement & partage',
+        'analytics'   => 'Mesure d’audience (facultative, sans cookie)',
     ];
 
     public function index(string $page = 'identity'): string|ResponseInterface
@@ -178,6 +181,18 @@ class SettingsController extends BaseController
                 continue;
             }
 
+            if ($type === 'url' && $raw !== '' && (! str_starts_with($raw, 'https://') || filter_var($raw, FILTER_VALIDATE_URL) === false)) {
+                $errors[$key] = $definition['label'] . ' doit être une adresse commençant par « https:// ».';
+                $hasError = true;
+                continue;
+            }
+
+            if ($key === 'analytics.site_id' && $raw !== '' && preg_match('/^[A-Za-z0-9._-]{1,120}$/', $raw) !== 1) {
+                $errors[$key] = $definition['label'] . ' contient des caractères non autorisés.';
+                $hasError = true;
+                continue;
+            }
+
             if ($type === 'color' && $raw !== '' && preg_match('/^#[0-9a-fA-F]{6}$/', $raw) !== 1) {
                 $errors[$key] = $definition['label'] . ' doit utiliser le format #RRGGBB.';
                 $hasError = true;
@@ -196,7 +211,7 @@ class SettingsController extends BaseController
                 }
             }
 
-            $this->upsert($model, $siteId, $key, $raw, $type === 'select' ? 'string' : $type, $definition['context'], $errors, $hasError);
+            $this->upsert($model, $siteId, $key, $raw, in_array($type, ['select', 'url'], true) ? 'string' : $type, $definition['context'], $errors, $hasError);
         }
 
         foreach ($definitions as $key => $definition) {
@@ -303,6 +318,8 @@ class SettingsController extends BaseController
             'institution.faculty_name' => ['label' => 'Nom complet de la faculté', 'type' => 'string', 'context' => 'institution'],
             'institution.short_name'   => ['label' => 'Sigle de la faculté', 'type' => 'string', 'context' => 'institution'],
             'institution.university'   => ['label' => 'Université', 'type' => 'string', 'context' => 'institution'],
+            'institution.university_url' => ['label' => 'Site web de l’université', 'type' => 'url', 'context' => 'institution'],
+            'links.doctoral_studies_url' => ['label' => 'Site des études doctorales (laissez vide tant qu’il n’existe pas)', 'type' => 'url', 'context' => 'links'],
             'contact.address_line'     => ['label' => 'Avenue / quartier', 'type' => 'string', 'context' => 'contact'],
             'contact.address_commune'  => ['label' => 'Commune', 'type' => 'string', 'context' => 'contact'],
             'contact.address_province' => ['label' => 'Province', 'type' => 'string', 'context' => 'contact'],
@@ -318,6 +335,9 @@ class SettingsController extends BaseController
             'seo.default_description'  => ['label' => 'Description SEO par défaut', 'type' => 'text', 'context' => 'seo'],
             'seo.theme_color'          => ['label' => 'Couleur du thème', 'type' => 'color', 'context' => 'seo'],
             'seo.og_image'             => ['label' => 'Image de partage par défaut', 'type' => 'path', 'context' => 'seo'],
+            'analytics.provider'       => ['label' => 'Outil de mesure d’audience', 'type' => 'select', 'context' => 'analytics', 'options' => AnalyticsService::PROVIDERS],
+            'analytics.url'            => ['label' => 'Adresse de votre instance (https://…)', 'type' => 'url', 'context' => 'analytics'],
+            'analytics.site_id'        => ['label' => 'Identifiant du site (Matomo) ou domaine (Plausible)', 'type' => 'string', 'context' => 'analytics'],
         ];
     }
 

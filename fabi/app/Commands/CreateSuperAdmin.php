@@ -58,6 +58,12 @@ class CreateSuperAdmin extends BaseCommand
             return EXIT_ERROR;
         }
 
+        if ($this->usernameAlreadyExists($username)) {
+            CLI::error('Un utilisateur avec ce nom d’utilisateur existe déjà.');
+
+            return EXIT_ERROR;
+        }
+
         /** @var UserModel $users */
         $users = model(UserModel::class);
         $user  = new User([
@@ -92,16 +98,22 @@ class CreateSuperAdmin extends BaseCommand
         return EXIT_SUCCESS;
     }
 
-    private function optionString(string $name): ?string
+    /**
+     * @param array<int|string, mixed> $params
+     */
+    private function optionString(string $name, array $params = []): ?string
     {
-        $value = CLI::getOption($name);
+        $value = $params[$name] ?? CLI::getOption($name);
 
         return is_string($value) && $value !== '' ? $value : null;
     }
 
-    private function resolvePassword(): string
+    /**
+     * @param array<int|string, mixed> $params
+     */
+    private function resolvePassword(array $params = []): string
     {
-        $envName = $this->optionString('password-env');
+        $envName = $this->optionString('password-env', $params);
 
         if ($envName !== null) {
             $password = getenv($envName);
@@ -151,6 +163,13 @@ class CreateSuperAdmin extends BaseCommand
         return db_connect()->table('auth_identities')
             ->where('type', Session::ID_TYPE_EMAIL_PASSWORD)
             ->where('secret', $email)
+            ->countAllResults() > 0;
+    }
+
+    private function usernameAlreadyExists(string $username): bool
+    {
+        return db_connect()->table(config('Auth')->tables['users'])
+            ->where('username', $username)
             ->countAllResults() > 0;
     }
 

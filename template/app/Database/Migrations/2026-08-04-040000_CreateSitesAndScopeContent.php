@@ -83,7 +83,7 @@ class CreateSitesAndScopeContent extends Migration
 
         // Aucun site n'est créé ici : le modèle reste neutre. Les sites
         // facultaires sont créés par php spark site:create (voir
-        // docs/CREER_UN_SITE.md) ou un seeder de test.
+        // template/docs/CREER_UN_SITE.md) ou un seeder de test.
     }
 
     private function createUserSites(): void

@@ -1,214 +1,276 @@
 # Guide administrateur
 
-Dernière actualisation : 27 septembre 2026.
-
-Ce guide décrit le back-office tel qu’il fonctionne aujourd’hui. L’interface
-est en français. Les textes anglais du site public se saisissent dans
-l’onglet « English » lorsqu’il est proposé.
-
-## Menu admin (architecture actuelle)
-
-Le menu suit ce que voit le visiteur, en quatre sections, de la plus
-utilisée à la plus rare :
-
-1. **Au quotidien** : Tableau de bord, **Messages reçus** (la pastille
-   indique le nombre de messages non lus).
-2. **Pages du site** : un menu déroulant par page publique, dans l’ordre du
-   menu du site (Accueil, La Faculté, Formations, Recherche, Corps
-   enseignant, Actualités & événements, Alumni, Contact). L’icône
-   ↗ à côté du nom ouvre la page publique. Chaque menu contient :
-   - **Sections de la page** : de petits formulaires (2 à 6 champs), un par
-     bloc visible, du haut vers le bas de la page. Enregistrer une section ne
-     modifie que ses propres champs.
-   - **Listes** : les éléments que l’on ajoute ou retire (programmes,
-     laboratoires, personnel, articles, témoignages…). **Chiffres clés**
-     reste sous Accueil.
-3. **Paramètres du site** (affichés sur toutes les pages) : Identité & logo,
-   Coordonnées, Réseaux sociaux, Pied de page, Référencement & partage.
-   Chacun est une petite page (`/admin/settings/identity`, `contact`,
-   `social`, `footer`, `seo`).
-4. **Administration** : Comptes & rôles.
-
-Sur l’instance centrale, la section **Plateforme** vient en premier ; les
-sections de la faculté n’apparaissent qu’après avoir choisi une faculté.
-Les modules « Pages institutionnelles », « Blocs de page », « Points forts »
-et « Textes des sections » sont retirés de l’UI.
-
-### Trouver un texte : Ctrl+K
-
-**Ctrl+K** (ou le bouton **Rechercher**) ouvre une recherche sur tout le
-menu : nom de la section, nom de la page et libellés des champs. Les accents
-sont facultatifs. Exemples : « doyen » → La Faculté › Mot du doyen ;
-« carte » → Contact › Carte ; « témoignages » ; « téléphone » → Paramètres
-du site › Coordonnées. **Entrée** ouvre le premier résultat.
-
-### Bandeau de chaque page
-
-Chaque page publique (sauf l’accueil, qui a son carrousel) a une section
-**Bandeau** : image de fond (large, 1600 px minimum ; commune FR/EN), titre
-et sous-titre (FR/EN). Titre vide = nom standard de la page. Le fil
-d’Ariane « Accueil / Page » n’est pas modifiable.
-
-Sur l’accueil, chaque image du **Carrousel d’images** porte badge, titre,
-texte et boutons (lien via liste déroulante) ; la taille des pastilles se
-règle sur cette même page. L’ordre et la visibilité des blocs se gèrent dans
-**Ordre des blocs** (glisser-déposer). Le voile du carrousel est fixe
-(30 %) — plus de réglage admin.
-
-Sur l’instance centrale, choisissez une faculté dans le sélecteur : le
-contenu se recharge pour cette faculté (jamais un formulaire d’édition
-d’un autre site). Les domaines autorisés ne s’éditent pas depuis
-superadmin ; les couleurs se choisissent avec un sélecteur de couleur.
+Ce guide décrit l’administration d’un site de faculté (`/admin`) et ce que
+voit le visiteur. L’interface d’administration est en français ; les
+textes anglais du site public se saisissent dans l’onglet « English »
+lorsqu’il est proposé (un champ anglais vide affiche le texte français).
 
 ## Connexion
 
-Aller sur `/admin`. Utiliser l’adresse e-mail et le mot de passe fournis.
+- **Personnel d’une faculté** : se connecter sur le `/admin` **de son
+  site** avec l’adresse e-mail et le mot de passe fournis.
+- **Superadministrateur** : se connecter sur l’adresse de la
+  superadministration ; seul le groupe `superadmin` y est accepté.
 
-- Une faculté : se connecter sur le `/admin` **de son dossier** (exemples
-  locaux : FSEG `http://localhost:8101/admin`, FSI `:8102`, MED `:8104`,
-  FABI `:8105`, FLSH `:8106`).
-- Superadministrateur : se connecter sur le dossier `superadmin/`
-  (`http://localhost:8103/admin`). Seul le groupe Shield `superadmin` y est
-  accepté.
-
-Consulter une page publique **ne déconnecte pas**. La session se termine
-uniquement avec **Déconnexion**.
-
-La case **Se souvenir de moi** (30 jours) n’est proposée que sur les
-dossiers facultaires. Ne pas l’utiliser sur un ordinateur partagé : elle
-reconstruit la session sans mot de passe. L’instance superadmin la
-désactive.
-
+Consulter le site public ne déconnecte pas ; la session se termine avec
+**Déconnexion**. La case **Se souvenir de moi** (30 jours) n’existe que sur
+les sites de faculté ; ne pas l’utiliser sur un ordinateur partagé.
 **Voir le site** ouvre le site public dans un nouvel onglet.
-
-## Zones de travail
-
-Une entrée sans droit disparaît ; une section vide aussi.
-
-### Tableau de bord
-
-Synthèse du site actif, messages récents, et une liste de mise en route tant
-que des textes d’exemple (« à remplacer ») n’ont pas été écrasés. Les
-**actions rapides** (Publier une actualité, Ajouter un événement, Voir les
-messages non lus) respectent les permissions.
-
-### Pages du site
-
-Une page = un menu déroulant. Exemple pour La Faculté : Bandeau, Mot du
-doyen (avec photo), Mission & vision, Valeurs, Historique, puis la liste
-**Frise chronologique**. Quand une information vit ailleurs (adresse,
-téléphone), le formulaire affiche un lien vers le bon écran.
-
-Sur l’accueil et sur `/actualites` (« Tous »), actualités et événements
-sont mélangés dans un seul fil ; la recherche couvre les deux types et
-affiche « Aucun résultat ne correspond à votre recherche. » si rien ne
-correspond.
-
-Pour peupler localement une faculté « comme terminée » (contenu + images
-isolées par site) : depuis `superadmin/`, `php spark site:seed-demo --force`
-(voir `docs/LOCAL_OPERATIONS.md`). Le seed applique aussi la couleur par
-défaut de chaque faculté (FSEG émeraude, FSI vert forêt, FABI vert feuille,
-MED cramoisi, FLSH bordeaux).
-
-**Sections & ordre** (Accueil) : la section **Accès rapides** affiche quatre
-raccourcis fixes (Formations, Recherche, Actualités & événements, Contact)
-sous le carrousel ; elle se masque ou se déplace comme les autres. L'ordre
-recommandé est carrousel → accès rapides → chiffres clés → présentation →
-formations → actualités → recherche → mot du doyen → équipe → mot d'accueil
-→ contact.
-
-**Couleur de la faculté** : le superadministrateur choisit la couleur
-principale (et, au besoin, la couleur foncée) dans la fiche du site
-(Plateforme › Facultés). Toutes les nuances du site public (boutons, titres,
-fonds pâles, pied de page) en découlent automatiquement ; choisissez une
-nuance du vert ou du rouge du logo de l'Université du Burundi. Les boutons et
-textes colorés sont assombris si nécessaire pour rester lisibles.
-
-Pour l’aperçu sur l’accueil : cochez **Mis en avant sur l’accueil** (et
-éventuellement **Ordre sur l’accueil**) sur les formations, laboratoires et
-membres du personnel concernés. Pour les actualités / événements, utilisez
-**Mettre en avant sur l’accueil**. L’accueil affiche au plus quatre personnes
-et trois actualités/événements mis en avant.
-
-Les projets et laboratoires sont indépendants. Les formations ne sont pas
-liées obligatoirement au personnel. Un témoignage peut, ou non, pointer vers
-un profil alumni.
-
-### Messages reçus
-
-Filtrer, ouvrir, marquer lu / traité, archiver, supprimer (suppression
-logique ; pas d’écran de restauration).
-
-### Paramètres du site et Administration
-
-Visible pour l’administrateur de faculté et le superadministrateur.
-
-- **Paramètres du site** : cinq petites pages (identité & logo,
-  coordonnées, réseaux sociaux, pied de page, référencement & partage).
-  Enregistrer une page ne modifie que ses champs. Jamais de secrets
-  techniques. L’ancienne adresse `/admin/settings/global` redirige vers
-  Identité & logo.
-- **Comptes & rôles** (dossier facultaire) : comptes de **cette** faculté.
-  L’administrateur de faculté y crée un **administrateur** ou un
-  **éditeur** de sa faculté.
-
-Sur l’instance superadmin, le groupe **Plateforme** s’ajoute : aperçu du
-site choisi, liste des facultés, comptes de toutes les facultés (y compris
-création d’administrateurs de faculté).
 
 ## Qui peut faire quoi
 
 | Rôle | Où | Droits |
 |---|---|---|
-| Éditeur | `/admin` de sa faculté | Tableau de bord + Pages du site. Pas de messages, pas de paramètres, pas de comptes. |
-| Administrateur de faculté | `/admin` de sa faculté | Les quatre sections. Crée un **administrateur** ou un **éditeur** pour *sa* faculté. Pas de superadmin, pas d’autre site. |
-| Superadministrateur | dossier `superadmin/` | Plateforme + les sections de la faculté **choisie**. |
+| Éditeur | `/admin` de sa faculté | tableau de bord et pages du site ; ni messages, ni paramètres, ni comptes |
+| Administrateur de faculté | `/admin` de sa faculté | les quatre sections du menu ; crée des administrateurs et des éditeurs de **sa** faculté |
+| Superadministrateur | superadministration | plateforme et sections de la faculté **choisie** ; crée des administrateurs et éditeurs de faculté |
 
 Le personnel d’une faculté ne peut pas administrer une autre faculté, même
-en tapant une autre URL.
+en tapant une autre adresse. Une entrée de menu sans droit disparaît.
 
+## Le menu
 
-## Choisir une faculté (superadmin)
+1. **Au quotidien** : tableau de bord (synthèse, messages récents, liste de
+   mise en route tant que des textes « à remplacer » subsistent, actions
+   rapides) et **Messages reçus** (la pastille compte les non lus).
+2. **Pages du site** : un menu par page publique, dans l’ordre du site
+   (Accueil, La Faculté, Départements, Formations, Admissions, FAQ,
+   Recherche, Corps enseignant, Actualités & événements, Alumni, Contact,
+   Mentions légales & confidentialité). Chaque menu contient :
+   - **Sections de la page** : un petit formulaire par bloc visible, du haut
+     vers le bas de la page ; enregistrer une section ne modifie que ses
+     champs ;
+   - **Listes** : les éléments que l’on ajoute ou retire (formations,
+     départements, personnel, articles, laboratoires, témoignages…).
+3. **Paramètres du site** : Identité & logo, Coordonnées, Réseaux sociaux,
+   Pied de page, Référencement & partage.
+4. **Administration** : Comptes & rôles.
 
-1. Le tableau de bord liste les facultés **réelles** (pas le modèle interne
-   `template` / `demo`).
-2. **Gérer le contenu** ou le sélecteur en haut enregistre la faculté active.
-3. L’édition se fait **ici**, sans ouvrir le dossier de la faculté.
-4. **Facultés** permet de modifier nom, domaines, statut, couleurs. On ne
-   **crée** pas une faculté depuis cet écran : copier le dossier `template/`
-   (voir `template/docs/CREER_UN_SITE.md`).
+**Ctrl+K** (ou le bouton **Rechercher**) cherche dans tout le menu : nom de
+section, nom de page et libellés des champs, accents facultatifs
+(« doyen » → La Faculté › Mot du doyen ; « téléphone » → Paramètres ›
+Coordonnées). **Entrée** ouvre le premier résultat.
 
-## Comptes & accès
+## Choisir une page pour un lien
 
-Selon les droits :
+Les boutons des pages (« Lien du bouton ») et les boutons du carrousel
+réglés sur « Autre page ou lien externe » se remplissent avec un
+**sélecteur de page** :
 
-- créer un compte, modifier nom / e-mail / actif ;
-- réinitialiser un mot de passe ;
-- côté faculté : rôle **administrateur** ou **éditeur de cette faculté** ;
-- côté superadmin : rôle **administrateur** ou **éditeur** de la faculté choisie.
+- cliquez dans le champ (ou sur la flèche) : la liste de toutes les pages du
+  site s’ouvre, groupées en Pages principales, Départements, Formations,
+  Corps enseignant et Actualités ;
+- tapez le début d’un mot du titre (« form », « génie », « contact ») : la
+  liste ne garde que les pages dont un mot commence ainsi, accents
+  facultatifs ;
+- choisissez avec la souris, ou avec les flèches et **Entrée** ;
+- pour un site externe, collez son adresse complète (`https://…`) puis
+  choisissez « Utiliser cette adresse » ;
+- l’adresse retenue s’affiche sous le champ ; la croix vide le champ.
 
-Côté faculté, le formulaire propose deux cartes : Administrateur (gère
-aussi messages, paramètres et comptes) ou Éditeur (contenus uniquement).
-Côté superadmin, on choisit le groupe plateforme puis la faculté
-(pré-cochée = faculté active) et le rôle sur cette faculté.
+Le lien suit la langue du visiteur : une page choisie ici s’ouvre en
+anglais sur la version anglaise du site.
 
-L’écran facultaire propose un seul site (le sien) et un rôle, pas une grille
-de permissions. On ne peut pas se retirer soi-même l’accès admin ni
-désactiver le dernier superadministrateur.
+## Les pages
 
-## Contenus : règles communes
+### Bandeau
 
-- **Actualités / événements** : brouillon, programmé, publié, archivé.
-- **Pages** : pages prédéfinies ; création et suppression désactivées.
-- **Mot du doyen** : photo commune aux deux langues (JPG, PNG, WebP).
-- Les champs anglais vides affichent le français sur le site public.
+Chaque page sauf l’accueil a une section **Bandeau** : image de fond
+(paysage, 1600 px de large au minimum, commune aux deux langues), titre et
+sous-titre. Un titre vide affiche le nom standard de la page.
 
-## Langue
+### Accueil
 
-Le public peut choisir français ou anglais (cookie `site_locale_{slug}`).
-L’administration reste en français.
+- **Carrousel d’images** : chaque image porte un texte alternatif, un
+  badge, un titre, un texte et deux boutons ; le lien d’un bouton se choisit
+  dans une liste (Formations, Contact, Actualités, Présentation, Présentation
+  & mot du doyen, autre page ou lien externe, aucun bouton).
+- **Présentation**, **Bloc recherche**, **Bloc formations**, **Bloc
+  actualités** : petit libellé, titre, texte, bouton.
+- **Ordre des blocs** : cocher et glisser-déposer les sections (carrousel,
+  accès rapides, chiffres clés, présentation, formations, actualités,
+  recherche, mot du doyen, équipe, mot d’accueil, contact). Les **accès
+  rapides** sont quatre raccourcis fixes (Formations, Recherche, Actualités
+  & événements, Contact) ; ils se masquent ou se déplacent comme les autres.
+- **Référencement Google** : titre et description de la page d’accueil.
+- Liste **Chiffres clés**.
+- Pour l’aperçu sur l’accueil, cochez **Mis en avant sur l’accueil** (et
+  l’ordre) sur les formations, laboratoires et membres du personnel ; pour
+  les articles, **Mettre en avant sur l’accueil**. L’accueil montre au plus
+  quatre personnes, huit actualités (mises en avant puis récentes) et les
+  huit prochains événements.
 
-## Déconnexion
+### La Faculté
 
-Bouton **Déconnexion** du back-office. Ensuite, `/admin` redemande une
-connexion.
+Mot du doyen (photo, nom, fonction, message en paragraphes, signature),
+Mission & vision, Valeurs (trois), Historique, puis les listes **Frise
+chronologique** et **Partenaires** (nom, type, pays, logo, site web). Les
+partenaires publiés défilent en bandeau de logos ; il n’y a pas de page
+Partenaires.
+
+### Départements
+
+Nom, sigle, **cycle** (licence, master ou les deux), présentation, chef de
+département (liste du personnel), e-mail, téléphone et **maquette des
+cours** : un PDF facultatif (10 Mo maximum, vérifié) avec son intitulé
+(« Maquette des cours 2024-2025 »). La maquette se télécharge depuis la
+section « Organisation des études » de la page du département ; cochez
+« Supprimer » pour la retirer. Le département d’une formation ou d’un
+membre du personnel se choisit dans sa fiche ; la liste ne propose que les
+départements du niveau choisi.
+
+### Formations
+
+Chaque formation : niveau (**licence** ou **master** uniquement), département,
+résumé, description, durée, crédits, langue, date limite, **conditions
+d’accès** (points requis à l’Examen d’État ; les études sont gratuites pour
+les lauréats), débouchés, lien « Candidater », coordinateur, brochure PDF
+(10 Mo). Le **programme des cours** se saisit une ligne par cours :
+`Semestre 1 | Intitulé du cours | 6` (crédits facultatifs).
+
+**Options et parcours d’études.** Chaque option est une formation à part
+(au département TIC : GI, GL, RT, SE). Dans la section « Parcours
+d’études » :
+
+- **Sigle de l’option** : affiché en pastille sur les cartes ;
+- **Tronc commun** : donnez **le même nom** aux formations du même niveau
+  qui suivent les mêmes cours au début, même dans des départements
+  différents (« Tronc commun FSI ») ; la liste propose les noms déjà
+  utilisés ; un tronc commun exige un département ;
+- **Durée du tronc commun** : 1 à 3 ans ; vide = Bac I et Bac II en
+  licence, première année en master ;
+- **Tronc commun de filière** : second tronc plus étroit qui suit le
+  premier (« Tronc commun GI-GL » en Bac II), avec sa durée (1 an par
+  défaut).
+
+La durée totale des troncs doit rester inférieure à celle de la formation.
+Un tronc n’apparaît que s’il est partagé par au moins deux formations
+publiées.
+
+**Pas de doctorat.** Les études doctorales relèvent d’un site dédié :
+renseignez son adresse dans Paramètres › Identité & logo (« Site des études
+doctorales »). Tant que le champ est vide, rien ne s’affiche ; une fois
+rempli, un encadré « Études doctorales » apparaît sous les formations et un
+lien s’ajoute au pied de page.
+
+Section de page **Appel à candidater** : titre, texte, bouton et lien
+(sélecteur de page).
+
+### Admissions et FAQ
+
+Admissions : procédure (une étape par paragraphe), pièces du dossier,
+texte « Gratuité et frais annexes », bouton de candidature. Le tableau des
+dates limites se remplit seul depuis les formations ; les questions en bas
+de page viennent de la FAQ (thème « Admissions »).
+
+FAQ : chaque question porte un thème (Admissions, Frais et gratuité,
+Études, Autres questions). La page `/faq` n’est listée dans le plan du site
+que si une question est publiée.
+
+### Recherche, Corps enseignant, Alumni
+
+- Recherche : textes des blocs laboratoires, publications et projets, puis
+  les trois listes. Projets et laboratoires sont indépendants.
+- Corps enseignant : catégorie, département, photo, grade, spécialité,
+  fonction, e-mail, biographie.
+- Alumni : introduction, profils, témoignages, appel final ; un témoignage
+  peut pointer vers un profil alumni.
+
+### Actualités & événements
+
+Statut (brouillon, programmé, publié, archivé), image, extrait, texte en
+paragraphes séparés par une ligne vide (les balises `<p>` ou `<br>` collées
+sont retirées), **Auteur** (prérempli, modifiable : « Décanat »), **PDF
+joint** facultatif (10 Mo, « Retirer le fichier » pour le supprimer). Un
+événement a des dates, un lieu, un lien d’inscription et propose « Ajouter
+à mon agenda ».
+
+### Contact et mentions légales
+
+Contact : titres, texte d’aide du formulaire et carte intégrée (adresse
+`https://` d’intégration Google Maps). L’adresse, le téléphone, l’e-mail et
+les horaires se modifient dans Paramètres › Coordonnées.
+
+Mentions légales : éditeur, hébergement, données personnelles, cookies. Un
+champ vide affiche un texte générique neutre ; remplacez-le par les
+informations réelles de l’université avant la mise en ligne.
+
+## Messages reçus
+
+Filtrer, ouvrir, marquer lu ou traité, archiver, supprimer (suppression
+logique).
+
+## Paramètres du site
+
+Réservés à l’administrateur de faculté et au superadministrateur.
+Enregistrer une page ne modifie que ses champs.
+
+- **Identité & logo** : nom et sigle de la faculté, université, site web
+  de l’université, site des études doctorales, logo.
+- **Coordonnées** : avenue ou quartier, commune, province, pays,
+  téléphone, e-mail, horaires.
+- **Réseaux sociaux** et **Pied de page** (texte, copyright).
+- **Référencement & partage** : titre et description par défaut, couleur
+  du thème, image de partage, et mesure d’audience facultative sans cookie
+  (Plausible ou Matomo : outil, adresse `https://` de l’instance,
+  identifiant ; le script n’est chargé que si les trois champs sont remplis).
+
+## Comptes & rôles
+
+- **Côté faculté** : comptes de cette faculté ; deux cartes de rôle,
+  Administrateur (gère aussi messages, paramètres et comptes) ou Éditeur
+  (contenus uniquement). On ne peut pas se retirer soi-même l’accès.
+- **Côté superadministration** : choisir le rôle (Administrateur ou
+  Éditeur de faculté), puis cocher une ou plusieurs facultés. Un compte sans
+  rôle ou sans faculté est refusé.
+- **Superadministrateurs** : ils ne se créent **pas** depuis l’écran, mais
+  en ligne de commande sur le serveur de la superadministration ; leur ligne
+  porte le badge « Superadministrateur (ligne de commande) », sans bouton.
+- **Supprimer un compte** l’efface définitivement ; le même nom
+  d’utilisateur et la même adresse e-mail peuvent ensuite être réutilisés.
+
+## Superadministration
+
+1. Le tableau de bord liste les facultés réelles.
+2. **Gérer le contenu** ou le sélecteur en haut de l’écran choisit la
+   faculté active : le menu affiche alors ses pages.
+3. L’édition se fait ici, sans ouvrir le site de la faculté.
+4. **Facultés** permet de modifier le nom, le statut et les couleurs d’une
+   faculté (nuance du vert ou du rouge du logo de l’université ; toutes les
+   nuances du site en découlent, assombries si nécessaire pour rester
+   lisibles). Les domaines ne se modifient pas depuis l’écran et aucune
+   faculté ne se crée depuis l’écran.
+
+## Ce que voit le visiteur
+
+- **Menu** : deux menus déroulants, La Faculté (Faculté, Départements) et
+  Formations (Formations, Admissions, FAQ), puis Recherche, Corps
+  enseignant, Actualités, Alumni, Contact ; une loupe ouvre la recherche
+  sur tout le site.
+- **Langue** : français par défaut ; la version anglaise a sa propre
+  adresse (`?lang=en`). Sans traduction, le texte français s’affiche.
+- **Accueil** : carrousel, accès rapides, chiffres clés, présentation,
+  formations par niveau, carrousels « Actualités » et « Événements »,
+  recherche, mot du doyen, équipe, mot d’accueil, bloc contact (ordre réglé
+  par l’administration).
+- **Départements** : regroupés par cycle ; chaque page présente les
+  chiffres clés, le chef, l’« Organisation des études » (troncs puis
+  options, avec liens vers les départements qui partagent un tronc), la
+  maquette PDF, les formations et le personnel.
+- **Formations** : licences et masters, filtre par département ; la fiche
+  affiche niveau, durée, crédits, langue, date limite, conditions d’accès,
+  étapes du parcours, programme par semestre, débouchés, coordinateur,
+  brochure et boutons « Candidater » et « Comment candidater ».
+- **Admissions** : procédure en étapes, pièces, gratuité, dates limites,
+  questions fréquentes. **FAQ** : questions par thème, réponses dépliables.
+- **Corps enseignant** : filtres par catégorie, département, grade et nom ;
+  pages de 24 personnes.
+- **Actualités** : filtres par type et « À venir / Passés » ; auteur, PDF
+  joint, fichier agenda pour les événements.
+- **Contact** : nom, e-mail, sujet et message obligatoires, téléphone
+  facultatif ; le message arrive dans « Messages reçus ».
+- **Pied de page** : liens rapides, coordonnées, réseaux sociaux, site de
+  l’université et autres facultés, mentions légales, lien Administration.
+- **Cookies** : seulement ceux nécessaires (session, sécurité des
+  formulaires, langue) ; la mesure d’audience éventuelle est sans cookie et
+  signalée dans les mentions légales.

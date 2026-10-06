@@ -483,3 +483,312 @@ document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach(
         });
     });
 })();
+
+document.querySelectorAll('select[data-level-filter]').forEach((select) => {
+    const form = select.closest('form');
+    const level = form ? form.querySelector(`select[name="${select.dataset.levelFilter}"]`) : null;
+
+    if (!level) {
+        return;
+    }
+
+    const accepts = (cycle, value) => {
+        if (cycle === 'licence') {
+            return value === 'licence';
+        }
+        if (cycle === 'master') {
+            return value === 'master';
+        }
+        return true;
+    };
+
+    const apply = () => {
+        select.querySelectorAll('option[data-cycle]').forEach((option) => {
+            const allowed = accepts(option.dataset.cycle, level.value);
+            option.hidden = !allowed;
+            option.disabled = !allowed;
+            if (!allowed && option.selected) {
+                select.value = '';
+            }
+        });
+    };
+
+    level.addEventListener('change', apply);
+    apply();
+});
+
+document.querySelectorAll('[data-link-picker]').forEach((picker) => {
+    const input = picker.querySelector('[data-link-picker-input]');
+    const list = picker.querySelector('[role="listbox"]');
+    const toggle = picker.querySelector('[data-link-picker-toggle]');
+    const clear = picker.querySelector('[data-link-picker-clear]');
+    const address = picker.querySelector('[data-link-picker-address]');
+
+    if (!input || !list || !input.name) {
+        return;
+    }
+
+    const normalize = (value) => value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[’']/g, ' ')
+        .toLowerCase()
+        .trim();
+    const words = (value) => normalize(value).split(/[^a-z0-9]+/).filter(Boolean);
+    const isAddress = (value) => /^(https?:\/\/|\/|#)/i.test(value.trim());
+    const trimSlash = (value) => (value.length > 1 ? value.replace(/\/+$/, '') : value);
+    const sameUrl = (a, b) => trimSlash(a.replace(/^\/#/, '#')) === trimSlash(b.replace(/^\/#/, '#'));
+
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = input.name;
+    hidden.value = input.value.trim();
+    input.removeAttribute('name');
+    picker.appendChild(hidden);
+
+    const options = Array.from(list.querySelectorAll('[role="option"]')).map((element) => ({
+        element,
+        value: element.dataset.value || '',
+        label: element.dataset.label || '',
+        group: element.dataset.group || '',
+        words: words(`${element.dataset.label || ''} ${element.dataset.group || ''}`),
+    }));
+    const groups = Array.from(list.querySelectorAll('[data-link-picker-group]'));
+
+    const freeOption = document.createElement('li');
+    freeOption.className = 'link-picker-option link-picker-free';
+    freeOption.id = `${input.id}-option-free`;
+    freeOption.setAttribute('role', 'option');
+    freeOption.setAttribute('aria-selected', 'false');
+    freeOption.hidden = true;
+    list.prepend(freeOption);
+
+    const empty = document.createElement('li');
+    empty.className = 'link-picker-empty';
+    empty.setAttribute('role', 'presentation');
+    empty.textContent = 'Aucune page ne correspond. Pour un site externe, collez son adresse complète (https://…).';
+    empty.hidden = true;
+    list.appendChild(empty);
+
+    let visible = [];
+    let active = -1;
+
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', list.id);
+    if (toggle) {
+        toggle.hidden = false;
+    }
+
+    const optionFor = (value) => (value === '' ? undefined : options.find((option) => sameUrl(option.value, value)));
+
+    const updateAddress = () => {
+        const value = hidden.value;
+        if (clear) {
+            clear.hidden = value === '' && input.value === '';
+        }
+        if (!address) {
+            return;
+        }
+        address.hidden = value === '';
+        if (value === '') {
+            address.textContent = '';
+        } else if (optionFor(value)) {
+            address.textContent = `Adresse : ${value}`;
+        } else if (isAddress(value)) {
+            address.textContent = `Lien saisi : ${value}`;
+        } else {
+            address.textContent = `Aucune page ne s’appelle « ${value} ». Choisissez dans la liste ou collez une adresse complète.`;
+        }
+    };
+
+    const setActive = (index) => {
+        visible.forEach((element) => {
+            element.classList.remove('active');
+            element.setAttribute('aria-selected', 'false');
+        });
+        active = index;
+        const element = visible[index];
+        if (element) {
+            element.classList.add('active');
+            element.setAttribute('aria-selected', 'true');
+            input.setAttribute('aria-activedescendant', element.id);
+            element.scrollIntoView({ block: 'nearest' });
+        } else {
+            input.removeAttribute('aria-activedescendant');
+        }
+    };
+
+    const setExpanded = (expanded) => {
+        list.hidden = !expanded;
+        input.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+        if (!expanded) {
+            setActive(-1);
+        }
+    };
+
+    const filter = (query) => {
+        const text = query.trim();
+        const typedAddress = isAddress(text);
+        const terms = words(text);
+        visible = [];
+
+        if (typedAddress && !optionFor(text)) {
+            freeOption.dataset.value = text;
+            freeOption.textContent = `Utiliser cette adresse : ${text}`;
+            freeOption.hidden = false;
+            visible.push(freeOption);
+        } else {
+            freeOption.hidden = true;
+        }
+
+        options.forEach((option) => {
+            const match = typedAddress
+                ? option.value.toLowerCase().startsWith(text.toLowerCase())
+                : terms.every((term) => option.words.some((word) => word.startsWith(term)));
+            option.element.hidden = !match;
+            if (match) {
+                visible.push(option.element);
+            }
+        });
+
+        groups.forEach((group) => {
+            const name = group.dataset.linkPickerGroup;
+            group.hidden = !options.some((option) => option.group === name && !option.element.hidden);
+        });
+
+        empty.hidden = visible.length > 0;
+        setActive(text !== '' && visible.length ? 0 : -1);
+    };
+
+    const showAll = () => {
+        filter('');
+        setExpanded(true);
+    };
+
+    const choose = (element) => {
+        const value = element.dataset.value || '';
+        hidden.value = value;
+        input.value = element === freeOption ? value : (element.dataset.label || value);
+        setExpanded(false);
+        updateAddress();
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const commitTyped = () => {
+        const text = input.value.trim();
+        if (text === '') {
+            hidden.value = '';
+            updateAddress();
+            return;
+        }
+
+        const current = optionFor(hidden.value);
+        if ((current && normalize(current.label) === normalize(text)) || (!current && text === hidden.value)) {
+            return;
+        }
+
+        const exact = options.find((option) => normalize(option.label) === normalize(text))
+            || (isAddress(text) ? optionFor(text) : undefined);
+        if (exact) {
+            hidden.value = exact.value;
+            input.value = exact.label;
+        } else {
+            hidden.value = text;
+        }
+        updateAddress();
+    };
+
+    const initial = optionFor(hidden.value);
+    input.value = picker.dataset.currentLabel || (initial ? initial.label : hidden.value);
+    updateAddress();
+
+    input.addEventListener('focus', showAll);
+    input.addEventListener('click', () => {
+        if (list.hidden) {
+            showAll();
+        }
+    });
+    input.addEventListener('input', () => {
+        filter(input.value);
+        setExpanded(true);
+        if (clear) {
+            clear.hidden = input.value === '' && hidden.value === '';
+        }
+    });
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (list.hidden) {
+                showAll();
+            }
+            if (!visible.length) {
+                return;
+            }
+            const step = event.key === 'ArrowDown' ? 1 : -1;
+            setActive(active === -1 ? (step === 1 ? 0 : visible.length - 1) : (active + step + visible.length) % visible.length);
+        } else if (event.key === 'Enter' && !list.hidden && visible[active]) {
+            event.preventDefault();
+            choose(visible[active]);
+        } else if (event.key === 'Escape' && !list.hidden) {
+            event.preventDefault();
+            event.stopPropagation();
+            setExpanded(false);
+        } else if (event.key === 'Tab') {
+            setExpanded(false);
+        }
+    });
+    input.addEventListener('blur', () => {
+        commitTyped();
+        setExpanded(false);
+    });
+
+    list.addEventListener('mousedown', (event) => event.preventDefault());
+    list.addEventListener('click', (event) => {
+        const element = event.target.closest('[role="option"]');
+        if (element) {
+            choose(element);
+        }
+    });
+
+    if (toggle) {
+        toggle.addEventListener('mousedown', (event) => event.preventDefault());
+        toggle.addEventListener('click', () => {
+            if (list.hidden) {
+                input.focus();
+                showAll();
+            } else {
+                setExpanded(false);
+            }
+        });
+    }
+
+    if (clear) {
+        clear.addEventListener('mousedown', (event) => event.preventDefault());
+        clear.addEventListener('click', () => {
+            input.value = '';
+            hidden.value = '';
+            updateAddress();
+            input.focus();
+            showAll();
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        if (!picker.contains(event.target)) {
+            setExpanded(false);
+        }
+    });
+
+    if (input.form) {
+        input.form.addEventListener('submit', () => {
+            commitTyped();
+            hidden.disabled = input.disabled;
+        });
+    }
+});

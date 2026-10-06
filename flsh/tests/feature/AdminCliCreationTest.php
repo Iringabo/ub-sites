@@ -37,6 +37,44 @@ final class AdminCliCreationTest extends CIUnitTestCase
         $this->assertSame(EXIT_ERROR, $result);
     }
 
+    public function testCreateSuperAdminSucceedsOnCentralWithParams(): void
+    {
+        putenv('app.centralAdminMode=true');
+        $_ENV['app.centralAdminMode'] = 'true';
+
+        $email    = 'super-cli-' . bin2hex(random_bytes(3)) . '@example.test';
+        $username = 'supercli' . substr(bin2hex(random_bytes(2)), 0, 4);
+        $params   = [
+            'email'        => $email,
+            'username'     => $username,
+            'password-env' => 'PLATFORM_ADMIN_PASSWORD',
+        ];
+
+        try {
+            $result = (new CreateSuperAdmin(service('logger'), service('commands')))->run($params);
+            $this->assertSame(EXIT_SUCCESS, $result);
+
+            $identity = $this->db->table('auth_identities')
+                ->where('type', 'email_password')
+                ->where('secret', $email)
+                ->get()
+                ->getRowArray();
+            $this->assertIsArray($identity);
+            $this->assertSame(1, $this->db->table('auth_groups_users')
+                ->where('user_id', (int) $identity['user_id'])
+                ->where('group', 'superadmin')
+                ->countAllResults());
+
+            $duplicate = (new CreateSuperAdmin(service('logger'), service('commands')))->run(
+                ['email' => 'other-' . $email] + $params,
+            );
+            $this->assertSame(EXIT_ERROR, $duplicate, 'the username must stay unique');
+        } finally {
+            putenv('app.centralAdminMode=false');
+            $_ENV['app.centralAdminMode'] = 'false';
+        }
+    }
+
     public function testCreateFacultyAdminRefusedWhenCentral(): void
     {
         putenv('app.centralAdminMode=true');

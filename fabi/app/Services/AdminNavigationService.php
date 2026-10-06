@@ -165,7 +165,6 @@ class AdminNavigationService
                 'id'         => $pageSlug,
                 'label'      => (string) $page['label'],
                 'icon'       => (string) $page['icon'],
-                'public_url' => $this->publicPageUrl((string) $page['public_path']),
                 'sections'   => $sectionLinks,
                 'lists'      => $listLinks,
             ];
@@ -191,19 +190,6 @@ class AdminNavigationService
             'permissions' => $permissions,
             'keywords'    => $keywords,
         ];
-    }
-
-    /**
-     * Public URL of a page for the site being edited; null on the central host without a faculty.
-     */
-    private function publicPageUrl(string $path): ?string
-    {
-        $base = $this->previewUrl();
-        if ($base === null) {
-            return null;
-        }
-
-        return rtrim($base, '/') . '/' . ltrim($path, '/');
     }
 
     private function facultyContentSelected(?User $user): bool
@@ -274,54 +260,7 @@ class AdminNavigationService
      */
     public function publicUrlForSite(mixed $site): ?string
     {
-        if ($site === null) {
-            return null;
-        }
-
-        $slug = strtolower(trim(is_array($site) ? (string) ($site['slug'] ?? '') : (string) ($site->slug ?? '')));
-        $hosts = is_array($site) ? ($site['hostnames'] ?? []) : ($site->hostnames ?? []);
-        if (is_string($hosts)) {
-            $decoded = json_decode($hosts, true);
-            $hosts = is_array($decoded) ? $decoded : [];
-        }
-
-        $host = '';
-        if (is_array($hosts) && $hosts !== []) {
-            $host = trim((string) ($hosts[0] ?? ''));
-        }
-
-        $host = preg_replace('#^https?://#i', '', $host) ?? $host;
-        $override = trim((string) env('app.previewBase.' . $slug, ''));
-        if ($override !== '') {
-            return rtrim($override, '/') . '/';
-        }
-
-        // Local multi-folder ports when hostnames are empty.
-        $localPorts = [
-            'fseg' => 8101,
-            'fsi'  => 8102,
-            'med'  => 8104,
-            'fabi' => 8105,
-            'flsh' => 8106,
-        ];
-        $appBase = (string) (config('App')->baseURL ?? '');
-        $isLocalApp = str_contains($appBase, 'localhost') || str_contains($appBase, '127.0.0.1');
-        if ($host === '' && $isLocalApp && isset($localPorts[$slug])) {
-            return 'http://localhost:' . $localPorts[$slug] . '/';
-        }
-
-        $hostName = strtolower((string) explode(':', $host)[0]);
-        $hostIsDev = in_array($hostName, ['localhost', '127.0.0.1'], true) || str_ends_with($hostName, '.test');
-
-        if ($host === '') {
-            return null;
-        }
-
-        if ($isLocalApp && $hostIsDev) {
-            return 'http://' . $host . '/';
-        }
-
-        return 'https://' . $host;
+        return service('facultyDirectory')->publicUrlForSite($site);
     }
 
     public function dashboardUrl(): string

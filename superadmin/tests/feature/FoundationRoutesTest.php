@@ -148,6 +148,15 @@ final class FoundationRoutesTest extends CIUnitTestCase
         $this->assertStringNotContainsString('"exception"', $body);
     }
 
+    public function testRemovedAgendaAndPartnersRoutesReturnNotFound(): void
+    {
+        foreach (['/agenda', '/agenda.ics', '/partenaires'] as $uri) {
+            $this->get($uri)->assertStatus(404);
+        }
+
+        $this->get('/sitemap.xml')->assertOK();
+    }
+
     public function testEnglishPostDetailFallsBackToFrenchWithoutTranslation(): void
     {
         $post = $this->db->table('posts')

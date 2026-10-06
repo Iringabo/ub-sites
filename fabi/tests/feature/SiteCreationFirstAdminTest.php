@@ -175,9 +175,7 @@ final class SiteCreationFirstAdminTest extends CIUnitTestCase
 
         $this->assertNull(auth()->getProvider()->findByCredentials(['email' => $email]));
 
-        $row = $this->db->table('users')->where('id', $userId)->get()->getRowArray();
-        $this->assertIsArray($row);
-        $this->assertNotNull($row['deleted_at']);
+        $this->assertSame(0, $this->db->table('users')->where('id', $userId)->countAllResults());
 
         $this->assertSame(0, $this->db->table('auth_groups_users')->where('user_id', $userId)->countAllResults());
         $this->assertSame(0, $this->db->table('auth_identities')->where('user_id', $userId)->countAllResults());

@@ -7,12 +7,18 @@ use App\Services\ContactNotificationService;
 use App\Services\AdminAccessService;
 use App\Services\AdminDashboardService;
 use App\Services\AdminNavigationService;
+use App\Services\AnalyticsService;
+use App\Services\FacultyDirectoryService;
+use App\Services\LocaleUrlService;
+use App\Services\StructuredDataService;
+use App\Services\StudyPathService;
 use App\Services\ContentTranslationService;
 use App\Services\FacultySiteProvisioningService;
 use App\Services\MediaService;
 use App\Services\PageTextCatalog;
 use App\Services\PostVisibilityService;
 use App\Services\SettingsService;
+use App\Services\SitePageCatalog;
 use App\Services\SiteResolverService;
 use App\Services\SiteThemeService;
 use App\Services\UserAdministrationService;
@@ -167,5 +173,59 @@ class Services extends BaseService
         }
 
         return new MediaService();
+    }
+
+    public static function facultyDirectory(bool $getShared = true): FacultyDirectoryService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('facultyDirectory');
+        }
+
+        return new FacultyDirectoryService();
+    }
+
+    public static function studyPaths(bool $getShared = true): StudyPathService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('studyPaths');
+        }
+
+        return new StudyPathService();
+    }
+
+    public static function structuredData(bool $getShared = true): StructuredDataService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('structuredData');
+        }
+
+        return new StructuredDataService();
+    }
+
+    public static function analytics(bool $getShared = true): AnalyticsService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('analytics');
+        }
+
+        return new AnalyticsService();
+    }
+
+    public static function localeUrls(bool $getShared = true): LocaleUrlService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('localeUrls');
+        }
+
+        return new LocaleUrlService();
+    }
+
+    public static function sitePageCatalog(bool $getShared = true): SitePageCatalog
+    {
+        if ($getShared) {
+            return static::getSharedInstance('sitePageCatalog');
+        }
+
+        return new SitePageCatalog();
     }
 }

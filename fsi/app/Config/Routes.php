@@ -25,11 +25,19 @@ $routes->get('recherche', 'PublicPageController::research');
 $routes->get('corps-enseignant', 'PublicPageController::staff');
 $routes->get('corps-enseignant/(:segment)', 'PublicPageController::staffDetail/$1');
 $routes->get('actualites', 'PublicPageController::posts');
+$routes->get('actualites/(:segment)/ics', 'EventCalendarController::eventIcs/$1');
 $routes->get('actualites/(:segment)', 'PublicPageController::postDetail/$1');
 $routes->get('alumni', 'PublicPageController::alumni');
+$routes->get('admissions', 'InformationPageController::admissions');
+$routes->get('departements', 'InformationPageController::departments');
+$routes->get('departements/(:segment)', 'InformationPageController::departmentDetail/$1');
+$routes->get('faq', 'InformationPageController::faq');
+$routes->get('mentions-legales', 'InformationPageController::legal');
 $routes->get('contact', 'ContactController::new');
 $routes->post('contact', 'ContactController::create');
 $routes->get('trouver', 'SearchController::index');
+$routes->get('sitemap.xml', 'SitemapController::index');
+$routes->get('robots.txt', 'SitemapController::robots');
 
 $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['session', 'permission:admin.access', 'adminAccess']], static function (RouteCollection $routes): void {
     $routes->get('', 'DashboardController::index');
@@ -101,6 +109,9 @@ $routes->group('admin', ['namespace' => 'App\Controllers\Admin', 'filter' => ['s
         'home-highlights'   => 'home.manage', // retired from UI; route kept & guarded
         'site-stats'        => 'home.manage',
         'programmes'        => 'programmes.manage',
+        'departments'       => 'pages.manage',
+        'faq-items'         => 'pages.manage',
+        'partners'          => 'pages.manage',
         'staff'             => 'staff.manage',
         'laboratories'      => 'research.manage',
         'publications'      => 'research.manage',

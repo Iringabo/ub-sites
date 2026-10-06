@@ -8,7 +8,7 @@ use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
 /**
- * Database half of adding a faculty (see docs/CREER_UN_SITE.md): inserts the
+ * Database half of adding a faculty (see template/docs/CREER_UN_SITE.md): inserts the
  * `sites` row and provisions editable starter content. There is no "Nouveau
  * site" screen anymore — run this from the copied folder after migrate --all.
  *
@@ -21,7 +21,7 @@ class CreateFacultySite extends BaseCommand
     protected $group       = 'Administration';
     protected $name        = 'site:create';
     protected $description = "Crée une nouvelle faculté (ligne 'sites' + contenu de démarrage éditable) dans la base partagée.";
-    protected $usage       = 'site:create --identifier <fsi> --slug <fsi> --name "Faculté des Sciences et Ingénierie"';
+    protected $usage       = 'site:create --identifier <fsi> --slug <fsi> --name "Faculté des Sciences de l’Ingénieur"';
     protected $options     = [
         '--identifier' => 'Identifiant court unique (ex: fsi). Utilisé aussi comme app.siteSlug du dossier copié.',
         '--slug'       => 'Slug unique pour les URLs (ex: fsi). Par défaut identique à --identifier.',
@@ -109,7 +109,7 @@ class CreateFacultySite extends BaseCommand
         CLI::write('  app.siteSlug = ' . $slug, 'yellow');
         CLI::write('(mêmes identifiants de base de données que les autres dossiers).');
         CLI::newLine();
-        CLI::write('Voir docs/CREER_UN_SITE.md. Copie optionnelle :', 'white');
+        CLI::write('Voir template/docs/CREER_UN_SITE.md (dossier modèle). Copie optionnelle :', 'white');
         CLI::write('  ./scripts/new-faculty-instance.sh ' . $slug . ' "' . $name . '" /chemin/vers/' . $slug, 'yellow');
 
         return EXIT_SUCCESS;

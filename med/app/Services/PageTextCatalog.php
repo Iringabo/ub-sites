@@ -174,6 +174,22 @@ class PageTextCatalog
                 ],
                 'lists' => [
                     ['key' => 'timeline-items', 'label' => 'Frise chronologique', 'permissions' => 'pages.manage', 'icon' => 'bi-clock-history', 'keywords' => ['dates', 'historique', 'chronologie']],
+                    ['key' => 'partners', 'label' => 'Partenaires', 'permissions' => 'pages.manage', 'icon' => 'bi-globe2', 'keywords' => ['universités partenaires', 'entreprises', 'logos', 'coopération']],
+                ],
+            ],
+            'departements' => [
+                'label'       => 'Départements',
+                'icon'        => 'bi-diagram-2',
+                'public_path' => 'departements',
+                'storage'     => 'page',
+                'page_key'    => 'departments',
+                'permission'  => 'pages.manage',
+                'segments'    => [
+                    'bandeau'      => $this->bannerSegment(),
+                    'introduction' => $this->introSegment('Texte au-dessus de la liste des départements.', ['départements', 'sections', 'unités']),
+                ],
+                'lists' => [
+                    ['key' => 'departments', 'label' => 'Départements', 'permissions' => 'pages.manage', 'icon' => 'bi-diagram-2', 'keywords' => ['département', 'chef de département', 'unités']],
                 ],
             ],
             'formations' => [
@@ -210,7 +226,79 @@ class PageTextCatalog
                     ],
                 ],
                 'lists' => [
-                    ['key' => 'programmes', 'label' => 'Programmes', 'permissions' => 'programmes.manage', 'icon' => 'bi-journal-bookmark', 'keywords' => ['licence', 'master', 'doctorat', 'cursus']],
+                    ['key' => 'programmes', 'label' => 'Programmes', 'permissions' => 'programmes.manage', 'icon' => 'bi-journal-bookmark', 'keywords' => ['licence', 'master', 'baccalauréat', 'cursus', 'tronc commun', 'option']],
+                ],
+            ],
+            'admissions' => [
+                'label'       => 'Admissions',
+                'icon'        => 'bi-door-open',
+                'public_path' => 'admissions',
+                'storage'     => 'page',
+                'page_key'    => 'admissions',
+                'permission'  => 'pages.manage',
+                'segments'    => [
+                    'bandeau' => $this->bannerSegment(),
+                    'procedure' => [
+                        'label'       => 'Procédure',
+                        'description' => 'Les étapes pour candidater, dans l’ordre.',
+                        'keywords'    => ['candidature', 'étapes', 'inscription', 'postuler'],
+                        'anchor'      => 'procedure',
+                        'note'        => ['text' => 'Les conditions d’accès, dates limites et liens de candidature propres à chaque formation se saisissent dans Formations › Programmes. Les questions affichées en bas de page viennent de FAQ (thème « Admissions »).', 'link' => 'programmes'],
+                        'fields'      => [
+                            'intro_label' => ['label' => 'Petit libellé au-dessus du titre', 'type' => 'text'],
+                            'intro_title' => ['label' => 'Titre', 'type' => 'text', 'required' => true],
+                            'intro_text'  => ['label' => 'Introduction', 'type' => 'textarea'],
+                            'steps'       => ['label' => 'Étapes (une étape par paragraphe)', 'type' => 'paragraphs', 'required' => true],
+                        ],
+                    ],
+                    'dossier' => [
+                        'label'       => 'Pièces du dossier',
+                        'description' => 'Documents à fournir avec la candidature.',
+                        'keywords'    => ['documents', 'pièces', 'dossier', 'diplôme', 'relevés'],
+                        'anchor'      => 'dossier',
+                        'fields'      => [
+                            'documents_title' => ['label' => 'Titre', 'type' => 'text', 'required' => true],
+                            'documents'       => ['label' => 'Pièces (une par paragraphe)', 'type' => 'paragraphs', 'required' => true],
+                        ],
+                    ],
+                    'frais' => [
+                        'label'       => 'Gratuité et frais annexes',
+                        'description' => 'Gratuité des études pour les lauréats de l’Examen d’État (seuil fixé par le ministre de l’Éducation) et éventuels frais annexes.',
+                        'keywords'    => ['frais', 'gratuité', 'minerval', 'scolarité', 'examen d’état', 'points'],
+                        'anchor'      => 'frais',
+                        'fields'      => [
+                            'fees_title' => ['label' => 'Titre', 'type' => 'text', 'required' => true],
+                            'fees_text'  => ['label' => 'Texte', 'type' => 'textarea', 'required' => true],
+                        ],
+                    ],
+                    'portail' => [
+                        'label'       => 'Bouton de candidature',
+                        'description' => 'Lien vers le portail ou le formulaire de candidature de l’université.',
+                        'keywords'    => ['portail', 'candidater en ligne', 'bouton', 'lien'],
+                        'anchor'      => 'portail',
+                        'fields'      => [
+                            'portal_title' => ['label' => 'Titre', 'type' => 'text'],
+                            'portal_text'  => ['label' => 'Texte', 'type' => 'textarea'],
+                            'portal_label' => ['label' => 'Texte du bouton', 'type' => 'text'],
+                            'portal_url'   => ['label' => 'Lien du bouton', 'type' => 'url', 'help' => 'Laissez vide pour renvoyer vers la page Contact.'],
+                        ],
+                    ],
+                ],
+                'lists' => [],
+            ],
+            'faq' => [
+                'label'       => 'FAQ',
+                'icon'        => 'bi-question-circle',
+                'public_path' => 'faq',
+                'storage'     => 'page',
+                'page_key'    => 'faq',
+                'permission'  => 'pages.manage',
+                'segments'    => [
+                    'bandeau'      => $this->bannerSegment(),
+                    'introduction' => $this->introSegment('Texte au-dessus des questions.', ['questions', 'réponses', 'aide']),
+                ],
+                'lists' => [
+                    ['key' => 'faq-items', 'label' => 'Questions fréquentes', 'permissions' => 'pages.manage', 'icon' => 'bi-question-circle', 'keywords' => ['faq', 'questions', 'réponses']],
                 ],
             ],
             'recherche' => [
@@ -391,6 +479,77 @@ class PageTextCatalog
                     ],
                 ],
                 'lists' => [],
+            ],
+            'mentions-legales' => [
+                'label'       => 'Mentions légales & confidentialité',
+                'icon'        => 'bi-shield-lock',
+                'public_path' => 'mentions-legales',
+                'storage'     => 'page',
+                'page_key'    => 'legal',
+                'permission'  => 'pages.manage',
+                'segments'    => [
+                    'editeur' => [
+                        'label'       => 'Éditeur du site',
+                        'description' => 'Qui publie le site et qui en est responsable.',
+                        'keywords'    => ['éditeur', 'responsable de publication', 'directeur de publication'],
+                        'anchor'      => 'editeur',
+                        'fields'      => [
+                            'publisher_title'      => ['label' => 'Titre', 'type' => 'text', 'required' => true],
+                            'publisher_paragraphs' => ['label' => 'Texte', 'type' => 'paragraphs', 'required' => true],
+                        ],
+                    ],
+                    'hebergement' => [
+                        'label'       => 'Hébergement',
+                        'description' => 'Nom et adresse de l’hébergeur du site.',
+                        'keywords'    => ['hébergeur', 'serveur'],
+                        'anchor'      => 'hebergement',
+                        'fields'      => [
+                            'host_title' => ['label' => 'Titre', 'type' => 'text', 'required' => true],
+                            'host_text'  => ['label' => 'Texte', 'type' => 'textarea', 'required' => true],
+                        ],
+                    ],
+                    'donnees-personnelles' => [
+                        'label'       => 'Données personnelles',
+                        'description' => 'Données collectées par le formulaire de contact, durée de conservation et droits des personnes.',
+                        'keywords'    => ['confidentialité', 'vie privée', 'rgpd', 'données', 'formulaire de contact'],
+                        'anchor'      => 'donnees-personnelles',
+                        'fields'      => [
+                            'privacy_title'      => ['label' => 'Titre', 'type' => 'text', 'required' => true],
+                            'privacy_paragraphs' => ['label' => 'Texte', 'type' => 'paragraphs', 'required' => true],
+                        ],
+                    ],
+                    'cookies' => [
+                        'label'       => 'Cookies et mesure d’audience',
+                        'description' => 'Cookies techniques utilisés par le site. La mention de la mesure d’audience s’ajoute automatiquement si elle est activée.',
+                        'keywords'    => ['cookies', 'traceurs', 'statistiques', 'audience'],
+                        'anchor'      => 'cookies',
+                        'fields'      => [
+                            'cookies_title' => ['label' => 'Titre', 'type' => 'text', 'required' => true],
+                            'cookies_text'  => ['label' => 'Texte', 'type' => 'textarea', 'required' => true],
+                        ],
+                    ],
+                ],
+                'lists' => [],
+            ],
+        ];
+    }
+
+    /**
+     * @param list<string> $keywords
+     *
+     * @return array<string, mixed>
+     */
+    private function introSegment(string $description, array $keywords): array
+    {
+        return [
+            'label'       => 'Introduction',
+            'description' => $description,
+            'keywords'    => $keywords,
+            'anchor'      => 'introduction',
+            'fields'      => [
+                'intro_label' => ['label' => 'Petit libellé au-dessus du titre', 'type' => 'text'],
+                'intro_title' => ['label' => 'Titre', 'type' => 'text', 'required' => true],
+                'intro_text'  => ['label' => 'Texte', 'type' => 'textarea'],
             ],
         ];
     }

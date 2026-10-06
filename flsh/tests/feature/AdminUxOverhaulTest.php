@@ -71,7 +71,7 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
         $result->assertSee('Messages reçus');
         $this->assertStringContainsString('href="' . site_url('admin/textes/faculte/mot-du-doyen') . '"', $body);
         $this->assertStringContainsString('data-keywords="', $body);
-        $this->assertStringContainsString('admin-nav-page-view', $body);
+        $this->assertStringNotContainsString('admin-nav-page-view', $body);
         $result->assertDontSee('Héros (slides)');
         $result->assertDontSee('Textes des sections');
         $result->assertDontSee('Pages institutionnelles');
@@ -173,6 +173,57 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
         $this->assertStringContainsString('example.test/x', (string) $service->resolveCtaUrl('custom', 'https://example.test/x'));
     }
 
+    public function testHeroSlideCustomLinkUsesThePagePicker(): void
+    {
+        $this->actingAs($this->adminUser());
+        $siteId = service('siteResolver')->activeSiteId();
+
+        $this->db->table('home_hero_slides')->insert([
+            'site_id'              => $siteId,
+            'image_path'           => 'assets/images/logo-placeholder.png',
+            'alt_text'             => 'Campus sélecteur',
+            'primary_cta_target'   => 'none',
+            'secondary_cta_target' => 'none',
+            'display_order'        => 4,
+            'is_published'         => 1,
+            'created_at'           => date('Y-m-d H:i:s'),
+            'updated_at'           => date('Y-m-d H:i:s'),
+        ]);
+        $slideId = (int) $this->db->insertID();
+        $payload = fn (string $link): array => $this->withCsrf([
+            'alt_text'             => 'Campus sélecteur',
+            'title'                => 'Titre du slide',
+            'text'                 => 'Texte du slide.',
+            'primary_cta_target'   => 'custom',
+            'primary_cta_label'    => 'Voir',
+            'primary_cta_url'      => $link,
+            'secondary_cta_target' => 'none',
+            'display_order'        => '4',
+            'is_published'         => '1',
+        ]);
+
+        try {
+            $form = $this->get('/admin/home-hero-slides/' . $slideId . '/edit');
+            $form->assertOK();
+            $formBody = (string) $form->response()->getBody();
+            $this->assertMatchesRegularExpression('/<div class="link-picker" data-link-picker>\s*<div class="input-group">\s*<input[^>]+name="primary_cta_url"/', $formBody);
+            $this->assertStringContainsString('data-value="' . esc('/formations', 'attr') . '" data-label="Formations"', $formBody);
+            $form->assertSee('Autre page ou lien externe');
+
+            $rejected = $this->post('/admin/home-hero-slides/' . $slideId, $payload('page des formations'));
+            $rejected->assertRedirect();
+            $rejected->assertSessionHas('errors');
+            $this->assertSame('none', $this->db->table('home_hero_slides')->where('id', $slideId)->get()->getRowArray()['primary_cta_target']);
+
+            $this->post('/admin/home-hero-slides/' . $slideId, $payload('/formations'))->assertRedirect();
+            $slide = $this->db->table('home_hero_slides')->where('id', $slideId)->get()->getRowArray();
+            $this->assertSame('custom', $slide['primary_cta_target']);
+            $this->assertSame('/formations', $slide['primary_cta_url']);
+        } finally {
+            $this->db->table('home_hero_slides')->where('id', $slideId)->delete();
+        }
+    }
+
     public function testHomeSectionsOrderPersistsAndPublicHomeUsesCssOrder(): void
     {
         $this->actingAs($this->adminUser());
@@ -271,14 +322,16 @@ final class AdminUxOverhaulTest extends CIUnitTestCase
 
     public function testUsersIndexUsesIconActionsAndFacultyFilter(): void
     {
+        $this->userWithGroup('ux-editor@example.test', 'uxeditor', 'editor', 'editor');
         $this->actingAs($this->superAdminUser());
 
         $result = $this->get('/admin/users?site_id=');
         $result->assertOK();
         $result->assertSee('admin-row-actions');
-        $result->assertSee('Faculté');
+        $result->assertSee('Faculté(s)');
         $result->assertSee('Toutes');
-        $result->assertSee('Créer un compte');
+        $result->assertSee('Nouvel administrateur ou éditeur');
+        $result->assertSee('Géré en ligne de commande');
         $result->assertSee('bi-pencil');
     }
 

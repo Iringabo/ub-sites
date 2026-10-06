@@ -51,6 +51,38 @@ final class MediaServiceTest extends CIUnitTestCase
         @unlink($path);
     }
 
+    public function testDocumentValidationAcceptsRealPdf(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'site_pdf_');
+        file_put_contents($path, "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
+
+        $file = new UploadedFile($path, 'brochure.pdf', 'application/pdf', filesize($path), UPLOAD_ERR_OK);
+        $error = null;
+
+        $this->assertTrue((new MediaService())->validateDocument($file, $error));
+        $this->assertNull($error);
+
+        @unlink($path);
+    }
+
+    public function testDocumentValidationRejectsNonPdfExtensionAndSpoofedContent(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'site_doc_');
+        file_put_contents($path, '<?php echo "pas un pdf";');
+
+        $renamed = new UploadedFile($path, 'brochure.php', 'application/pdf', filesize($path), UPLOAD_ERR_OK);
+        $error = null;
+        $this->assertFalse((new MediaService())->validateDocument($renamed, $error));
+        $this->assertSame('Le document doit être un fichier PDF.', $error);
+
+        $spoofed = new UploadedFile($path, 'brochure.pdf', 'application/pdf', filesize($path), UPLOAD_ERR_OK);
+        $error = null;
+        $this->assertFalse((new MediaService())->validateDocument($spoofed, $error));
+        $this->assertSame('Le fichier téléversé n’est pas un PDF valide.', $error);
+
+        @unlink($path);
+    }
+
     public function testGenericImageStorageRejectsInvalidFolderName(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'site_png_');

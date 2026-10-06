@@ -81,6 +81,9 @@ class TextSegmentController extends BaseController
             'previous'     => $previous === null ? null : ['url' => site_url('admin/textes/' . $pageSlug . '/' . $previous), 'label' => $this->catalog->segment($pageSlug, $previous)['label'] ?? ''],
             'next'         => $next === null ? null : ['url' => site_url('admin/textes/' . $pageSlug . '/' . $next), 'label' => $this->catalog->segment($pageSlug, $next)['label'] ?? ''],
             'iconChoices'  => $this->iconChoices(),
+            'pageOptions'  => array_filter($fields, static fn (array $field): bool => ($field['type'] ?? '') === 'url') !== []
+                ? service('sitePageCatalog')->options()
+                : [],
         ]);
     }
 

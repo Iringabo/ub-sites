@@ -86,6 +86,27 @@ final class DemoPageContentShapeTest extends CIUnitTestCase
 
         $cta = $this->db->table('content_blocks')->where('site_id', $siteId)->where('type', 'contact_cta')->get()->getRowArray();
         $this->assertSame('/contact', json_decode((string) $cta['settings'], true)['url'] ?? null);
+
+        // Real FSEG departments, four-year licences on the shared Bac I trunk, no doctorate.
+        $departments = $this->db->table('departments')->where('site_id', $siteId)->orderBy('display_order', 'ASC')->get()->getResultArray();
+        $this->assertSame(['GEST', 'ECOPO', 'ERA'], array_column($departments, 'abbreviation'));
+        foreach ($departments as $department) {
+            $this->assertStringStartsWith('uploads/sites/fseg/maquettes/', (string) $department['maquette_path']);
+            $this->assertFileExists(FCPATH . $department['maquette_path']);
+        }
+
+        $programmes = $this->db->table('programmes')->where('site_id', $siteId)->where('deleted_at', null)->get()->getResultArray();
+        $this->assertNotContains('doctorat', array_column($programmes, 'level'));
+        $bySlug = array_column($programmes, null, 'slug');
+        $finance = $bySlug['licence-comptabilite-finance'];
+        $this->assertSame(240, (int) $finance['credits']);
+        $this->assertSame('Tronc commun FSEG', $finance['common_core']);
+        $this->assertSame(1, (int) $finance['common_core_years']);
+        $this->assertSame('Tronc commun Gestion', $finance['branch_core']);
+        $curriculum = json_decode((string) $finance['curriculum'], true);
+        $this->assertStringStartsWith('Semestre 8 |', (string) end($curriculum));
+        $this->assertSame($curriculum[0], json_decode((string) $bySlug['licence-economie-politique']['curriculum'], true)[0], 'Programmes sharing a trunk share its first courses.');
+        $this->assertSame(120, (int) $bySlug['master-sciences-gestion']['credits']);
     }
 
     public function testEveryDemoFacultyColourIsAShadeOfTheLogo(): void

@@ -15,10 +15,14 @@ $filters = $filters ?? ['q' => '', 'status' => '', 'site_id' => ''];
     <div>
         <span class="section-label">Comptes & accès</span>
         <h1 class="h3 mb-1">Comptes & accès</h1>
-        <p class="text-muted mb-0">Ajoutez ou modifiez les personnes qui administrent ou rédigent le site.</p>
+        <p class="text-muted mb-0">
+            <?= $currentActorIsSuperAdmin
+                ? 'Créez les administrateurs et éditeurs de chaque faculté. Les superadministrateurs se créent en ligne de commande.'
+                : 'Ajoutez ou modifiez les personnes qui administrent ou rédigent le site.' ?>
+        </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-        <a href="<?= site_url('admin/users/new') ?>" class="btn btn-primary-green"><i class="bi bi-person-plus me-1"></i>Créer un compte</a>
+        <a href="<?= site_url('admin/users/new') ?>" class="btn btn-primary-green"><i class="bi bi-person-plus me-1"></i><?= $currentActorIsSuperAdmin ? 'Nouvel administrateur ou éditeur' : 'Créer un compte' ?></a>
         <a href="<?= site_url('admin') ?>" class="btn btn-outline-secondary">Tableau de bord</a>
     </div>
 </div>
@@ -64,14 +68,17 @@ $filters = $filters ?? ['q' => '', 'status' => '', 'site_id' => ''];
                     <th>Personne</th>
                     <th>État</th>
                     <th>Rôle</th>
-                    <th>Faculté</th>
+                    <th>Faculté(s)</th>
                     <th class="text-end">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($users as $user): ?>
-                    <?php $userGroups = $user->getGroups() ?? []; ?>
-                    <tr>
+                    <?php
+                    $userGroups = $user->getGroups() ?? [];
+                    $isSuperAdminRow = in_array('superadmin', $userGroups, true);
+                    ?>
+                    <tr<?= $isSuperAdminRow ? ' class="admin-users-row-super"' : '' ?>>
                         <td>
                             <div class="fw-semibold text-break"><?= esc($user->username ?? '—') ?></div>
                             <div class="small text-muted text-break"><?= esc($user->getEmail() ?? '—') ?></div>
@@ -82,7 +89,11 @@ $filters = $filters ?? ['q' => '', 'status' => '', 'site_id' => ''];
                             </span>
                         </td>
                         <td>
-                            <?php if ($userGroups !== []): ?>
+                            <?php if ($isSuperAdminRow && $currentActorIsSuperAdmin): ?>
+                                <span class="badge user-badge-super"><i class="bi bi-terminal me-1" aria-hidden="true"></i>Superadministrateur (ligne de commande)</span>
+                            <?php elseif ($isSuperAdminRow): ?>
+                                <span class="badge user-badge-super">Compte plateforme</span>
+                            <?php elseif ($userGroups !== []): ?>
                                 <div class="d-flex flex-wrap gap-1">
                                     <?php foreach ($userGroups as $group): ?>
                                         <span class="badge text-bg-light"><?= esc($groupTitles[$group] ?? $group) ?></span>
@@ -94,14 +105,17 @@ $filters = $filters ?? ['q' => '', 'status' => '', 'site_id' => ''];
                         </td>
                         <td>
                             <?php $siteLabels = $siteLabelsByUserId[(int) $user->id] ?? []; ?>
-                            <?php if ($siteLabels !== []): ?>
+                            <?php if ($isSuperAdminRow): ?>
+                                <span class="text-muted small">Toutes</span>
+                            <?php elseif ($siteLabels !== []): ?>
                                 <div class="d-flex flex-wrap gap-1">
                                     <?php foreach ($siteLabels as $siteLabel): ?>
-                                        <span class="badge text-bg-light"><?= esc($siteLabel) ?></span>
+                                        <?php $isSiteAdmin = $siteLabel['role'] === 'site_admin'; ?>
+                                        <span class="badge user-site-badge<?= $isSiteAdmin ? ' is-admin' : '' ?>" title="<?= esc($siteLabel['name'] . ' — ' . ($isSiteAdmin ? 'administrateur' : 'éditeur'), 'attr') ?>">
+                                            <?= esc($siteLabel['label']) ?> · <?= $isSiteAdmin ? 'Admin' : 'Éditeur' ?>
+                                        </span>
                                     <?php endforeach ?>
                                 </div>
-                            <?php elseif (in_array('superadmin', $userGroups, true)): ?>
-                                <span class="text-muted small">Toutes</span>
                             <?php else: ?>
                                 <span class="text-muted small">—</span>
                             <?php endif ?>
@@ -109,9 +123,10 @@ $filters = $filters ?? ['q' => '', 'status' => '', 'site_id' => ''];
                         <td class="text-end">
                             <?php
                             $canEditUser = in_array((int) $user->id, $editableUserIds, true);
-                            $isProtectedSuperAdmin = in_array('superadmin', $userGroups, true) && ! $currentActorIsSuperAdmin;
                             $actions = [];
-                            if (! $canEditUser || $isProtectedSuperAdmin) {
+                            if ($isSuperAdminRow && $currentActorIsSuperAdmin) {
+                                echo '<span class="text-muted small">Géré en ligne de commande</span>';
+                            } elseif (! $canEditUser || $isSuperAdminRow) {
                                 echo '<span class="text-muted small">Hors périmètre de modification</span>';
                             } else {
                                 $actions[] = [

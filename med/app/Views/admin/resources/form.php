@@ -156,7 +156,7 @@ if ($remainingFields !== []) {
                     $inputId = 'field_' . $normalize($name);
                     $max = isset($field['max']) ? (int) $field['max'] : null;
                     $counterId = $max !== null ? $inputId . '_counter' : null;
-                    $wideTypes = ['textarea', 'json_list', 'json_text', 'image', 'icon', 'page_content', 'setting_value'];
+                    $wideTypes = ['textarea', 'json_list', 'json_text', 'image', 'file', 'icon', 'page_content', 'setting_value'];
                     $showWhenAttrs = '';
                     if (! empty($field['showWhen']) && is_array($field['showWhen'])) {
                         foreach ($field['showWhen'] as $depField => $depValue) {
@@ -227,16 +227,36 @@ if ($remainingFields !== []) {
                             <?php if ($type === 'readonly_select'): ?>
                                 <input type="hidden" name="<?= esc($name, 'attr') ?>" value="<?= esc($value, 'attr') ?>">
                             <?php endif ?>
-                            <select class="form-select<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="<?= esc($name, 'attr') ?>" <?= $required ? 'required' : '' ?> <?= $type === 'readonly_select' ? 'disabled' : '' ?>>
+                            <?php $cycleFiltered = $name === 'department_id' && ($departmentCycles ?? []) !== []; ?>
+                            <select class="form-select<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="<?= esc($name, 'attr') ?>" <?= $required ? 'required' : '' ?> <?= $type === 'readonly_select' ? 'disabled' : '' ?><?= $cycleFiltered ? ' data-level-filter="level"' : '' ?>>
                                 <?php if (! $required || $type === 'relation'): ?>
                                     <option value="">Aucune sélection</option>
                                 <?php endif ?>
                                 <?php foreach ($fieldOptions[$name] ?? [] as $optionValue => $optionLabel): ?>
-                                    <option value="<?= esc($optionValue, 'attr') ?>" <?= (string) $value === (string) $optionValue ? 'selected' : '' ?>>
+                                    <option value="<?= esc($optionValue, 'attr') ?>" <?= (string) $value === (string) $optionValue ? 'selected' : '' ?><?= $cycleFiltered ? ' data-cycle="' . esc($departmentCycles[(string) $optionValue] ?? 'both', 'attr') . '"' : '' ?>>
                                         <?= esc($optionLabel) ?>
                                     </option>
                                 <?php endforeach ?>
                             </select>
+                            <?php if (! empty($field['help'])): ?>
+                                <p class="form-text"><?= esc((string) $field['help']) ?></p>
+                            <?php endif ?>
+                            <?php if (isset($errors[$name])): ?>
+                                <div class="invalid-feedback d-block"><?= esc($errors[$name]) ?></div>
+                            <?php endif ?>
+                        <?php elseif ($type === 'link'): ?>
+                            <label for="<?= esc($inputId, 'attr') ?>" class="form-label fw-semibold"><?= esc($label) ?><?= $required ? ' *' : '' ?></label>
+                            <?= view('admin/partials/link_picker', [
+                                'name'        => $name,
+                                'id'          => $inputId,
+                                'value'       => (string) $value,
+                                'options'     => $pageOptions ?? [],
+                                'invalid'     => isset($errors[$name]),
+                                'required'    => $required,
+                                'describedBy' => $inputId . '_help',
+                                'max'         => $max ?? 500,
+                            ]) ?>
+                            <p class="form-text" id="<?= esc($inputId . '_help', 'attr') ?>"><?= esc((string) ($field['help'] ?? 'Choisissez une page du site dans la liste, ou collez une adresse complète.')) ?></p>
                             <?php if (isset($errors[$name])): ?>
                                 <div class="invalid-feedback d-block"><?= esc($errors[$name]) ?></div>
                             <?php endif ?>
@@ -272,6 +292,25 @@ if ($remainingFields !== []) {
                             <?php endif ?>
                             <input type="file" class="form-control<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="<?= esc($name, 'attr') ?>" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                             <p class="form-text">JPG, PNG ou WebP, 2 Mo maximum. Le nom original n’est jamais conservé.</p>
+                            <?php if (isset($errors[$name])): ?>
+                                <div class="invalid-feedback d-block"><?= esc($errors[$name]) ?></div>
+                            <?php endif ?>
+                        <?php elseif ($type === 'file'): ?>
+                            <label for="<?= esc($inputId, 'attr') ?>" class="form-label fw-semibold"><?= esc($label) ?></label>
+                            <?php if ($value !== ''): ?>
+                                <p class="mb-2">
+                                    <a href="<?= esc(site_media_url($value), 'attr') ?>" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>Voir le document actuel</a>
+                                </p>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" value="1" id="remove_<?= esc($inputId, 'attr') ?>" name="remove_<?= esc($name, 'attr') ?>">
+                                    <label class="form-check-label" for="remove_<?= esc($inputId, 'attr') ?>">Retirer le document actuel</label>
+                                </div>
+                            <?php endif ?>
+                            <input type="file" class="form-control<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="<?= esc($name, 'attr') ?>" accept=".pdf,application/pdf">
+                            <?php if (! empty($field['help'])): ?>
+                                <p class="form-text mb-0"><?= esc((string) $field['help']) ?></p>
+                            <?php endif ?>
+                            <p class="form-text">PDF uniquement, 10 Mo maximum. Le nom original n’est jamais conservé.</p>
                             <?php if (isset($errors[$name])): ?>
                                 <div class="invalid-feedback d-block"><?= esc($errors[$name]) ?></div>
                             <?php endif ?>
@@ -362,6 +401,7 @@ if ($remainingFields !== []) {
                                 'integer' => 'number',
                                 'email' => 'email',
                                 'external_url' => 'url',
+                                'date' => 'date',
                                 default => 'text',
                             };
                             ?>
@@ -371,9 +411,20 @@ if ($remainingFields !== []) {
                                     <span class="admin-field-counter" id="<?= esc($counterId, 'attr') ?>"></span>
                                 <?php endif ?>
                             </div>
-                            <input type="<?= esc($htmlType, 'attr') ?>" class="form-control<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="<?= esc($name, 'attr') ?>" value="<?= esc($value, 'attr') ?>" <?= $required ? 'required' : '' ?> <?= $max !== null ? 'maxlength="' . esc((string) $max, 'attr') . '" data-character-counter="' . esc((string) $counterId, 'attr') . '"' : '' ?>>
+                            <?php $suggestions = ! empty($field['suggest']) ? ($fieldOptions[$name] ?? []) : []; ?>
+                            <input type="<?= esc($htmlType, 'attr') ?>" class="form-control<?= isset($errors[$name]) ? ' is-invalid' : '' ?>" id="<?= esc($inputId, 'attr') ?>" name="<?= esc($name, 'attr') ?>" value="<?= esc($value, 'attr') ?>" <?= $required ? 'required' : '' ?> <?= $max !== null ? 'maxlength="' . esc((string) $max, 'attr') . '" data-character-counter="' . esc((string) $counterId, 'attr') . '"' : '' ?><?= $suggestions !== [] ? ' list="' . esc($inputId . '_suggestions', 'attr') . '" autocomplete="off"' : '' ?>>
+                            <?php if ($suggestions !== []): ?>
+                                <datalist id="<?= esc($inputId . '_suggestions', 'attr') ?>">
+                                    <?php foreach ($suggestions as $suggestion): ?>
+                                        <option value="<?= esc($suggestion, 'attr') ?>"></option>
+                                    <?php endforeach ?>
+                                </datalist>
+                            <?php endif ?>
                             <?php if ($type === 'slug'): ?>
                                 <p class="form-text">Laissez vide pour générer automatiquement un slug unique.</p>
+                            <?php endif ?>
+                            <?php if (! empty($field['help'])): ?>
+                                <p class="form-text"><?= esc((string) $field['help']) ?></p>
                             <?php endif ?>
                             <?php if (isset($errors[$name])): ?>
                                 <div class="invalid-feedback d-block"><?= esc($errors[$name]) ?></div>

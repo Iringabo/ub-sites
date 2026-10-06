@@ -101,6 +101,10 @@
                                 <button type="submit" class="btn btn-primary-green px-5" data-contact-submit>
                                     <i class="bi bi-send me-1"></i><?= esc(lang('Site.contact.submit')) ?>
                                 </button>
+                                <p class="form-privacy-note small text-muted mt-3 mb-0">
+                                    <i class="bi bi-shield-lock me-1" aria-hidden="true"></i><?= esc(lang('Site.contact.privacyNotice')) ?>
+                                    <a href="<?= site_url('mentions-legales#donnees-personnelles') ?>"><?= esc(lang('Site.contact.privacyLink')) ?></a>
+                                </p>
                             </div>
                         </div>
                     </form>

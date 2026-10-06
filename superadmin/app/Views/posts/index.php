@@ -32,6 +32,15 @@
             <a class="btn btn-outline-green<?= $selectedType === 'event' ? ' active' : '' ?>" href="<?= site_url('actualites?type=evenement' . ($query !== '' ? '&q=' . urlencode($query) : '')) ?>"><?= esc(lang('Site.posts.events')) ?></a>
         </div>
 
+        <?php if ($selectedType === 'event'): ?>
+            <nav class="filter-bar justify-content-center mb-5" aria-label="<?= esc(lang('Site.posts.events'), 'attr') ?>">
+                <?php foreach (['' => lang('Site.posts.whenAll'), 'a-venir' => lang('Site.posts.whenUpcoming'), 'passes' => lang('Site.posts.whenPast')] as $whenKey => $whenLabel): ?>
+                    <?php $whenActive = ($selectedWhen ?? null) === match ($whenKey) { 'a-venir' => 'upcoming', 'passes' => 'past', default => null }; ?>
+                    <a class="filter-chip<?= $whenActive ? ' active' : '' ?>" href="<?= site_url('actualites?' . http_build_query(array_filter(['type' => 'evenement', 'quand' => $whenKey, 'q' => $query]))) ?>"<?= $whenActive ? ' aria-current="true"' : '' ?>><?= esc($whenLabel) ?></a>
+                <?php endforeach ?>
+            </nav>
+        <?php endif ?>
+
         <?php if ($posts !== []): ?>
             <div class="row g-4">
                 <?php foreach ($posts as $post): ?>
@@ -59,6 +68,12 @@
                                 <p class="small text-muted mb-2"><?= esc($post->excerpt) ?></p>
                                 <?php if ($isEvent && $post->event_starts_at): ?>
                                     <p class="small text-muted mb-2"><i class="bi bi-calendar-event me-1" aria-hidden="true"></i><?= esc(site_format_date($post->event_starts_at, true)) ?></p>
+                                <?php endif ?>
+                                <?php if (trim((string) ($post->author_name ?? '')) !== ''): ?>
+                                    <p class="news-card-author"><i class="bi bi-person" aria-hidden="true"></i><?= esc(lang('Site.posts.by', [$post->author_name])) ?></p>
+                                <?php endif ?>
+                                <?php if (! empty($post->attachment_path)): ?>
+                                    <p class="news-card-attachment"><i class="bi bi-paperclip" aria-hidden="true"></i><?= esc(lang('Site.posts.attachmentTitle')) ?></p>
                                 <?php endif ?>
                                 <a href="<?= site_url('actualites/' . $post->slug) ?>" class="stretched-link small fw-semibold text-brand text-decoration-none"><?= esc(lang('Home.readMore')) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                             </div>

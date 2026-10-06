@@ -182,6 +182,8 @@ final class AdminErgonomicsTest extends CIUnitTestCase
             $row = $this->db->table('programmes')->where('id', $id)->get()->getRowArray();
             $this->assertNotEmpty($row['deleted_at']);
         }
+
+        $this->db->table('programmes')->whereIn('id', $ids)->update(['deleted_at' => null]);
     }
 
     public function testDuplicateCreatesUnpublishedCopyWithUniqueSlug(): void

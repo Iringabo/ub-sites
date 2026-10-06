@@ -61,9 +61,11 @@ final class AdminUsersTest extends CIUnitTestCase
             'active'      => '1',
             'groups'      => ['editor'],
             'permissions' => ['users.manage'],
+            'site_ids'    => [1],
         ]));
 
         $create->assertRedirect();
+        $create->assertSessionMissing('errors');
 
         $created = $this->db->table('users')
             ->where('username', 'phase5manager')
@@ -98,7 +100,7 @@ final class AdminUsersTest extends CIUnitTestCase
         $this->assertNotSame($beforeHash, $after->getPasswordHash());
     }
 
-    public function testCannotDisableLastSuperAdmin(): void
+    public function testSuperAdminAccountCannotBeDeactivatedFromTheUi(): void
     {
         $actor = $this->managerUser();
         $target = $this->superAdminUser('last-super@example.test', 'lastsuper');
@@ -314,15 +316,15 @@ final class AdminUsersTest extends CIUnitTestCase
 
     public function testSelfLockoutIsPreventedAndValidationErrorsStayVisible(): void
     {
-        $actor = $this->superAdminUser('self-lock@example.test', 'selflock');
+        $actor = $this->facultyAdminUser('self-lock@example.test', 'selflock');
         $this->actingAs($actor);
 
         $update = $this->post('/admin/users/' . $actor->id, $this->withCsrf([
-            'username'    => 'selflock',
-            'email'       => 'self-lock@example.test',
-            'active'      => '1',
-            'groups'      => [],
-            'permissions' => [],
+            'username'   => 'selflock',
+            'email'      => 'self-lock@example.test',
+            'active'     => '1',
+            'groups'     => ['editor'],
+            'site_roles' => [1 => 'editor'],
         ]));
 
         $update->assertRedirect();
@@ -380,10 +382,7 @@ final class AdminUsersTest extends CIUnitTestCase
         $response->assertSessionHas('message');
 
         $this->assertNull($this->userByEmail('delete-target@example.test'));
-
-        $row = $this->db->table('users')->where('id', $target->id)->get()->getRowArray();
-        $this->assertIsArray($row);
-        $this->assertNotNull($row['deleted_at']);
+        $this->assertSame(0, $this->db->table('users')->where('id', $target->id)->countAllResults());
 
         $this->assertSame(0, $this->db->table('auth_groups_users')->where('user_id', $target->id)->countAllResults());
         $this->assertSame(0, $this->db->table('auth_permissions_users')->where('user_id', $target->id)->countAllResults());
@@ -423,6 +422,177 @@ final class AdminUsersTest extends CIUnitTestCase
         $row = $this->db->table('users')->where('id', $actor->id)->get()->getRowArray();
         $this->assertIsArray($row);
         $this->assertNull($row['deleted_at']);
+    }
+
+    public function testSuperAdminFormOffersOnlyFacultyRoles(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $form = $this->get('/admin/users/new');
+        $form->assertOK();
+        $form->assertSee('Administrateur de faculté');
+        $form->assertSee('Éditeur de faculté');
+        $form->assertSee('php spark admin:create-superadmin');
+        $form->assertSee('name="site_ids[]"');
+        $form->assertDontSee('value="superadmin"');
+        $form->assertDontSee('value="sites.manage"');
+    }
+
+    public function testSuperAdminCannotCreateSuperAdminFromTheUi(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $create = $this->post('/admin/users', $this->withCsrf([
+            'username' => 'uisuper',
+            'email'    => 'ui-super@example.test',
+            'password' => 'MotDePassePhase5!2026',
+            'confirm'  => 'MotDePassePhase5!2026',
+            'active'   => '1',
+            'groups'   => ['superadmin'],
+            'site_ids' => [1],
+        ]));
+
+        $create->assertRedirect();
+        $create->assertSessionHas('errors');
+        $this->assertNull($this->userByEmail('ui-super@example.test'));
+
+        $grant = $this->post('/admin/users', $this->withCsrf([
+            'username'    => 'uisitesmanager',
+            'email'       => 'ui-sites-manager@example.test',
+            'password'    => 'MotDePassePhase5!2026',
+            'confirm'     => 'MotDePassePhase5!2026',
+            'active'      => '1',
+            'groups'      => ['admin'],
+            'permissions' => ['sites.manage'],
+            'site_ids'    => [1],
+        ]));
+
+        $grant->assertRedirect();
+        $grant->assertSessionHas('errors');
+        $this->assertNull($this->userByEmail('ui-sites-manager@example.test'));
+    }
+
+    public function testFacultyAccountRequiresARoleAndAFaculty(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $withoutFaculty = $this->post('/admin/users', $this->withCsrf([
+            'username' => 'nofaculty',
+            'email'    => 'no-faculty@example.test',
+            'password' => 'MotDePassePhase5!2026',
+            'confirm'  => 'MotDePassePhase5!2026',
+            'active'   => '1',
+            'groups'   => ['editor'],
+        ]));
+
+        $withoutFaculty->assertRedirect();
+        $withoutFaculty->assertSessionHas('errors');
+        $this->assertArrayHasKey('site_ids', $_SESSION['errors']);
+        $this->assertNull($this->userByEmail('no-faculty@example.test'));
+
+        $withoutRole = $this->post('/admin/users', $this->withCsrf([
+            'username' => 'norole',
+            'email'    => 'no-role@example.test',
+            'password' => 'MotDePassePhase5!2026',
+            'confirm'  => 'MotDePassePhase5!2026',
+            'active'   => '1',
+            'site_ids' => [1],
+        ]));
+
+        $withoutRole->assertRedirect();
+        $withoutRole->assertSessionHas('errors');
+        $this->assertArrayHasKey('groups', $_SESSION['errors']);
+        $this->assertNull($this->userByEmail('no-role@example.test'));
+    }
+
+    public function testFacultyRoleFollowsTheChosenGroup(): void
+    {
+        $secondSiteId = $this->insertSecondarySite();
+        $this->actingAs($this->superAdminUser());
+
+        $this->post('/admin/users', $this->withCsrf([
+            'username'   => 'twofacultyadmin',
+            'email'      => 'two-faculty-admin@example.test',
+            'password'   => 'MotDePassePhase5!2026',
+            'confirm'    => 'MotDePassePhase5!2026',
+            'active'     => '1',
+            'groups'     => ['admin'],
+            'site_ids'   => [1, $secondSiteId],
+            'site_roles' => [1 => 'editor', $secondSiteId => 'editor'],
+        ]))->assertRedirect();
+
+        $created = $this->userByEmail('two-faculty-admin@example.test');
+        $this->assertInstanceOf(User::class, $created);
+        $this->assertSame(['admin'], $created->getGroups());
+        $this->assertSame(2, $this->db->table('user_sites')->where('user_id', $created->id)->where('role', 'site_admin')->countAllResults());
+        $this->assertSame(0, $this->db->table('user_sites')->where('user_id', $created->id)->where('role', 'editor')->countAllResults());
+    }
+
+    public function testSuperAdminRowsAreReadOnlyEvenForSuperAdmins(): void
+    {
+        $actor = $this->superAdminUser('readonly-actor@example.test', 'readonlyactor');
+        $target = $this->superAdminUser('readonly-super@example.test', 'readonlysuper');
+        $this->actingAs($actor);
+
+        $index = $this->get('/admin/users');
+        $index->assertOK();
+        $index->assertSee('Superadministrateur (ligne de commande)');
+        $index->assertSee('Géré en ligne de commande');
+        $index->assertDontSee('/admin/users/' . $target->id . '/edit');
+
+        $edit = $this->get('/admin/users/' . $target->id . '/edit');
+        $edit->assertRedirect();
+        $edit->assertSessionHas('error');
+
+        $update = $this->post('/admin/users/' . $target->id, $this->withCsrf([
+            'username' => 'readonlysuper',
+            'email'    => 'readonly-super@example.test',
+            'active'   => '1',
+            'groups'   => ['editor'],
+            'site_ids' => [1],
+        ]));
+        $update->assertRedirect();
+        $update->assertSessionHas('error');
+
+        $delete = $this->post('/admin/users/' . $target->id . '/delete', $this->withCsrf());
+        $delete->assertRedirect();
+        $delete->assertSessionHas('error');
+
+        $row = $this->db->table('users')->where('id', $target->id)->get()->getRowArray();
+        $this->assertIsArray($row);
+        $this->assertNull($row['deleted_at']);
+        $this->assertSame(1, $this->db->table('auth_groups_users')->where('user_id', $target->id)->where('group', 'superadmin')->countAllResults());
+    }
+
+    public function testDeletedUserCanBeRecreatedWithTheSameCredentials(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $payload = [
+            'username' => 'thierry',
+            'email'    => 'thierry@example.test',
+            'password' => 'MotDePassePhase5!2026',
+            'confirm'  => 'MotDePassePhase5!2026',
+            'active'   => '1',
+            'groups'   => ['editor'],
+            'site_ids' => [1],
+        ];
+
+        $this->post('/admin/users', $this->withCsrf($payload))->assertRedirect();
+        $first = $this->userByEmail('thierry@example.test');
+        $this->assertInstanceOf(User::class, $first);
+
+        $this->post('/admin/users/' . $first->id . '/delete', $this->withCsrf())->assertSessionHas('message');
+        $this->assertSame(0, $this->db->table('users')->where('username', 'thierry')->countAllResults());
+
+        $again = $this->post('/admin/users', $this->withCsrf($payload));
+        $again->assertRedirect();
+        $again->assertSessionMissing('errors');
+
+        $second = $this->userByEmail('thierry@example.test');
+        $this->assertInstanceOf(User::class, $second);
+        $this->assertNotSame((int) $first->id, (int) $second->id);
+        $this->assertSame(1, $this->db->table('user_sites')->where('user_id', $second->id)->where('role', 'editor')->countAllResults());
     }
 
     private function superAdminUser(string $email = 'users-super@example.test', string $username = 'userssuper'): User

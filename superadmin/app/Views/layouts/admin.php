@@ -68,21 +68,13 @@ $brandSubtitle = $brand['subtitle'];
                                             $pageCollapseId = 'adminNavPage' . preg_replace('/[^A-Za-z0-9]+/', '', ucwords((string) $item['id'], '-'));
                                             ?>
                                             <li class="admin-nav-page">
-                                                <div class="admin-nav-page-head">
-                                                    <button class="admin-nav-group-toggle admin-nav-page-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#<?= esc($pageCollapseId, 'attr') ?>" aria-expanded="<?= $isPageOpen ? 'true' : 'false' ?>" aria-controls="<?= esc($pageCollapseId, 'attr') ?>">
-                                                        <span>
-                                                            <i class="bi <?= esc((string) $item['icon'], 'attr') ?>" aria-hidden="true"></i>
-                                                            <?= esc((string) $item['label']) ?>
-                                                        </span>
-                                                        <i class="bi bi-chevron-down admin-nav-chevron" aria-hidden="true"></i>
-                                                    </button>
-                                                    <?php if ($item['public_url'] !== null): ?>
-                                                        <a class="admin-nav-page-view" href="<?= esc((string) $item['public_url'], 'attr') ?>" target="_blank" rel="noopener" title="Voir la page « <?= esc((string) $item['label'], 'attr') ?> » sur le site">
-                                                            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-                                                            <span class="visually-hidden">Voir la page <?= esc((string) $item['label']) ?> sur le site</span>
-                                                        </a>
-                                                    <?php endif ?>
-                                                </div>
+                                                <button class="admin-nav-group-toggle admin-nav-page-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#<?= esc($pageCollapseId, 'attr') ?>" aria-expanded="<?= $isPageOpen ? 'true' : 'false' ?>" aria-controls="<?= esc($pageCollapseId, 'attr') ?>">
+                                                    <span>
+                                                        <i class="bi <?= esc((string) $item['icon'], 'attr') ?>" aria-hidden="true"></i>
+                                                        <?= esc((string) $item['label']) ?>
+                                                    </span>
+                                                    <i class="bi bi-chevron-down admin-nav-chevron" aria-hidden="true"></i>
+                                                </button>
                                                 <div id="<?= esc($pageCollapseId, 'attr') ?>" class="collapse <?= $isPageOpen ? 'show' : '' ?>">
                                                     <?php foreach (['sections' => 'Sections de la page', 'lists' => 'Listes'] as $part => $partLabel): ?>
                                                         <?php if ($item[$part] !== []): ?>

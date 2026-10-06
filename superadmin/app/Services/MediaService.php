@@ -8,6 +8,7 @@ use Throwable;
 class MediaService
 {
     private const MAX_SIZE = 2_097_152;
+    private const MAX_DOCUMENT_SIZE = 10_485_760;
 
     public function __construct(
         private readonly ?string $primaryPublicRoot = null,
@@ -78,6 +79,71 @@ class MediaService
             return null;
         }
 
+        $extension = strtolower($file->getClientExtension());
+
+        return $this->storeUpload($file, $folder, $extension === 'jpeg' ? 'jpg' : $extension, $error);
+    }
+
+    public function validateDocument(UploadedFile $file, ?string &$error = null): bool
+    {
+        if ($file->getError() !== UPLOAD_ERR_OK) {
+            $error = 'Le fichier téléversé est invalide.';
+
+            return false;
+        }
+
+        if (strtolower($file->getClientExtension()) !== 'pdf') {
+            $error = 'Le document doit être un fichier PDF.';
+
+            return false;
+        }
+
+        if (($file->getSize() ?: 0) > self::MAX_DOCUMENT_SIZE) {
+            $error = 'Le document ne doit pas dépasser 10 Mo.';
+
+            return false;
+        }
+
+        if ($file->getMimeType() !== 'application/pdf' || ! $this->hasPdfSignature((string) @file_get_contents($file->getTempName(), false, null, 0, 5))) {
+            $error = 'Le fichier téléversé n’est pas un PDF valide.';
+
+            return false;
+        }
+
+        return true;
+    }
+
+    public function storeDocument(UploadedFile $file, string $folder, ?string &$error = null): ?string
+    {
+        if (! $this->validateDocument($file, $error)) {
+            return null;
+        }
+
+        return $this->storeUpload($file, $folder, 'pdf', $error);
+    }
+
+    /**
+     * Size in bytes of a public media file, or null when it is missing.
+     */
+    public function publicFileSize(?string $path): ?int
+    {
+        $path = trim((string) $path);
+        if ($path === '' || str_contains($path, '..') || str_contains($path, "\0")) {
+            return null;
+        }
+
+        $fullPath = $this->primaryPublicRoot() . ltrim($path, '/');
+
+        return is_file($fullPath) ? (int) filesize($fullPath) : null;
+    }
+
+    private function hasPdfSignature(string $head): bool
+    {
+        return str_starts_with($head, '%PDF-');
+    }
+
+    private function storeUpload(UploadedFile $file, string $folder, string $extension, ?string &$error): ?string
+    {
         $folder = trim($folder, '/');
         if (preg_match('/^[a-z0-9_-]+$/', $folder) !== 1) {
             $error = 'Le dossier de destination est invalide.';
@@ -85,8 +151,6 @@ class MediaService
             return null;
         }
 
-        $extension = strtolower($file->getClientExtension());
-        $extension = $extension === 'jpeg' ? 'jpg' : $extension;
         $fileName  = bin2hex(random_bytes(16)) . '.' . $extension;
         $siteSlug  = $this->activeSiteSlug();
 
@@ -140,7 +204,7 @@ class MediaService
             return null;
         }
 
-        if (! in_array($extension, $this->allowedExtensions, true)) {
+        if (! in_array($extension, $this->allowedExtensions, true) && ! ($extension === 'pdf' && $this->hasPdfSignature($binary))) {
             return null;
         }
 

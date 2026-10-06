@@ -25,6 +25,11 @@
                     <h2 class="h5 mb-1"><?= esc($member->name) ?></h2>
                     <p class="text-brand fw-semibold small mb-1"><?= esc($member->grade ?? '') ?></p>
                     <p class="text-muted small mb-2"><?= esc($member->specialty ?? '') ?></p>
+                    <?php if ($department !== null): ?>
+                        <p class="small mb-3">
+                            <i class="bi bi-diagram-3 me-1" aria-hidden="true"></i><a href="<?= site_url('departements/' . $department->slug) ?>" class="text-brand"><?= esc($department->name) ?></a>
+                        </p>
+                    <?php endif ?>
                     <?php if ($member->email): ?>
                         <a href="mailto:<?= esc($member->email, 'attr') ?>" class="btn btn-outline-green btn-sm">
                             <i class="bi bi-envelope me-1"></i><?= esc(lang('Site.common.write')) ?>

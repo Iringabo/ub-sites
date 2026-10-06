@@ -29,6 +29,11 @@ copy_instance() {
     --exclude='writable/uploads/*'
     --exclude='public/uploads/*'
     --exclude='.DS_Store'
+    # Maintainer-only material: site-creation guides, archive and photo pack.
+    --exclude='docs/CREER_UN_SITE.md'
+    --exclude='docs/AGENT_NOUVEAU_SITE.md'
+    --exclude='docs/archive'
+    --exclude='demo-media'
   )
 
   rsync -a "${exclude_args[@]}" "$source_dir"/ "$dest"/

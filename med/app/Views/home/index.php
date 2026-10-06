@@ -560,10 +560,16 @@ $quickLinks = [
 </section>
 <?php endif ?>
 
-<?php if ($sectionEnabled('news_preview') && $featuredPosts !== []): ?>
+<?php
+$postRails = array_filter([
+    'news'   => ['title' => lang('Site.posts.news'), 'icon' => 'bi-newspaper', 'posts' => $featuredNews ?? [], 'url' => site_url('actualites?type=actualite'), 'more' => lang('Site.posts.seeAllNews')],
+    'events' => ['title' => lang('Site.posts.events'), 'icon' => 'bi-calendar-event', 'posts' => $featuredEvents ?? [], 'url' => site_url('actualites?type=evenement'), 'more' => lang('Site.posts.seeAllEvents')],
+], static fn (array $rail): bool => $rail['posts'] !== []);
+?>
+<?php if ($sectionEnabled('news_preview') && $postRails !== []): ?>
 <section class="section-pad <?= esc($sectionBand('news_preview'), 'attr') ?>" style="order: <?= $sectionCssOrder('news_preview') ?>">
     <div class="container">
-        <div class="d-flex flex-wrap justify-content-between align-items-end mb-5 gap-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
             <div>
                 <span class="section-label"><?= esc($postsLabel) ?></span>
                 <h2 class="section-title mb-0"><?= esc($postsTitle) ?></h2>
@@ -575,37 +581,23 @@ $quickLinks = [
                 <?= esc($postsButtonLabel) ?>
             </a>
         </div>
-        <div class="row g-4">
-            <?php foreach ($featuredPosts as $post): ?>
-                <?php $cover = site_person_media($post->cover_image ?? null); ?>
-                <div class="col-md-6 col-lg-4">
-                    <article class="news-card h-100">
-                        <?php if ($cover !== null): ?>
-                            <img src="<?= esc(site_media_url($cover), 'attr') ?>" class="news-card-cover" alt="<?= esc($post->title, 'attr') ?>">
-                        <?php endif ?>
-                        <div class="news-card-body">
-                            <?php $isEvent = $post->type === 'event'; ?>
-                            <?php $postDate = $isEvent ? ($post->event_starts_at ?? $post->published_at) : $post->published_at; ?>
-                            <div class="news-card-meta">
-                                <?php $dateParts = $isEvent ? site_date_parts($postDate) : null; ?>
-                                <?php if ($dateParts !== null): ?>
-                                    <time class="date-block" datetime="<?= esc($dateParts['iso'], 'attr') ?>">
-                                        <span class="date-block-day"><?= esc($dateParts['day']) ?></span>
-                                        <span class="date-block-month"><?= esc($dateParts['month']) ?></span>
-                                    </time>
-                                <?php else: ?>
-                                    <span class="small text-muted"><?= esc(site_format_date($postDate, false)) ?></span>
-                                <?php endif ?>
-                                <span class="badge-news badge-<?= esc(site_post_category($post->type), 'attr') ?>"><?= esc(site_post_type_label($post->type)) ?></span>
-                            </div>
-                            <h3 class="h6 fw-bold"><?= esc($post->title) ?></h3>
-                            <p class="small text-muted"><?= esc($post->excerpt) ?></p>
-                            <a href="<?= site_url('actualites/' . $post->slug) ?>" class="stretched-link small fw-semibold text-brand text-decoration-none"><?= esc(lang('Home.readMore')) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
-                        </div>
-                    </article>
+        <?php foreach ($postRails as $railKey => $rail): ?>
+            <section class="card-rail" data-rail aria-labelledby="rail-<?= esc($railKey, 'attr') ?>">
+                <div class="card-rail-head">
+                    <h3 class="card-rail-title" id="rail-<?= esc($railKey, 'attr') ?>"><i class="bi <?= esc($rail['icon'], 'attr') ?>" aria-hidden="true"></i><?= esc($rail['title']) ?></h3>
+                    <a href="<?= esc($rail['url'], 'attr') ?>" class="card-rail-more"><?= esc($rail['more']) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                 </div>
-            <?php endforeach ?>
-        </div>
+                <div class="card-rail-body">
+                    <button type="button" class="card-rail-arrow card-rail-prev" data-rail-prev aria-label="<?= esc(lang('Site.posts.railPrevious') . ' — ' . $rail['title'], 'attr') ?>"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+                    <ul class="card-rail-track" data-rail-track tabindex="0" aria-label="<?= esc($rail['title'], 'attr') ?>">
+                        <?php foreach ($rail['posts'] as $post): ?>
+                            <li class="card-rail-item"><?= view('partials/post_rail_card', ['post' => $post]) ?></li>
+                        <?php endforeach ?>
+                    </ul>
+                    <button type="button" class="card-rail-arrow card-rail-next" data-rail-next aria-label="<?= esc(lang('Site.posts.railNext') . ' — ' . $rail['title'], 'attr') ?>"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                </div>
+            </section>
+        <?php endforeach ?>
     </div>
 </section>
 <?php endif ?>

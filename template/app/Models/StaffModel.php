@@ -6,6 +6,8 @@ use App\Entities\StaffMember;
 
 class StaffModel extends SiteScopedModel
 {
+    public const CATEGORIES = ['enseignant', 'administratif'];
+
     protected $table            = 'staff';
     protected $primaryKey       = 'id';
     protected $returnType       = StaffMember::class;
@@ -15,6 +17,7 @@ class StaffModel extends SiteScopedModel
     protected $allowedFields    = [
         'site_id',
         'category',
+        'department_id',
         'name',
         'slug',
         'photo',
@@ -30,6 +33,7 @@ class StaffModel extends SiteScopedModel
     ];
     protected array $casts      = [
         'id'               => 'integer',
+        'department_id'    => '?integer',
         'display_order'    => 'integer',
         'featured_on_home' => 'boolean',
         'home_order'       => '?integer',

@@ -93,6 +93,8 @@ $oldValue = static function (string $key, ?string $current) use ($errors, $input
                             <p class="form-text">JPG, PNG ou WebP, 2 Mo maximum.</p>
                         <?php elseif ($type === 'text'): ?>
                             <textarea class="form-control<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>" rows="4"><?= esc($value) ?></textarea>
+                        <?php elseif ($type === 'url'): ?>
+                            <input type="url" class="form-control<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>" value="<?= esc($value, 'attr') ?>" placeholder="https://…">
                         <?php elseif ($type === 'email'): ?>
                             <input type="email" class="form-control<?= isset($errors[$key]) ? ' is-invalid' : '' ?>" id="<?= esc($id, 'attr') ?>" name="<?= esc($name, 'attr') ?>" value="<?= esc($value, 'attr') ?>">
                         <?php elseif ($type === 'color'): ?>

@@ -15,6 +15,8 @@ use Throwable;
 
 class UserController extends BaseController
 {
+    private const SUPERADMIN_CLI_MESSAGE = 'Les superadministrateurs se gèrent en ligne de commande (php spark admin:create-superadmin).';
+
     private BaseConnection $db;
 
     private UserModel $users;
@@ -102,7 +104,7 @@ class UserController extends BaseController
                 ->paginate(15, 'admin_users'),
             'pager'       => $model->pager,
             'filters'     => $filters,
-            'groups'      => $this->groupsForActor(),
+            'groups'      => $this->userAdmin->groups(),
             'permissions' => $this->permissionsForActor(),
             'siteLabelsByUserId' => $this->siteLabelsByUserId($users),
             'currentUser' => auth()->user(),
@@ -207,7 +209,7 @@ class UserController extends BaseController
         }
 
         if (! $this->canEditTarget($user)) {
-            return redirect()->to('/admin/users')->with('error', 'Vous ne pouvez pas modifier ce compte dans ce contexte.');
+            return $this->refuseTarget($user, 'Vous ne pouvez pas modifier ce compte dans ce contexte.');
         }
 
         return view('admin/users/form', [
@@ -240,7 +242,7 @@ class UserController extends BaseController
         }
 
         if (! $this->canEditTarget($user)) {
-            return redirect()->to('/admin/users')->with('error', 'Vous ne pouvez pas modifier ce compte dans ce contexte.');
+            return $this->refuseTarget($user, 'Vous ne pouvez pas modifier ce compte dans ce contexte.');
         }
 
         $input = $this->sanitizedInput(false);
@@ -249,11 +251,6 @@ class UserController extends BaseController
 
         if ((int) $user->id === (int) auth()->id() && $this->userAdmin->wouldLockOutSelf($user, $input['groups'], $input['permissions'], $input['data']['active'])) {
             $errors['groups'] = 'Vous ne pouvez pas retirer votre propre accès à l’administration.';
-        }
-
-        if ($this->wouldDisableLastSuperAdmin($id, $input['data']['active'] === 1, $input['groups'])) {
-            $errors['active'] = 'Vous ne pouvez pas désactiver le dernier superadministrateur.';
-            $errors['groups'] ??= 'Le dernier superadministrateur doit rester dans le groupe Superadministrateur.';
         }
 
         if ($errors !== []) {
@@ -312,7 +309,7 @@ class UserController extends BaseController
         }
 
         if (! $this->canEditTarget($user)) {
-            return redirect()->to('/admin/users')->with('error', 'Vous ne pouvez pas réinitialiser ce mot de passe dans ce contexte.');
+            return $this->refuseTarget($user, 'Vous ne pouvez pas réinitialiser ce mot de passe dans ce contexte.');
         }
 
         return view('admin/users/password', [
@@ -336,7 +333,7 @@ class UserController extends BaseController
         }
 
         if (! $this->canEditTarget($user)) {
-            return redirect()->to('/admin/users')->with('error', 'Vous ne pouvez pas réinitialiser ce mot de passe dans ce contexte.');
+            return $this->refuseTarget($user, 'Vous ne pouvez pas réinitialiser ce mot de passe dans ce contexte.');
         }
 
         $validation = service('validation');
@@ -379,8 +376,9 @@ class UserController extends BaseController
     /**
      * Supprime un compte utilisateur. Réservé aux superadministrateurs :
      * toutes les associations (groupes, permissions, identités, sessions,
-     * jetons et rattachements aux sites) sont retirées avant la suppression
-     * douce du compte.
+     * jetons et rattachements aux sites) sont retirées puis la ligne `users`
+     * est purgée, afin que le nom d’utilisateur et l’adresse redeviennent
+     * disponibles.
      */
     public function delete(int $id): RedirectResponse|ResponseInterface
     {
@@ -402,8 +400,8 @@ class UserController extends BaseController
             return redirect()->to('/admin/users/' . $id . '/edit')->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
         }
 
-        if ($this->userHasGroup($id, 'superadmin') && $this->userAdmin->countActiveSuperAdmins($id) <= 0) {
-            return redirect()->to('/admin/users/' . $id . '/edit')->with('error', 'Vous ne pouvez pas supprimer le dernier superadministrateur.');
+        if ($this->userHasGroup($id, 'superadmin')) {
+            return redirect()->to('/admin/users')->with('error', self::SUPERADMIN_CLI_MESSAGE);
         }
 
         $authConfig = config('Auth');
@@ -424,7 +422,7 @@ class UserController extends BaseController
                 $this->db->table('user_sites')->where('user_id', $id)->delete();
             }
 
-            $this->users->delete($id);
+            $this->users->delete($id, true);
             $this->db->transComplete();
         } catch (Throwable) {
             $this->db->transRollback();
@@ -459,12 +457,10 @@ class UserController extends BaseController
             $siteIds = [$siteId];
             $siteRoles = [$siteId => $role];
         } else {
+            $groups = in_array('admin', $groups, true) ? ['admin'] : (in_array('editor', $groups, true) ? ['editor'] : []);
+            $permissions = array_values(array_diff($permissions, ['sites.manage']));
             $siteIds = service('siteResolver')->siteIdsFromRequest($this->request->getPost('site_ids'));
-            if ($siteIds === [] && ! in_array('superadmin', $groups, true)) {
-                $siteIds = [service('siteResolver')->activeSiteId()];
-            }
-
-            $siteRoles = $this->siteRolesFromRequest($siteIds, service('adminAccess')->roleForGroups($groups));
+            $siteRoles = $groups === [] ? [] : $this->defaultSiteRoles($siteIds, service('adminAccess')->roleForGroups($groups));
         }
 
         return [
@@ -541,12 +537,12 @@ class UserController extends BaseController
      */
     private function siteSelectionErrors(array $siteIds, array $siteRoles, array $groups): array
     {
-        if ($siteIds === [] && in_array('superadmin', $groups, true)) {
-            return [];
+        if ($groups === []) {
+            return ['groups' => 'Choisissez un rôle : administrateur ou éditeur de faculté.'];
         }
 
         if ($siteIds === []) {
-            return ['site_ids' => 'Sélectionnez au moins un site facultaire.'];
+            return ['site_ids' => 'Sélectionnez au moins une faculté.'];
         }
 
         $available = [];
@@ -631,11 +627,7 @@ class UserController extends BaseController
         }
 
         if (! $this->canEditTarget($user)) {
-            return redirect()->to('/admin/users')->with('error', 'Vous ne pouvez pas modifier l’état de ce compte dans ce contexte.');
-        }
-
-        if (! $active && $this->wouldDisableLastSuperAdmin($id, false)) {
-            return redirect()->to('/admin/users/' . $id . '/edit')->with('error', 'Vous ne pouvez pas désactiver le dernier superadministrateur.');
+            return $this->refuseTarget($user, 'Vous ne pouvez pas modifier l’état de ce compte dans ce contexte.');
         }
 
         if ((int) $user->id === (int) auth()->id() && ! $active) {
@@ -649,41 +641,24 @@ class UserController extends BaseController
 
     /**
      * @param list<string> $proposedGroups
-     */
-    private function wouldDisableLastSuperAdmin(int $id, bool $active, array $proposedGroups = []): bool
-    {
-        if (! $this->userHasGroup($id, 'superadmin')) {
-            return false;
-        }
-
-        if ($active && in_array('superadmin', $proposedGroups, true)) {
-            return false;
-        }
-
-        return $this->userAdmin->countActiveSuperAdmins($id) <= 0;
-    }
-
-    /**
-     * @param list<string> $proposedGroups
      *
      * @return array<string, string>
      */
     private function superAdminBoundaryErrors(?User $target, array $proposedGroups, array $proposedPermissions = []): array
     {
-        if ($this->currentActorIsSuperAdmin()) {
-            return [];
+        $postedGroups = $this->userAdmin->normalizeSelections((array) $this->request->getPost('groups'));
+        $postedPermissions = $this->userAdmin->normalizeSelections((array) $this->request->getPost('permissions'));
+
+        if (in_array('superadmin', array_merge($proposedGroups, $postedGroups), true)) {
+            return ['groups' => self::SUPERADMIN_CLI_MESSAGE];
         }
 
-        if (in_array('superadmin', $proposedGroups, true)) {
-            return ['groups' => 'Seul un superadministrateur peut attribuer le groupe Superadministrateur.'];
-        }
-
-        if (in_array('sites.manage', $proposedPermissions, true)) {
-            return ['permissions' => 'Seul un superadministrateur peut attribuer la gestion des sites facultaires.'];
+        if (in_array('sites.manage', array_merge($proposedPermissions, $postedPermissions), true)) {
+            return ['permissions' => 'La gestion des sites facultaires est réservée aux superadministrateurs, créés en ligne de commande.'];
         }
 
         if ($target instanceof User && $this->userHasGroup((int) $target->id, 'superadmin')) {
-            return ['groups' => 'Seul un superadministrateur peut modifier un compte superadministrateur.'];
+            return ['groups' => self::SUPERADMIN_CLI_MESSAGE];
         }
 
         return [];
@@ -771,11 +746,24 @@ class UserController extends BaseController
 
     private function canEditTarget(User $target): bool
     {
+        if ($this->userHasGroup((int) $target->id, 'superadmin')) {
+            return false;
+        }
+
         if ($this->currentActorIsSuperAdmin()) {
             return true;
         }
 
         return service('adminAccess')->canEditUserForSite($target, service('siteResolver')->activeSiteId(), auth()->user());
+    }
+
+    private function refuseTarget(User $target, string $message): RedirectResponse
+    {
+        if ($this->userHasGroup((int) $target->id, 'superadmin')) {
+            $message = self::SUPERADMIN_CLI_MESSAGE;
+        }
+
+        return redirect()->to('/admin/users')->with('error', $message);
     }
 
     /**
@@ -806,10 +794,6 @@ class UserController extends BaseController
      */
     private function groupsForActor(): array
     {
-        if ($this->currentActorIsSuperAdmin()) {
-            return $this->userAdmin->groups();
-        }
-
         $groups = $this->userAdmin->groups();
 
         return [
@@ -823,7 +807,14 @@ class UserController extends BaseController
      */
     private function permissionsForActor(): array
     {
-        return $this->currentActorIsSuperAdmin() ? $this->userAdmin->permissions() : [];
+        if (! $this->currentActorIsSuperAdmin()) {
+            return [];
+        }
+
+        $permissions = $this->userAdmin->permissions();
+        unset($permissions['sites.manage']);
+
+        return $permissions;
     }
 
     /**
@@ -910,7 +901,7 @@ class UserController extends BaseController
     /**
      * @param list<User> $users
      *
-     * @return array<int, list<string>>
+     * @return array<int, list<array{label: string, name: string, role: string}>>
      */
     private function siteLabelsByUserId(array $users): array
     {
@@ -940,16 +931,14 @@ class UserController extends BaseController
             if ($short === '') {
                 continue;
             }
-            $uid = (int) $row['user_id'];
-            if (! isset($labels[$uid])) {
-                $labels[$uid] = [];
-            }
-            if (! in_array($short, $labels[$uid], true)) {
-                $labels[$uid][] = $short;
-            }
+            $labels[(int) $row['user_id']][$short] = [
+                'label' => $short,
+                'name'  => trim((string) ($row['name'] ?? $short)),
+                'role'  => (string) $row['role'] === 'site_admin' ? 'site_admin' : 'editor',
+            ];
         }
 
-        return $labels;
+        return array_map('array_values', $labels);
     }
 
     private function emailAlreadyExists(string $email, ?int $ignoreId = null): bool
@@ -967,6 +956,7 @@ class UserController extends BaseController
                 'identities.user_id = users.id AND identities.type = ' . $this->db->escape(Session::ID_TYPE_EMAIL_PASSWORD),
                 'inner',
             )
+            ->where('users.deleted_at', null)
             ->groupStart()
                 ->where('identities.secret', $normalized)
                 ->orWhere('identities.secret', $original)

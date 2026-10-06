@@ -339,9 +339,77 @@ final class AdminTextSegmentsTest extends CIUnitTestCase
             ->countAllResults());
     }
 
+    public function testLinkFieldOffersSitePagesInThePicker(): void
+    {
+        $this->actingAs($this->directPermissionUser(
+            'faculty-home@example.test',
+            'facultyhome',
+            ['admin.access', 'home.manage'],
+        ));
+        $this->db->table('programmes')->insert([
+            'site_id'              => 1,
+            'level'                => 'licence',
+            'title'                => 'Licence en Génie du sélecteur',
+            'slug'                 => 'licence-selecteur-test',
+            'duration'             => '4 ans',
+            'summary'              => 'Résumé.',
+            'description'          => 'Description.',
+            'admission_conditions' => 'Examen d’État.',
+            'career_outcomes'      => json_encode(['Ingénieur'], JSON_UNESCAPED_UNICODE),
+            'display_order'        => 99,
+            'is_published'         => 1,
+        ]);
+
+        try {
+            $result = $this->get('/admin/textes/accueil/presentation');
+        } finally {
+            $this->db->table('programmes')->where('site_id', 1)->where('slug', 'licence-selecteur-test')->delete();
+        }
+
+        $result->assertOK();
+        $body = (string) $result->response()->getBody();
+        $this->assertStringContainsString('data-link-picker', $body);
+        $this->assertStringContainsString('role="listbox"', $body);
+        $this->assertStringContainsString('data-value="' . esc('/formations', 'attr') . '" data-label="Formations"', $body);
+        $this->assertStringContainsString(
+            'data-value="' . esc('/formations/licence-selecteur-test', 'attr') . '" data-label="' . esc('Licence en Génie du sélecteur', 'attr') . '"',
+            $body,
+        );
+    }
+
+    public function testLinkFieldAcceptsPickedPagesAndFullAddressesOnly(): void
+    {
+        $this->actingAs($this->directPermissionUser(
+            'faculty-home@example.test',
+            'facultyhome',
+            ['admin.access', 'home.manage'],
+        ));
+        $url = 'admin/textes/accueil/presentation';
+        $payload = fn (string $link): array => $this->withCsrf([
+            'about_label'        => 'À propos',
+            'about_title'        => 'Titre présentation',
+            'about_body'         => 'Corps présentation.',
+            'about_button_label' => 'En savoir plus',
+            'about_button_url'   => $link,
+        ]);
+        $storedLink = fn (): ?string => $this->db->table('home_content')->where('site_id', 1)->get()->getRowArray()['about_button_url'] ?? null;
+
+        $this->post('/' . $url, $payload('/formations'))->assertRedirectTo(site_url($url));
+        $this->assertSame('/formations', $storedLink());
+
+        $this->post('/' . $url, $payload('https://ub.edu.bi/'))->assertRedirectTo(site_url($url));
+        $this->assertSame('https://ub.edu.bi/', $storedLink());
+
+        $rejected = $this->post('/' . $url, $payload('Formations'));
+        $rejected->assertRedirect();
+        $rejected->assertSessionHas('errors');
+        $this->assertSame('https://ub.edu.bi/', $storedLink());
+    }
+
     private function resetState(): void
     {
         service('siteResolver')->reset();
+        service('sitePageCatalog')->reset();
         service('settingsService')->reset();
         service('contentTranslationService')->reset();
         service('superglobals')->setFilesArray([]);

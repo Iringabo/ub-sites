@@ -116,8 +116,19 @@ $rows = static fn (array $field): int => ($field['type'] ?? '') === 'paragraphs'
                                     <span class="input-group-text"><i class="bi <?= esc($value !== '' ? $value : 'bi-star', 'attr') ?>" data-icon-preview="<?= esc($input, 'attr') ?>" aria-hidden="true"></i></span>
                                     <input type="text" class="form-control<?= $hasError ? ' is-invalid' : '' ?>" id="<?= esc($input, 'attr') ?>" name="<?= esc($input, 'attr') ?>" value="<?= esc($value, 'attr') ?>" list="segment-icon-choices" data-icon-input aria-describedby="<?= esc($helpId, 'attr') ?>">
                                 </div>
+                            <?php elseif ($type === 'url'): ?>
+                                <?= view('admin/partials/link_picker', [
+                                    'name'        => $input,
+                                    'id'          => $input,
+                                    'value'       => $value,
+                                    'options'     => $pageOptions,
+                                    'invalid'     => $hasError,
+                                    'required'    => ! empty($field['required']),
+                                    'describedBy' => $helpId,
+                                    'max'         => (int) ($field['max'] ?? 2000),
+                                ]) ?>
                             <?php else: ?>
-                                <input type="text" class="form-control<?= $hasError ? ' is-invalid' : '' ?>" id="<?= esc($input, 'attr') ?>" name="<?= esc($input, 'attr') ?>" value="<?= esc($value, 'attr') ?>"<?= ! empty($field['required']) ? ' required' : '' ?> aria-describedby="<?= esc($helpId, 'attr') ?>"<?= $type === 'url' ? ' placeholder="/contact ou https://…"' : '' ?>>
+                                <input type="text" class="form-control<?= $hasError ? ' is-invalid' : '' ?>" id="<?= esc($input, 'attr') ?>" name="<?= esc($input, 'attr') ?>" value="<?= esc($value, 'attr') ?>"<?= ! empty($field['required']) ? ' required' : '' ?> aria-describedby="<?= esc($helpId, 'attr') ?>">
                             <?php endif ?>
                             <div class="form-text" id="<?= esc($helpId, 'attr') ?>">
                                 <?php if (! empty($field['help'])): ?>
@@ -127,7 +138,7 @@ $rows = static fn (array $field): int => ($field['type'] ?? '') === 'paragraphs'
                                 <?php elseif ($type === 'icon'): ?>
                                     Choisissez une icône dans la liste (aperçu à gauche).
                                 <?php elseif ($type === 'url'): ?>
-                                    Page du site (ex. /contact) ou adresse complète.
+                                    Choisissez une page du site dans la liste, ou collez une adresse complète.
                                 <?php endif ?>
                             </div>
                             <?php if ($hasError): ?>

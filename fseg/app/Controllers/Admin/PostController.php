@@ -74,6 +74,7 @@ class PostController extends BaseController
                 'status'    => 'draft',
                 'featured'  => false,
                 'home_order' => null,
+                'author_name' => (string) (auth()->user()?->username ?? ''),
             ]),
             'types'       => $this->types(),
             'statuses'    => $this->statuses(),
@@ -111,15 +112,22 @@ class PostController extends BaseController
             $data['cover_image'] = $newCover;
         }
 
+        $newAttachment = $this->storeAttachment();
+        if (isset($newAttachment['error'])) {
+            service('mediaService')->deletePublicPath($newCover);
+
+            return redirect()->back()->withInput()->with('errors', ['attachment' => $newAttachment['error']]);
+        }
+        $data += $newAttachment ?? [];
+
         $posts = $this->postModel();
         $posts->skipValidation(true);
         $id = $posts->insert($data, true);
         $posts->skipValidation(false);
 
         if ($id === false) {
-            if ($newCover !== null) {
-                service('mediaService')->deletePublicPath($newCover);
-            }
+            service('mediaService')->deletePublicPath($newCover);
+            service('mediaService')->deletePublicPath($newAttachment['attachment_path'] ?? null);
 
             return redirect()->back()->withInput()->with('errors', $posts->errors());
         }
@@ -193,21 +201,39 @@ class PostController extends BaseController
             $data['cover_image'] = null;
         }
 
+        $oldAttachment = $post->attachment_path ?? null;
+        $newAttachment = $this->storeAttachment();
+        if (isset($newAttachment['error'])) {
+            service('mediaService')->deletePublicPath($newCover);
+
+            return redirect()->back()->withInput()->with('errors', ['attachment' => $newAttachment['error']]);
+        }
+        $removeAttachment = $newAttachment === null && $this->request->getPost('remove_attachment') === '1';
+        if ($newAttachment !== null) {
+            $data += $newAttachment;
+        } elseif ($removeAttachment) {
+            $data['attachment_path'] = null;
+            $data['attachment_name'] = null;
+        }
+
         $posts = $this->postModel();
         $posts->skipValidation(true);
         $saved = $posts->update($id, $data);
         $posts->skipValidation(false);
 
         if ($saved === false) {
-            if ($newCover !== null) {
-                service('mediaService')->deletePublicPath($newCover);
-            }
+            service('mediaService')->deletePublicPath($newCover);
+            service('mediaService')->deletePublicPath($newAttachment['attachment_path'] ?? null);
 
             return redirect()->back()->withInput()->with('errors', $posts->errors());
         }
 
         if ($newCover !== null || $this->request->getPost('remove_cover') === '1') {
             service('mediaService')->deletePublicPath($oldCover);
+        }
+
+        if ($newAttachment !== null || $removeAttachment) {
+            service('mediaService')->deletePublicPath($oldAttachment);
         }
 
         service('contentTranslationService')->save('posts', $id, 'en', $translations);
@@ -323,7 +349,8 @@ class PostController extends BaseController
             'title'            => $title,
             'slug'             => $slug,
             'excerpt'          => trim((string) $this->request->getPost('excerpt')),
-            'body'             => trim((string) $this->request->getPost('body')),
+            'body'             => site_plain_paragraphs((string) $this->request->getPost('body')),
+            'author_name'      => trim((string) $this->request->getPost('author_name')) ?: null,
             'status'           => $status,
             'published_at'     => $publishedAt,
             'featured'         => $this->request->getPost('featured') === '1' ? 1 : 0,
@@ -385,6 +412,7 @@ class PostController extends BaseController
             'slug'            => 'required|max_length[180]|regex_match[/^[a-z0-9-]+$/]',
             'excerpt'         => 'required|max_length[1000]',
             'body'            => 'required',
+            'author_name'     => 'permit_empty|max_length[160]',
             'status'          => 'required|in_list[draft,scheduled,published,archived]',
             'home_order'      => 'permit_empty|integer',
             'seo_title'       => 'permit_empty|max_length[255]',
@@ -422,6 +450,9 @@ class PostController extends BaseController
             ],
             'body' => [
                 'required' => 'Le contenu est obligatoire.',
+            ],
+            'author_name' => [
+                'max_length' => 'Le nom de l’auteur ne peut pas dépasser 160 caractères.',
             ],
             'status' => [
                 'required' => 'Le statut est obligatoire.',
@@ -496,6 +527,31 @@ class PostController extends BaseController
         $path  = service('mediaService')->storePostCover($file, $error);
 
         return $path ?? ['cover_image' => $error ?? 'L’image de couverture est invalide.'];
+    }
+
+    /**
+     * PDF joined to a news item or an event, stored for the active site.
+     *
+     * @return array{attachment_path: string, attachment_name: string}|array{error: string}|null
+     */
+    private function storeAttachment(): ?array
+    {
+        $file = $this->request->getFile('attachment');
+
+        if (! service('mediaService')->hasFile($file)) {
+            return null;
+        }
+
+        $error = null;
+        $path = service('mediaService')->storeDocument($file, 'posts-files', $error);
+        if ($path === null) {
+            return ['error' => $error ?? 'Le document joint est invalide.'];
+        }
+
+        $name = preg_replace('/[^\p{L}\p{N} ._()\-]+/u', '', pathinfo($file->getClientName(), PATHINFO_FILENAME)) ?? '';
+        $name = trim(mb_substr($name, 0, 120));
+
+        return ['attachment_path' => $path, 'attachment_name' => ($name !== '' ? $name : 'document') . '.pdf'];
     }
 
     private function findPost(int $id): ?Post

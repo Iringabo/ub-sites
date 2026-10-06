@@ -145,16 +145,45 @@ if (! function_exists('site_paragraphs')) {
      */
     function site_paragraphs(?string $text): array
     {
-        $text = trim((string) $text);
+        $text = site_plain_paragraphs($text);
 
         if ($text === '') {
             return [];
         }
 
         return array_values(array_filter(
-            preg_split('/\R{2,}/u', $text) ?: [],
-            static fn (string $paragraph): bool => trim($paragraph) !== '',
+            array_map('trim', preg_split('/\R{2,}/u', $text) ?: []),
+            static fn (string $paragraph): bool => $paragraph !== '',
         ));
+    }
+}
+
+if (! function_exists('site_plain_paragraphs')) {
+    /**
+     * Plain text with paragraphs separated by a blank line; HTML markup pasted
+     * into the editor (<p>, <br>, stray tags, entities) never reaches the page.
+     */
+    function site_plain_paragraphs(?string $text): string
+    {
+        $text = (string) $text;
+
+        if (trim($text) === '') {
+            return '';
+        }
+
+        if (str_contains($text, '<') || str_contains($text, '&')) {
+            $text = preg_replace('~<\s*br\s*/?\s*>~iu', "\n", $text) ?? $text;
+            $text = preg_replace('~<\s*/?\s*(p|div|h[1-6]|li|ul|ol|blockquote)(\s[^>]*)?>~iu', "\n\n", $text) ?? $text;
+            $text = preg_replace('~<\s*/?\s*p\s*/\s*p\s*>~iu', "\n\n", $text) ?? $text;
+            $text = strip_tags($text);
+            $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = preg_replace('/[ \t]+\n/u', "\n", $text) ?? $text;
+        $text = preg_replace('/\n{3,}/u', "\n\n", $text) ?? $text;
+
+        return trim($text);
     }
 }
 
@@ -186,6 +215,21 @@ if (! function_exists('site_format_date')) {
         $format->setTimeZone(app_timezone());
 
         return (string) $format->format($timestamp);
+    }
+}
+
+if (! function_exists('site_format_pattern')) {
+    /**
+     * Localized date with an ICU pattern (e.g. "MMMM yyyy", "EEE").
+     */
+    function site_format_pattern(DateTimeInterface $value, string $pattern): string
+    {
+        $locale = site_current_locale();
+        $format = new IntlDateFormatter($locale === 'en' ? 'en_US' : 'fr_FR', IntlDateFormatter::LONG, IntlDateFormatter::NONE);
+        $format->setPattern($pattern);
+        $format->setTimeZone($value->getTimezone());
+
+        return (string) $format->format($value);
     }
 }
 
@@ -229,7 +273,7 @@ if (! function_exists('site_date_parts')) {
 if (! function_exists('site_level_label')) {
     function site_level_label(?string $level): string
     {
-        return lang('Site.programmes.levelLabels.' . ($level ?: 'default'));
+        return lang('Site.programmes.levelLabels.' . (in_array($level, ['licence', 'master'], true) ? $level : 'default'));
     }
 }
 

@@ -7,7 +7,7 @@
 #   ./scripts/new-faculty-instance.sh <slug> "<Full Name>" <destination-dir>
 #
 # Example:
-#   ./scripts/new-faculty-instance.sh fsi "Faculté des Sciences et Ingénierie" ../fsi
+#   ./scripts/new-faculty-instance.sh fsi "Faculté des Sciences de l’Ingénieur" ../fsi
 #
 # This only copies files and edits .env. It does NOT create the database
 # row for the faculty — run `php spark site:create` in the new folder

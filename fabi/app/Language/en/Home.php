@@ -15,6 +15,5 @@ return [
     'programmeOrientation' => [
         'licence'  => 'Core degree',
         'master'   => 'Advanced specialization',
-        'doctorat' => 'Scientific research',
     ],
 ];

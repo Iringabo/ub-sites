@@ -103,6 +103,7 @@ class FacultyDemoDataService
         $this->seedSettings($siteId, $name, $short, $color, $logoPath, $site, $theme);
         $this->seedContentBlocks($siteId, $theme);
         $this->seedEnglishTranslations($siteId, $theme);
+        $this->informationSeeder()->seed($siteId, $slug, (string) ($theme['key'] ?? 'eco'), $name, $short, $gallery['banner']);
 
         $this->db->transComplete();
         if (! $this->db->transStatus()) {
@@ -117,7 +118,7 @@ class FacultyDemoDataService
             'site_id'  => $siteId,
             'slug'     => $slug,
             'images'   => $imageCount,
-            'modules'  => ['home', 'heroes', 'stats', 'programmes', 'staff', 'posts', 'research', 'timeline', 'alumni', 'pages', 'settings'],
+            'modules'  => ['home', 'heroes', 'stats', 'programmes', 'staff', 'posts', 'research', 'timeline', 'alumni', 'pages', 'settings', 'departments', 'partners', 'faq'],
         ];
     }
 
@@ -125,6 +126,7 @@ class FacultyDemoDataService
     {
         // Hard delete so unique (site_id, slug) indexes can be reused by the demo seed.
         // Does not touch uploads/sites/{slug}/faculty-deans/ files on disk.
+        $this->informationSeeder()->clear($siteId);
         foreach ([
             'posts', 'staff', 'programmes', 'home_hero_slides', 'home_highlights',
             'laboratories', 'content_blocks', 'publications', 'research_projects',
@@ -143,7 +145,7 @@ class FacultyDemoDataService
                 'contact.phone', 'contact.email', 'contact.hours',
                 'footer.text', 'footer.copyright',
                 'assets.logo', 'seo.default_title', 'seo.default_description', 'seo.theme_color', 'seo.og_image',
-                'social.links', 'home.hero_indicator_size',
+                'social.links', 'home.hero_indicator_size', 'institution.university_url',
             ];
             $this->db->table('settings')->where('site_id', $siteId)->whereIn('key', $keys)->delete();
         }
@@ -277,8 +279,23 @@ class FacultyDemoDataService
      */
     private function seedProgrammes(int $siteId, array $theme): void
     {
+        $hasOptions = $this->db->fieldExists('option_code', 'programmes');
+        $hasPaths = $this->db->fieldExists('branch_core', 'programmes');
+
         foreach ($theme['programmes'] as $i => $row) {
-            $this->db->table('programmes')->insert([
+            $options = $hasOptions ? [
+                'option_code' => $row['option_code'] ?? null,
+                'common_core' => $row['common_core'] ?? null,
+            ] : [];
+            if ($hasPaths) {
+                $options += [
+                    'common_core_years' => $row['common_core_years'] ?? null,
+                    'branch_core'       => $row['branch_core'] ?? null,
+                    'branch_core_years' => $row['branch_core_years'] ?? null,
+                ];
+            }
+
+            $this->db->table('programmes')->insert($options + [
                 'site_id'              => $siteId,
                 'level'                => $row['level'],
                 'title'                => $row['title'],
@@ -295,6 +312,14 @@ class FacultyDemoDataService
                 'created_at'           => $this->now(),
                 'updated_at'           => $this->now(),
             ]);
+
+            $programmeId = (int) $this->db->insertID();
+            if ($hasOptions && isset($row['common_core_en'])) {
+                $this->insertTranslation($siteId, 'programmes', $programmeId, 'common_core', $row['common_core_en']);
+            }
+            if ($hasPaths && isset($row['branch_core_en'])) {
+                $this->insertTranslation($siteId, 'programmes', $programmeId, 'branch_core', $row['branch_core_en']);
+            }
         }
     }
 
@@ -342,12 +367,16 @@ class FacultyDemoDataService
         return $deanPhoto;
     }
 
+    private const POST_AUTHORS = ['Service de communication', 'Décanat', 'Secrétariat académique'];
+
     /**
      * @param list<string> $covers
      * @param array<string, mixed> $theme
      */
     private function seedPosts(int $siteId, array $covers, string $name, string $slug, array $theme): void
     {
+        helper('site');
+
         foreach ($theme['posts'] as $i => $row) {
             $published = date('Y-m-d H:i:s', strtotime('-' . ($i * 3) . ' days'));
             $cover = $covers === [] ? null : ($covers[$i % count($covers)] ?? null);
@@ -357,7 +386,8 @@ class FacultyDemoDataService
                 'title'           => $row['title'],
                 'slug'            => $row['slug'],
                 'excerpt'         => $row['excerpt'],
-                'body'            => $row['body'],
+                'body'            => site_plain_paragraphs((string) $row['body']),
+                'author_name'     => self::POST_AUTHORS[$i % count(self::POST_AUTHORS)] . ' — ' . strtoupper($slug),
                 'cover_image'     => $cover,
                 'status'          => 'published',
                 'published_at'    => $published,
@@ -588,7 +618,7 @@ class FacultyDemoDataService
                 'title' => 'Formations',
                 'content' => [
                     'banner_title'    => '',
-                    'banner_subtitle' => $theme['formations_banner'] ?? 'Parcours de la licence au doctorat',
+                    'banner_subtitle' => $theme['formations_banner'] ?? 'Parcours de licence et de master',
                     'banner_image'    => $banner,
                     'offer_label'     => $theme['offer_label'] ?? 'Offre académique',
                     'offer_title'     => $theme['offer_title'] ?? 'Des programmes adaptés à chaque ambition',
@@ -667,6 +697,7 @@ class FacultyDemoDataService
             ['institution.faculty_name', $name, 'string', 'institution'],
             ['institution.short_name', $short, 'string', 'institution'],
             ['institution.university', 'Université du Burundi', 'string', 'institution'],
+            ['institution.university_url', 'https://ub.edu.bi', 'string', 'institution'],
             ['contact.address_line', (string) ($campus['address_line'] ?? 'Avenue de l’Université'), 'string', 'contact'],
             ['contact.address_commune', (string) ($campus['commune'] ?? 'Mukaza'), 'string', 'contact'],
             ['contact.address_province', (string) ($campus['province'] ?? 'Bujumbura Mairie'), 'string', 'contact'],
@@ -766,8 +797,8 @@ class FacultyDemoDataService
             ],
             'research_title' => 'Laboratoires et équipes au service des politiques publiques',
             'research_body' => 'Nos unités travaillent sur le développement local, la finance inclusive, la gouvernance des entreprises et l’évaluation des politiques économiques. Les résultats nourrissent l’enseignement et éclairent les décideurs publics et privés.',
-            'programmes_title' => 'De la licence au doctorat',
-            'programmes_intro' => 'Des parcours en économie, gestion, finance et entrepreneuriat, conçus pour l’insertion professionnelle comme pour la poursuite d’études jusqu’au doctorat.',
+            'programmes_title' => 'Licences et masters',
+            'programmes_intro' => 'Des parcours en économie, gestion, finance et entrepreneuriat, conçus pour l’insertion professionnelle comme pour la poursuite d’études en master.',
             'posts_title' => 'Actualités et vie académique',
             'posts_intro' => 'Annonces pédagogiques, résultats, partenariats internationaux et événements scientifiques de la FSEG.',
             'dean_name' => 'Prof. Jean-Baptiste Ndayishimiye',
@@ -775,13 +806,13 @@ class FacultyDemoDataService
             'welcome' => 'Bienvenue à la FSEG. Explorez les formations, la recherche, les actualités et le réseau des diplômés — puis contactez le secrétariat pour toute question d’admission ou de partenariat.',
             'hero_captions' => [
                 ['badge' => 'FSEG', 'title' => 'Former les décideurs économiques de demain', 'text' => 'Économie, finance, management et entrepreneuriat ancrés dans les réalités du Burundi et de la région des Grands Lacs.'],
-                ['badge' => 'Formations', 'title' => 'Licence, master et doctorat', 'text' => 'Des filières professionnalisantes et académiques, de l’économie générale à l’audit et au contrôle de gestion.'],
+                ['badge' => 'Formations', 'title' => 'Licences et masters', 'text' => 'Gestion, économie politique et économie rurale : une spécialisation progressive à partir du Bac II.'],
                 ['badge' => 'Recherche', 'title' => 'Quatre laboratoires actifs', 'text' => 'LEA, CRGD, LFC et URPP produisent des analyses utiles aux politiques publiques et aux entreprises.'],
-                ['badge' => 'Campus', 'title' => 'Une vie étudiante engagée', 'text' => 'Conférences, journées portes ouvertes, séminaires doctoraux et accompagnement pédagogique tout au long du cursus.'],
+                ['badge' => 'Campus', 'title' => 'Une vie étudiante engagée', 'text' => 'Conférences, journées portes ouvertes, séminaires de recherche et accompagnement pédagogique tout au long du cursus.'],
                 ['badge' => 'Alumni', 'title' => 'Plus de 15 000 diplômés', 'text' => 'Un réseau présent dans la banque, l’administration, le conseil et l’entrepreneuriat, au Burundi et à l’étranger.'],
             ],
             'highlights' => [
-                ['icon' => 'bi-mortarboard', 'title' => 'Formation d’excellence', 'description' => 'Curricula modernisés, stages encadrés et exigence académique de la licence au doctorat.'],
+                ['icon' => 'bi-mortarboard', 'title' => 'Formation d’excellence', 'description' => 'Curricula modernisés, stages encadrés et exigence académique de la licence au master.'],
                 ['icon' => 'bi-graph-up-arrow', 'title' => 'Recherche appliquée', 'description' => 'Travaux sur la croissance, la finance inclusive, la gouvernance des PME et les politiques fiscales.'],
                 ['icon' => 'bi-people', 'title' => 'Communauté et partenariats', 'description' => 'Échanges internationaux, réseau alumni et liens étroits avec le secteur public et privé.'],
                 ['icon' => 'bi-globe2', 'title' => 'Ouverture internationale', 'description' => 'Mobilités, cotutelles et partenariats universitaires en Afrique et en Europe.'],
@@ -797,7 +828,7 @@ class FacultyDemoDataService
             ],
             'offer_label' => 'Offre académique',
             'offer_title' => 'Des programmes adaptés à chaque ambition',
-            'offer_text' => 'De la licence au doctorat, la FSEG propose des cursus complets couvrant l’économie, la gestion et la finance.',
+            'offer_text' => 'Licences et masters en gestion, économie politique et économie rurale, après un tronc commun FSEG en Bac I.',
             'cta_title' => 'Vous souhaitez postuler ?',
             'cta_text' => 'Contactez notre service des admissions pour plus d’informations sur les procédures d’inscription.',
             'cta_label' => 'Nous contacter',
@@ -833,9 +864,9 @@ class FacultyDemoDataService
         return $this->buildTheme([
             'key' => 'sci',
             'tagline' => 'Sciences, technologies et ingénierie au service du Burundi',
-            'seo_description' => 'La Faculté des Sciences et Ingénierie forme mathématiciens, informaticiens, physiciens et ingénieurs capables d’innover pour le développement national.',
+            'seo_description' => 'La Faculté des Sciences de l’Ingénieur forme des ingénieurs en électromécanique, génie civil, aménagement et urbanisme et technologies de l’information et de la communication.',
             'about_title' => 'Former des scientifiques et ingénieurs responsables',
-            'about' => 'La Faculté des Sciences et Ingénierie de l’Université du Burundi prépare des scientifiques et des ingénieurs capables de résoudre des problèmes complexes. Les départements de mathématiques, informatique, physique et génie articulent enseignement fondamental, laboratoires et projets appliqués aux besoins énergétiques, numériques et industriels du pays.',
+            'about' => 'La Faculté des Sciences de l’Ingénieur de l’Université du Burundi, au campus Kiriri, prépare des ingénieurs capables de résoudre des problèmes complexes. Ses départements d’Électromécanique, de Génie civil, d’Aménagement et urbanisme et des Technologies de l’information et de la communication (TIC) articulent enseignement fondamental, laboratoires et projets appliqués aux besoins du pays.',
             'mission' => 'Transmettre une culture scientifique rigoureuse, développer l’esprit d’innovation et former des professionnels capables de concevoir, analyser et déployer des solutions technologiques adaptées au contexte burundais et régional.',
             'vision' => 'Être une faculté de sciences et d’ingénierie reconnue en Afrique des Grands Lacs pour la qualité de ses laboratoires, l’employabilité de ses diplômés et sa contribution aux transitions numérique et énergétique.',
             'values' => [
@@ -846,14 +877,14 @@ class FacultyDemoDataService
             'research_title' => 'Laboratoires scientifiques et technologiques',
             'research_body' => 'Les équipes travaillent sur les énergies renouvelables, les systèmes d’information, la modélisation mathématique, la physique appliquée et les technologies numériques utiles aux administrations et aux entreprises.',
             'programmes_title' => 'Parcours scientifiques et technologiques',
-            'programmes_intro' => 'Licences, masters et doctorats en mathématiques, informatique, physique, chimie, data science et génie — avec une forte composante expérimentale.',
+            'programmes_intro' => 'Licences en quatre ans en électromécanique, génie civil, aménagement et urbanisme et TIC — dont les options Génie informatique, Génie logiciel, Réseaux et télécommunications et Systèmes embarqués — et masters en génie logiciel et en réseaux.',
             'posts_title' => 'Actualités scientifiques',
             'posts_intro' => 'Soutenances, hackathons, projets étudiants et annonces de laboratoires de la FSI.',
             'dean_name' => 'Pr. Eric Habonimana',
-            'dean_message' => "Bienvenue à la Faculté des Sciences et Ingénierie.\n\nIci, la curiosité scientifique rencontre la rigueur expérimentale. Nos étudiants apprennent à modéliser, à programmer, à mesurer et à concevoir — toujours avec le souci d’apporter des réponses utiles au Burundi.\n\nJe vous invite à découvrir nos départements, nos laboratoires et les opportunités de stages et de recherche qui jalonnent le parcours.",
+            'dean_message' => "Bienvenue à la Faculté des Sciences de l’Ingénieur.\n\nIci, la curiosité scientifique rencontre la rigueur expérimentale. Nos étudiants apprennent à modéliser, à programmer, à mesurer et à concevoir — toujours avec le souci d’apporter des réponses utiles au Burundi.\n\nJe vous invite à découvrir nos départements, nos laboratoires et les opportunités de stages et de recherche qui jalonnent le parcours.",
             'welcome' => 'Bienvenue à la FSI. Découvrez les départements scientifiques, les laboratoires et les projets numériques qui forment la prochaine génération d’ingénieurs et de chercheurs.',
             'hero_captions' => [
-                ['badge' => 'FSI', 'title' => 'Sciences et ingénierie pour le pays', 'text' => 'Mathématiques, informatique, physique et génie au service des transitions numérique et énergétique.'],
+                ['badge' => 'FSI', 'title' => 'Sciences et ingénierie pour le pays', 'text' => 'Électromécanique, génie civil, aménagement et urbanisme et TIC au service des transitions numérique et énergétique.'],
                 ['badge' => 'Laboratoires', 'title' => 'Apprendre en expérimentant', 'text' => 'Travaux pratiques, projets tutorés et plateformes numériques pour ancrer la théorie dans le réel.'],
                 ['badge' => 'Numérique', 'title' => 'Données, logiciels et réseaux', 'text' => 'Des cursus qui préparent aux métiers du développement, de la cybersécurité et de la data science.'],
                 ['badge' => 'Énergie', 'title' => 'Ingénierie durable', 'text' => 'Recherche et formation sur les énergies renouvelables et les systèmes efficaces.'],
@@ -862,7 +893,7 @@ class FacultyDemoDataService
             'highlights' => [
                 ['icon' => 'bi-cpu', 'title' => 'Informatique et data', 'description' => 'Génie logiciel, systèmes embarqués et science des données pour l’économie numérique.'],
                 ['icon' => 'bi-lightning-charge', 'title' => 'Énergies et physique', 'description' => 'Formation et recherche tournées vers l’efficacité énergétique et les renouvelables.'],
-                ['icon' => 'bi-calculator', 'title' => 'Mathématiques appliquées', 'description' => 'Modélisation, statistique et outils quantitatifs au service des autres sciences.'],
+                ['icon' => 'bi-buildings', 'title' => 'Génie civil et urbanisme', 'description' => 'Bâtiments, ouvrages hydrauliques et aménagement pour des villes et des infrastructures durables.'],
                 ['icon' => 'bi-gear-wide-connected', 'title' => 'Ingénierie de terrain', 'description' => 'Projets tutorés, prototypes et stages en entreprise technologique.'],
             ],
             'dean_role' => 'Doyen de la Faculté',
@@ -874,9 +905,9 @@ class FacultyDemoDataService
                 'text'  => 'Une faculté scientifique engagée dans la formation d’ingénieurs et de chercheurs pour le Burundi.',
             ],
             'offer_title' => 'Sciences fondamentales et technologiques',
-            'offer_text' => 'Licences, masters et doctorats en mathématiques, informatique, physique et génie, avec une forte composante expérimentale.',
-            'faculty_banner' => 'Faculté des Sciences et Ingénierie',
-            'contact_banner' => 'Campus Kiriri — Sciences et Ingénierie',
+            'offer_text' => 'Licences et masters en électromécanique, génie civil, aménagement et urbanisme et TIC, avec une forte composante expérimentale.',
+            'faculty_banner' => 'Faculté des Sciences de l’Ingénieur',
+            'contact_banner' => 'Campus Kiriri — Sciences de l’Ingénieur',
             'stats' => [
                 ['section' => 'home_main', 'label' => 'Étudiants', 'value' => 1420, 'suffix' => '+'],
                 ['section' => 'home_main', 'label' => 'Programmes', 'value' => 10, 'suffix' => ''],
@@ -889,13 +920,13 @@ class FacultyDemoDataService
                 ['section' => 'alumni', 'label' => 'Entreprises partenaires', 'value' => 28, 'suffix' => ''],
                 ['section' => 'alumni', 'label' => 'Start-up incubées', 'value' => 15, 'suffix' => ''],
             ],
-            'formations_banner' => 'Mathématiques, informatique, physique et génie',
+            'formations_banner' => 'Électromécanique, génie civil, aménagement et urbanisme, TIC',
             'research_banner' => 'Laboratoires numériques, énergie et modélisation',
             'staff_banner' => 'Enseignants-chercheurs et techniciens de laboratoire',
             'alumni_banner' => 'Ingénieurs et scientifiques dans le numérique et l’industrie',
             'posts_banner' => 'Hackathons, soutenances et annonces de laboratoires',
             'publications_title' => 'Publications scientifiques de la FSI',
-            'publications_intro' => 'Travaux en informatique, physique appliquée, mathématiques et énergies renouvelables.',
+            'publications_intro' => 'Travaux en TIC, génie civil, électromécanique et énergies renouvelables.',
             'projects_title' => 'Projets technologiques en cours',
             'alumni_intro' => [
                 'Les diplômés de la FSI travaillent dans les télécoms, le développement logiciel, l’énergie, l’enseignement et la recherche appliquée.',
@@ -925,8 +956,8 @@ class FacultyDemoDataService
             ],
             'research_title' => 'Recherche biomédicale et santé publique',
             'research_body' => 'Axes prioritaires : maladies infectieuses, santé maternelle et infantile, épidémiologie et organisation des systèmes de santé. Les travaux associent cliniciens, épidémiologistes et partenaires hospitaliers.',
-            'programmes_title' => 'Formations médicales et paramédicales',
-            'programmes_intro' => 'Médecine, sciences infirmières, pharmacie, santé publique et spécialités — ancrées dans la pratique hospitalière et le terrain communautaire.',
+            'programmes_title' => 'Formations médicales',
+            'programmes_intro' => 'Baccalauréat en médecine en six ans, diplômes d’études spécialisées et master en santé publique — ancrés dans la pratique hospitalière du CHUK et le terrain communautaire.',
             'posts_title' => 'Actualités de la faculté de médecine',
             'posts_intro' => 'Annonces académiques, séminaires cliniques, campagnes de santé et vie hospitalo-universitaire.',
             'dean_name' => 'Pr. Dr. Claudine Niyonzima',
@@ -953,8 +984,8 @@ class FacultyDemoDataService
                 'title' => 'Historique de la Faculté de Médecine',
                 'text'  => 'Une tradition hospitalo-universitaire au service de la santé des populations.',
             ],
-            'offer_title' => 'Des cursus médicaux et paramédicaux exigeants',
-            'offer_text' => 'Médecine, sciences infirmières, pharmacie et santé publique ancrées dans la pratique hospitalière.',
+            'offer_title' => 'Des cursus médicaux exigeants',
+            'offer_text' => 'Médecine générale, spécialisations cliniques et santé publique ancrées dans la pratique hospitalière.',
             'faculty_banner' => 'Faculté de Médecine',
             'contact_banner' => 'CHUK Kamenge — Faculté de Médecine',
             'stats' => [
@@ -969,7 +1000,7 @@ class FacultyDemoDataService
                 ['section' => 'alumni', 'label' => 'Hôpitaux partenaires', 'value' => 22, 'suffix' => ''],
                 ['section' => 'alumni', 'label' => 'Spécialistes formés', 'value' => 340, 'suffix' => '+'],
             ],
-            'formations_banner' => 'Médecine, pharmacie, soins infirmiers et santé publique',
+            'formations_banner' => 'Médecine, spécialisations cliniques et santé publique',
             'research_banner' => 'Biomédical, épidémiologie et systèmes de santé',
             'staff_banner' => 'Cliniciens, enseignants et personnel hospitalo-universitaire',
             'alumni_banner' => 'Médecins et soignants au service des communautés',
@@ -981,7 +1012,7 @@ class FacultyDemoDataService
                 'Les diplômés exercent dans les hôpitaux universitaires, les centres de santé, les organisations internationales et la recherche médicale.',
                 'Les profils présentés montrent la diversité des carrières ouvertes par la formation médicale.',
             ],
-            'alumni_profiles_text' => 'Parcours de médecins, infirmiers spécialisés et experts en santé publique.',
+            'alumni_profiles_text' => 'Parcours de médecins généralistes, spécialistes et experts en santé publique.',
             'alumni_cta' => 'Contactez le secrétariat pour rejoindre le réseau des alumni de la Faculté de Médecine.',
             'contact_intro' => 'Pour les admissions, les stages cliniques ou les partenariats hospitaliers, écrivez au secrétariat de la faculté.',
         ], $this->programmeSet('med'), $this->staffSet('med'), $this->postSet('med'), $this->labSet('med'));
@@ -1006,7 +1037,7 @@ class FacultyDemoDataService
             'research_title' => 'Recherche agronomique et environnementale',
             'research_body' => 'Nos travaux portent sur les sols, les cultures vivrières, l’agroécologie, l’élevage et la gestion durable des bassins versants, en lien avec les besoins des producteurs et des politiques agricoles.',
             'programmes_title' => 'Parcours en agronomie et environnement',
-            'programmes_intro' => 'Licences et masters en productions végétales, élevage, agroécologie et gestion des ressources naturelles — avec une forte dimension de terrain.',
+            'programmes_intro' => 'Six options de licence après un tronc commun FABI de deux ans — production végétale, production animale, agroalimentaire, environnement, socio-économie rurale et agro-environnement — et des masters avec une forte dimension de terrain.',
             'posts_title' => 'Actualités agricoles et environnementales',
             'posts_intro' => 'Journées de terrain, résultats expérimentaux, partenariats ruraux et vie de la FABI.',
             'dean_name' => 'Pr. Ir. Sophie Ndayizeye',
@@ -1073,11 +1104,11 @@ class FacultyDemoDataService
         return $this->buildTheme([
             'key' => 'hum',
             'tagline' => 'Lettres, langues et sciences humaines',
-            'seo_description' => 'La FLSH cultive l’esprit critique, les langues et la compréhension des sociétés à travers l’histoire, la philosophie, la littérature et la communication.',
+            'seo_description' => 'La FLSH cultive l’esprit critique, les langues et la compréhension des sociétés à travers les littératures, l’histoire, la géographie et la socio-anthropologie.',
             'about_title' => 'Comprendre les sociétés, transmettre les cultures',
-            'about' => 'La Faculté des Lettres et des Sciences Humaines forme des esprits critiques capables d’analyser les sociétés, de maîtriser les langues et de transmettre le patrimoine culturel. Histoire, philosophie, lettres, langues et communication y dialoguent pour éclairer le présent.',
+            'about' => 'La Faculté des Lettres et des Sciences Humaines forme des esprits critiques capables d’analyser les sociétés, de maîtriser les langues et de transmettre le patrimoine culturel. Langues et cultures africaines, lettres françaises et anglaises, histoire, géographie et socio-anthropologie y dialoguent pour éclairer le présent.',
             'mission' => 'Former des citoyens cultivés, des enseignants, des communicants et des chercheurs capables de comprendre les dynamiques sociales et de contribuer au débat public.',
-            'vision' => 'Faire de la FLSH un pôle régional d’excellence en sciences humaines, reconnu pour la qualité de ses formations linguistiques, historiques et communicationnelles.',
+            'vision' => 'Faire de la FLSH un pôle régional d’excellence en sciences humaines, reconnu pour la qualité de ses formations linguistiques, littéraires et historiques.',
             'values' => [
                 ['title' => 'Esprit critique', 'text' => 'Analyser les textes, les discours et les sociétés avec méthode et ouverture.'],
                 ['title' => 'Pluralité', 'text' => 'Valoriser les langues, les cultures et les mémoires du Burundi et d’ailleurs.'],
@@ -1086,23 +1117,23 @@ class FacultyDemoDataService
             'research_title' => 'Recherche en sciences humaines',
             'research_body' => 'Projets sur le patrimoine, les langues nationales, l’éducation, la communication et les dynamiques sociales contemporaines, en lien avec les communautés et les institutions culturelles.',
             'programmes_title' => 'Parcours en lettres et sciences humaines',
-            'programmes_intro' => 'Licences et masters en lettres, histoire, philosophie, langues, communication et sciences de l’éducation — ouverts sur l’enseignement et les métiers de la culture.',
+            'programmes_intro' => 'Licences et masters en langues et cultures africaines, lettres françaises, anglais, histoire, géographie et socio-anthropologie — ouverts sur l’enseignement, la traduction et les métiers de la culture.',
             'posts_title' => 'Actualités culturelles et académiques',
             'posts_intro' => 'Colloques, publications, activités étudiantes et vie littéraire de la FLSH.',
             'dean_name' => 'Pr. Diane Nkurunziza',
             'dean_message' => "Chères étudiantes, chers étudiants,\n\nLes humanités éclairent le présent et préparent des citoyens responsables. À la FLSH, vous apprendrez à lire le monde, à argumenter, à transmettre et à créer.\n\nJe vous invite à découvrir nos départements, nos activités de recherche et les débouchés ouverts par les lettres et les sciences humaines.",
             'welcome' => 'Bienvenue à la FLSH. Explorez les formations en lettres, langues et sciences humaines, ainsi que la vie culturelle du campus.',
             'hero_captions' => [
-                ['badge' => 'FLSH', 'title' => 'Humanités pour éclairer le présent', 'text' => 'Lettres, histoire, philosophie, langues et communication au service d’une société éclairée.'],
+                ['badge' => 'FLSH', 'title' => 'Humanités pour éclairer le présent', 'text' => 'Lettres, langues, histoire, géographie et socio-anthropologie au service d’une société éclairée.'],
                 ['badge' => 'Langues', 'title' => 'Maîtriser et transmettre', 'text' => 'Formations linguistiques et littéraires pour l’enseignement, la traduction et la culture.'],
-                ['badge' => 'Société', 'title' => 'Comprendre les dynamiques sociales', 'text' => 'Histoire, anthropologie et sciences de l’éducation pour analyser le monde contemporain.'],
+                ['badge' => 'Société', 'title' => 'Comprendre les dynamiques sociales', 'text' => 'Histoire, géographie et socio-anthropologie pour analyser le monde contemporain.'],
                 ['badge' => 'Culture', 'title' => 'Patrimoine et création', 'text' => 'Recherche et médiation culturelle autour des mémoires et des expressions artistiques.'],
                 ['badge' => 'Communauté', 'title' => 'Ouverts sur le débat public', 'text' => 'Colloques, publications et partenariats avec les médias et les institutions culturelles.'],
             ],
             'highlights' => [
-                ['icon' => 'bi-book', 'title' => 'Lettres et langues', 'description' => 'Littérature, linguistique et magister pour transmettre le goût des textes.'],
+                ['icon' => 'bi-book', 'title' => 'Lettres et langues', 'description' => 'Littératures, linguistique et traduction pour transmettre le goût des textes.'],
                 ['icon' => 'bi-clock-history', 'title' => 'Histoire et société', 'description' => 'Comprendre les trajectoires du Burundi et de la région.'],
-                ['icon' => 'bi-broadcast', 'title' => 'Communication', 'description' => 'Former des professionnels des médias et de la médiation culturelle.'],
+                ['icon' => 'bi-globe-europe-africa', 'title' => 'Territoires et sociétés', 'description' => 'Géographie, sociologie et anthropologie au plus près des réalités du Burundi.'],
                 ['icon' => 'bi-chat-quote', 'title' => 'Débat public', 'description' => 'Colloques, publications et engagement citoyen des étudiants.'],
             ],
             'dean_role' => 'Doyenne de la Faculté',
@@ -1129,13 +1160,13 @@ class FacultyDemoDataService
                 ['section' => 'alumni', 'label' => 'Enseignants formés', 'value' => 920, 'suffix' => '+'],
                 ['section' => 'alumni', 'label' => 'Médias / culture', 'value' => 140, 'suffix' => '+'],
             ],
-            'formations_banner' => 'Lettres, histoire, langues et communication',
+            'formations_banner' => 'Langues, lettres, histoire, géographie et socio-anthropologie',
             'research_banner' => 'Patrimoine, langues et dynamiques sociales',
             'staff_banner' => 'Enseignants-chercheurs en sciences humaines',
             'alumni_banner' => 'Enseignants, journalistes et médiateurs culturels',
             'posts_banner' => 'Colloques, publications et vie littéraire',
             'publications_title' => 'Publications en sciences humaines',
-            'publications_intro' => 'Travaux sur la littérature, l’histoire, les langues nationales et la communication.',
+            'publications_intro' => 'Travaux sur la littérature, l’histoire, la géographie et les langues nationales.',
             'projects_title' => 'Projets culturels et éducatifs',
             'alumni_intro' => [
                 'Les diplômés de la FLSH enseignent, écrivent, traduisent, animent des médias et conduisent des projets culturels ou éducatifs.',
@@ -1143,7 +1174,7 @@ class FacultyDemoDataService
             ],
             'alumni_profiles_text' => 'Parcours de journalistes, enseignants, traducteurs et chercheurs en sciences humaines.',
             'alumni_cta' => 'Contactez le secrétariat pour rejoindre le réseau alumni de la FLSH.',
-            'contact_intro' => 'Pour les admissions, les stages en communication ou les partenariats culturels, écrivez à la FLSH.',
+            'contact_intro' => 'Pour les admissions, les stages ou les partenariats culturels, écrivez à la FLSH.',
         ], $this->programmeSet('hum'), $this->staffSet('hum'), $this->postSet('hum'), $this->labSet('hum'));
     }
 
@@ -1186,736 +1217,110 @@ class FacultyDemoDataService
         ]);
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * Departments and options of the University of Burundi faculties. FSI
+     * follows its official maquettes (licence in four years, Bac I shared by
+     * EM, GC and AU, nested TIC trunks). Doctoral studies are not listed:
+     * they are run by a separate website.
+     *
+     * @return list<array<string, mixed>>
+     */
     private function programmeSet(string $key): array
     {
+        $p = static fn (string $level, string $slug, string $title, string $summary, string $description, array $careers, array $extra = []): array => $extra + [
+            'level'       => $level,
+            'slug'        => $slug,
+            'title'       => $title,
+            'summary'     => $summary,
+            'description' => $description,
+            'careers'     => $careers,
+        ];
+        $core = static fn (string $code, string $fr, string $en, int $years, ?string $branch = null, ?string $branchEn = null, int $branchYears = 1): array => array_filter([
+            'option_code'       => $code,
+            'common_core'       => $fr,
+            'common_core_en'    => $en,
+            'common_core_years' => $years,
+            'branch_core'       => $branch,
+            'branch_core_en'    => $branchEn,
+            'branch_core_years' => $branch === null ? null : $branchYears,
+        ], static fn ($value): bool => $value !== null);
+
         $sets = [
             'eco' => [
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Économie',
-                'slug' => 'licence-economie',
-                'duration' => '3 ans',
-                'summary' => 'Formation solide en théorie économique, microéconomie, macroéconomie, économétrie et politique économique.',
-                'description' => 'Formation solide en théorie économique, microéconomie, macroéconomie, économétrie et politique économique. À la FSEG, ce parcours s’inscrit dans une tradition de formation des cadres économiques depuis 1973. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Baccalauréat série scientifique, économique ou technique. Concours d\'entrée ou dossier de candidature.',
-                'careers' => [
-                    'Analyste économique',
-                    'Conseiller en politiques publiques',
-                    'Chargé d\'études',
-                    'Poursuite en Master',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Gestion des Entreprises',
-                'slug' => 'licence-gestion',
-                'duration' => '3 ans',
-                'summary' => 'Formation axée sur les fondamentaux du management, marketing, ressources humaines, organisation et stratégie d\'entreprise.',
-                'description' => 'Formation axée sur les fondamentaux du management, marketing, ressources humaines, organisation et stratégie d\'entreprise. À la FSEG, ce parcours s’inscrit dans une tradition de formation des cadres économiques depuis 1973. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Baccalauréat toutes séries. Priorité aux candidats avec mention.',
-                'careers' => [
-                    'Responsable RH',
-                    'Chargé de marketing',
-                    'Chef de projet',
-                    'Manager opérationnel',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Finance et Comptabilité',
-                'slug' => 'licence-finance',
-                'duration' => '3 ans',
-                'summary' => 'Cursus orienté vers la comptabilité générale et analytique, la fiscalité, la gestion financière, et l\'analyse des états financiers.',
-                'description' => 'Cursus orienté vers la comptabilité générale et analytique, la fiscalité, la gestion financière, et l\'analyse des états financiers. À la FSEG, ce parcours s’inscrit dans une tradition de formation des cadres économiques depuis 1973. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Baccalauréat série scientifique ou économique. Tests d\'aptitude mathématique.',
-                'careers' => [
-                    'Comptable',
-                    'Contrôleur de gestion',
-                    'Analyste financier',
-                    'Auditeur junior',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Économie du Développement',
-                'slug' => 'master-economie-developpement',
-                'duration' => '2 ans',
-                'summary' => 'Spécialisation en économie du développement, financement du développement, économie internationale et évaluation des politiques publiques.',
-                'description' => 'Spécialisation en économie du développement, financement du développement, économie internationale et évaluation des politiques publiques. À la FSEG, ce parcours s’inscrit dans une tradition de formation des cadres économiques depuis 1973. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Licence en économie ou équivalent. Dossier académique + entretien.',
-                'careers' => [
-                    'Économiste senior',
-                    'Expert en développement',
-                    'Consultant international',
-                    'Chercheur',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Management des Organisations',
-                'slug' => 'master-management',
-                'duration' => '2 ans',
-                'summary' => 'Formation de haut niveau en stratégie d\'entreprise, leadership, gestion du changement, gouvernance et management interculturel.',
-                'description' => 'Formation de haut niveau en stratégie d\'entreprise, leadership, gestion du changement, gouvernance et management interculturel. À la FSEG, ce parcours s’inscrit dans une tradition de formation des cadres économiques depuis 1973. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Licence en gestion, économie ou ingénierie. Expérience professionnelle appréciée.',
-                'careers' => [
-                    'Directeur général',
-                    'Manager stratégique',
-                    'Consultant en management',
-                    'DRH',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Audit et Contrôle de Gestion',
-                'slug' => 'master-audit-controle',
-                'duration' => '2 ans',
-                'summary' => 'Spécialisation en audit interne et externe, contrôle de gestion avancé, normes IFRS et gouvernance des organisations.',
-                'description' => 'Spécialisation en audit interne et externe, contrôle de gestion avancé, normes IFRS et gouvernance des organisations. À la FSEG, ce parcours s’inscrit dans une tradition de formation des cadres économiques depuis 1973. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Licence en finance, comptabilité ou gestion.',
-                'careers' => [
-                    'Auditeur senior',
-                    'Contrôleur de gestion',
-                    'Expert-comptable',
-                    'Directeur financier',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Entrepreneuriat et Innovation',
-                'slug' => 'master-entrepreneuriat',
-                'duration' => '2 ans',
-                'summary' => 'Création d’entreprise, innovation et financement de projets pour les porteurs d’idées.',
-                'description' => 'Le master accompagne les étudiants dans la conception, le financement et le pilotage de projets entrepreneuriaux, avec un accent sur l’écosystème des start-up et des PME burundaises. Les incubations et pitchs sont organisés avec des partenaires du secteur privé. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Licence en gestion, économie ou domaine connexe. Dossier et pitch de projet.',
-                'careers' => [
-                    'Fondateur de start-up',
-                    'Chargé d’incubation',
-                    'Consultant en innovation',
-                    'Responsable développement',
-                ],
-            ],
-            [
-                'level' => 'doctorat',
-                'title' => 'Doctorat en Sciences Économiques',
-                'slug' => 'doctorat-economie',
-                'duration' => '3 à 5 ans',
-                'summary' => 'Programme doctoral en sciences économiques orienté vers la production d\'une thèse originale. Domaines : économie du développement, économétrie, économie internationale et politiques économiques.',
-                'description' => 'Programme doctoral en sciences économiques orienté vers la production d\'une thèse originale. Domaines : économie du développement, économétrie, économie internationale et politiques économiques. À la FSEG, ce parcours s’inscrit dans une tradition de formation des cadres économiques depuis 1973. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Master en économie avec mention. Projet de recherche + lettre de motivation + encadreur pressenti.',
-                'careers' => [
-                    'Enseignant-chercheur',
-                    'Expert international',
-                    'Conseiller économique de haut niveau',
-                ],
-            ],
-            [
-                'level' => 'doctorat',
-                'title' => 'Doctorat en Sciences de Gestion',
-                'slug' => 'doctorat-gestion',
-                'duration' => '3 à 5 ans',
-                'summary' => 'Doctorat en sciences de gestion permettant des recherches dans les domaines du management, de la finance, de la comptabilité et du marketing.',
-                'description' => 'Doctorat en sciences de gestion permettant des recherches dans les domaines du management, de la finance, de la comptabilité et du marketing. À la FSEG, ce parcours s’inscrit dans une tradition de formation des cadres économiques depuis 1973. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Master en gestion, finance ou management. Dossier complet + soutenance devant jury.',
-                'careers' => [
-                    'Professeur d\'université',
-                    'Directeur de recherche',
-                    'Expert conseil senior',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Certificat en Comptabilité',
-                'slug' => 'certificat-comptabilite',
-                'duration' => '1 an',
-                'summary' => 'Parcours court pour consolider les bases comptables, fiscales et de reporting financier.',
-                'description' => 'Formation courte destinée aux professionnels et diplômés souhaitant renforcer leurs compétences en comptabilité générale, fiscalité et reporting. Les modules sont conçus pour une mise en pratique immédiate dans les PME et cabinets. Les enseignements allient cours magistraux, travaux dirigés, études de cas et stages encadrés. Les étudiants développent une culture professionnelle solide et une capacité d’analyse adaptée aux réalités du Burundi et de la région.',
-                'admission' => 'Baccalauréat ou expérience professionnelle en gestion. Dossier de candidature.',
-                'careers' => [
-                    'Aide-comptable',
-                    'Assistant fiscal',
-                    'Technicien de reporting',
-                ],
-            ],
+                $p('licence', 'licence-comptabilite-finance', 'Licence en Gestion — Comptabilité et finance', 'Comptabilité générale et analytique, finance d’entreprise, fiscalité et audit.', 'Option du département de Gestion. Après le tronc commun FSEG en Bac I et le tronc commun Gestion en Bac II, l’option forme aux métiers du chiffre : comptabilité, contrôle de gestion, finance d’entreprise, fiscalité burundaise et audit. Les études de cas et le stage de Bac IV se déroulent dans des cabinets, des banques et des administrations.', ['Comptable', 'Assistant d’audit', 'Analyste financier', 'Poursuite en Master'], $core('CF', 'Tronc commun FSEG', 'FSEG common core', 1, 'Tronc commun Gestion', 'Management common core')),
+                $p('licence', 'licence-marketing-management', 'Licence en Gestion — Marketing et management', 'Management des organisations, marketing, ressources humaines et entrepreneuriat.', 'Option du département de Gestion, qui partage le tronc commun FSEG en Bac I puis le tronc commun Gestion en Bac II avec l’option Comptabilité et finance. À partir du Bac III : marketing, gestion des ressources humaines, stratégie, entrepreneuriat et projet de création d’entreprise.', ['Chargé de marketing', 'Responsable des ressources humaines', 'Entrepreneur', 'Poursuite en Master'], $core('MM', 'Tronc commun FSEG', 'FSEG common core', 1, 'Tronc commun Gestion', 'Management common core')),
+                $p('licence', 'licence-economie-politique', 'Licence en Économie politique', 'Microéconomie, macroéconomie, économétrie, économie publique et politique économique.', 'Option du département d’Économie politique. Après le tronc commun FSEG en Bac I, la spécialisation commence dès le Bac II : théorie économique, économétrie, économie monétaire, finances publiques et politiques de développement, avec un travail de fin de cycle sur les réalités du Burundi.', ['Économiste', 'Chargé d’études', 'Analyste de politiques publiques', 'Poursuite en Master'], $core('EP', 'Tronc commun FSEG', 'FSEG common core', 1)),
+                $p('licence', 'licence-economie-rurale', 'Licence en Économie rurale et entreprises agroalimentaires', 'Économie agricole, filières agroalimentaires, développement rural et gestion des coopératives.', 'Option du département d’Économie rurale et entreprises agroalimentaires. Après le tronc commun FSEG en Bac I, les étudiants étudient dès le Bac II l’économie agricole, les filières (café, thé, riz, lait), la gestion des coopératives et l’évaluation de projets de développement rural.', ['Économiste rural', 'Gestionnaire de coopérative', 'Chargé de projets de développement', 'Poursuite en Master'], $core('ER', 'Tronc commun FSEG', 'FSEG common core', 1)),
+                $p('master', 'master-sciences-gestion', 'Master en Sciences de gestion', 'Management stratégique, finance, contrôle de gestion et recherche en gestion.', 'Master du département de Gestion : stratégie, finance d’entreprise, contrôle de gestion, gouvernance des organisations et méthodes de recherche. Le mémoire s’appuie sur une organisation burundaise ou régionale.', ['Cadre financier', 'Contrôleur de gestion', 'Consultant', 'Enseignant-chercheur'], ['option_code' => 'MSG']),
+                $p('master', 'master-analyse-economique-developpement', 'Master en Analyse économique et développement', 'Macroéconomie appliquée, économétrie, économie du développement et évaluation des politiques.', 'Master du département d’Économie politique : modélisation macroéconomique, économétrie appliquée, économie du développement et évaluation d’impact des politiques publiques dans la région des Grands Lacs.', ['Économiste à la Banque centrale', 'Analyste en institution internationale', 'Chargé d’évaluation', 'Enseignant-chercheur'], ['option_code' => 'AED']),
+                $p('master', 'master-economie-rurale-sociale-environnement', 'Master en Économie rurale, sociale et de l’environnement', 'Économie de l’environnement, développement rural, sécurité alimentaire et politiques sociales.', 'Master du département d’Économie rurale et entreprises agroalimentaires : économie de l’environnement et des ressources naturelles, sécurité alimentaire, protection sociale et évaluation de projets ruraux.', ['Économiste de l’environnement', 'Chargé de programmes agricoles', 'Expert en développement rural', 'Enseignant-chercheur'], ['option_code' => 'ERSE']),
             ],
             'sci' => [
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Mathématiques',
-                'slug' => 'licence-mathematiques',
-                'duration' => '3 ans',
-                'summary' => 'Analyse, algèbre, probabilités et modélisation pour les métiers scientifiques et l’ingénierie.',
-                'description' => 'Le programme développe une culture mathématique rigoureuse : analyse réelle et complexe, algèbre linéaire, probabilités, statistiques et introduction à la modélisation. Les étudiants apprennent à formaliser des problèmes issus de la physique, de l’informatique et de l’économie, avec des projets numériques et un stage en fin de cursus.',
-                'admission' => 'Baccalauréat scientifique. Tests d’aptitude en mathématiques.',
-                'careers' => [
-                    'Enseignant de mathématiques',
-                    'Analyste quantitatif',
-                    'Statisticien',
-                    'Poursuite en Master',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Informatique',
-                'slug' => 'licence-informatique',
-                'duration' => '3 ans',
-                'summary' => 'Algorithmique, programmation, bases de données et réseaux pour construire des systèmes numériques fiables.',
-                'description' => 'Formation complète en algorithmique, structures de données, programmation orientée objet, bases de données, réseaux et génie logiciel de base. Les projets tutorés et les stages en entreprise préparent à l’insertion dans le secteur numérique burundais et régional.',
-                'admission' => 'Baccalauréat scientifique ou technique. Concours ou dossier.',
-                'careers' => [
-                    'Développeur',
-                    'Administrateur systèmes',
-                    'Analyste programmeur',
-                    'Poursuite en Master',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Physique',
-                'slug' => 'licence-physique',
-                'duration' => '3 ans',
-                'summary' => 'Physique fondamentale et appliquée, avec une forte composante expérimentale en laboratoire.',
-                'description' => 'Cursus couvrant la mécanique, l’électromagnétisme, la thermodynamique, la physique quantique et l’optique. Les travaux pratiques renforcent la maîtrise des instruments de mesure et de l’analyse de données expérimentales, ouvrant sur l’énergie et l’instrumentation.',
-                'admission' => 'Baccalauréat scientifique. Dossier et entretien.',
-                'careers' => [
-                    'Technicien de laboratoire',
-                    'Enseignant de physique',
-                    'Assistant de recherche',
-                    'Poursuite en Master',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Chimie',
-                'slug' => 'licence-chimie',
-                'duration' => '3 ans',
-                'summary' => 'Chimie générale, organique et analytique au service de l’industrie et de l’environnement.',
-                'description' => 'Les étudiants acquièrent les bases de la chimie générale, organique, inorganique et analytique, avec des laboratoires dédiés à la synthèse, à l’analyse et à la sécurité chimique. Le programme ouvre sur l’industrie, l’environnement et la poursuite d’études.',
-                'admission' => 'Baccalauréat scientifique. Tests de chimie et mathématiques.',
-                'careers' => [
-                    'Technicien chimiste',
-                    'Analyste qualité',
-                    'Assistant laboratoire',
-                    'Poursuite en Master',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Génie logiciel',
-                'slug' => 'master-genie-logiciel',
-                'duration' => '2 ans',
-                'summary' => 'Architecture logicielle, qualité, DevOps et conduite de projets informatiques complexes.',
-                'description' => 'Spécialisation en conception d’architectures logicielles, tests, intégration continue, sécurité applicative et management de projets IT. Les étudiants réalisent un projet de fin d’études en partenariat avec des entreprises ou administrations.',
-                'admission' => 'Licence en informatique ou équivalent. Dossier et entretien technique.',
-                'careers' => [
-                    'Ingénieur logiciel',
-                    'Architecte applicatif',
-                    'Chef de projet IT',
-                    'Lead développeur',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Data Science',
-                'slug' => 'master-data-science',
-                'duration' => '2 ans',
-                'summary' => 'Statistiques avancées, apprentissage automatique et visualisation pour valoriser les données.',
-                'description' => 'Le master forme à la collecte, au nettoyage, à la modélisation et à la visualisation de données. Les modules couvrent le machine learning, les bases analytiques et l’éthique des données, avec des cas issus de l’administration et des entreprises locales.',
-                'admission' => 'Licence en informatique, mathématiques ou statistiques.',
-                'careers' => [
-                    'Data scientist',
-                    'Analyste de données',
-                    'Ingénieur ML',
-                    'Consultant BI',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Énergies renouvelables',
-                'slug' => 'master-energies',
-                'duration' => '2 ans',
-                'summary' => 'Solarisation, hydroélectricité et efficacité énergétique pour la transition énergétique nationale.',
-                'description' => 'Formation interdisciplinaire sur les technologies solaires, hydroélectriques et d’efficacité énergétique. Les projets de terrain et les études de faisabilité préparent à accompagner la transition énergétique du Burundi.',
-                'admission' => 'Licence en physique, génie ou sciences appliquées.',
-                'careers' => [
-                    'Ingénieur énergie',
-                    'Consultant ENR',
-                    'Chargé de projet énergie',
-                    'Chercheur',
-                ],
-            ],
-            [
-                'level' => 'doctorat',
-                'title' => 'Doctorat en Informatique',
-                'slug' => 'doctorat-informatique',
-                'duration' => '3 à 5 ans',
-                'summary' => 'Recherche doctorale en systèmes, IA, réseaux ou génie logiciel.',
-                'description' => 'Le doctorat conduit à une thèse originale dans les domaines des systèmes d’information, de l’intelligence artificielle, des réseaux ou du génie logiciel, avec publications et collaborations internationales.',
-                'admission' => 'Master en informatique avec mention. Projet de recherche et encadreur.',
-                'careers' => [
-                    'Enseignant-chercheur',
-                    'Expert R&D',
-                    'Architecte senior',
-                ],
-            ],
-            [
-                'level' => 'doctorat',
-                'title' => 'Doctorat en Physique',
-                'slug' => 'doctorat-physique',
-                'duration' => '3 à 5 ans',
-                'summary' => 'Thèse en physique de la matière, énergie ou instrumentation.',
-                'description' => 'Programme doctoral orienté vers la physique de la matière, l’énergétique ou l’instrumentation scientifique, avec accès aux laboratoires de la faculté et à des partenariats régionaux.',
-                'admission' => 'Master en physique. Projet de thèse validé.',
-                'careers' => [
-                    'Chercheur',
-                    'Enseignant-chercheur',
-                    'Expert technique',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Systèmes embarqués',
-                'slug' => 'master-systemes-embarques',
-                'duration' => '2 ans',
-                'summary' => 'Microcontrôleurs, IoT et électronique embarquée pour l’industrie et l’agriculture connectée.',
-                'description' => 'Le parcours forme à la conception de systèmes embarqués, à l’IoT et à l’électronique de contrôle, avec des applications pour l’industrie légère, l’agriculture de précision et les services urbains.',
-                'admission' => 'Licence en informatique, électronique ou physique.',
-                'careers' => [
-                    'Ingénieur embarqué',
-                    'Développeur IoT',
-                    'Technicien R&D',
-                ],
-            ],
+                $p('licence', 'licence-genie-mecanique-energetique', 'Licence en Génie mécanique et énergétique', 'Mécanique, thermodynamique, machines thermiques et hydrauliques, énergies renouvelables.', 'Filière du département d’Électromécanique (EM). Après le tronc commun FSI en Bac I, partagé avec le Génie civil et l’Aménagement et urbanisme, la filière se spécialise dès le Bac II : résistance des matériaux, mécanique des fluides, thermodynamique, turbomachines, fabrication mécanique et énergies renouvelables. Le Bac IV se termine par un stage en entreprise et un projet de fin de cycle.', ['Ingénieur de maintenance', 'Technicien en énergie', 'Responsable d’atelier mécanique', 'Poursuite en Master'], $core('GME', 'Tronc commun FSI', 'FSI common core', 1)),
+                $p('licence', 'licence-genie-electrique', 'Licence en Génie électrique', 'Circuits et machines électriques, installations, production et réseaux d’énergie électrique.', 'Filière du département d’Électromécanique (EM). Après le tronc commun FSI en Bac I, la filière se spécialise dès le Bac II : circuits électriques, appareillages, électronique industrielle, installations électriques, production d’énergie, réseaux haute tension, photovoltaïque et éolien.', ['Électrotechnicien', 'Ingénieur réseaux électriques', 'Chargé d’installations solaires', 'Poursuite en Master'], $core('GEL', 'Tronc commun FSI', 'FSI common core', 1)),
+                $p('licence', 'licence-batiments-infrastructures', 'Licence en Génie civil — Bâtiments et infrastructures', 'Structures, béton armé, mécanique des sols, ponts et organisation des chantiers.', 'Option du département de Génie civil. Le Bac I est le tronc commun FSI ; le Bac II est commun aux deux options du génie civil (matériaux, résistance des matériaux, dessin du bâtiment, géologie et hydrologie de l’ingénieur). L’option Bâtiments et infrastructures commence au Bac III : béton armé et précontraint, mécanique des structures, ponts, métré et conduite de chantier.', ['Ingénieur structures', 'Conducteur de travaux', 'Métreur', 'Poursuite en Master'], $core('BI', 'Tronc commun FSI', 'FSI common core', 1, 'Tronc commun Génie civil', 'Civil engineering common core')),
+                $p('licence', 'licence-genie-hydraulique', 'Licence en Génie civil — Génie hydraulique', 'Hydraulique appliquée, ressources en eau, barrages et ouvrages hydrauliques.', 'Option du département de Génie civil. Après le tronc commun FSI en Bac I et le tronc commun Génie civil en Bac II, l’option Génie hydraulique forme dès le Bac III à la gestion intégrée des ressources en eau, à l’hydraulique appliquée, aux barrages et ouvrages connexes et aux systèmes d’information géographique.', ['Ingénieur hydraulicien', 'Chargé d’adduction d’eau', 'Gestionnaire de ressources en eau', 'Poursuite en Master'], $core('GH', 'Tronc commun FSI', 'FSI common core', 1, 'Tronc commun Génie civil', 'Civil engineering common core')),
+                $p('licence', 'licence-amenagement-urbanisme', 'Licence en Aménagement et urbanisme', 'Organisation de l’espace, économie urbaine, droit foncier et projets d’aménagement.', 'Formation du département d’Aménagement et urbanisme. Après le tronc commun FSI en Bac I, elle aborde dès le Bac II l’économie, la démographie, le développement durable et la construction, puis l’organisation de l’espace, le droit foncier, l’économie urbaine, la route et l’architecture.', ['Urbaniste', 'Chargé d’aménagement du territoire', 'Technicien du cadastre', 'Poursuite en Master'], $core('AMU', 'Tronc commun FSI', 'FSI common core', 1)),
+                $p('licence', 'licence-genie-informatique', 'Licence en Génie informatique', 'Systèmes parallèles et répartis, sécurité, cloud, intelligence artificielle.', 'Option du département TIC. Tronc commun TIC en Bac I (mathématiques, électronique, architecture des ordinateurs, algorithmique, programmation C), puis tronc commun GI-GL en Bac II (bases de données, génie logiciel, réseaux, programmation objet). Dès le Bac III : systèmes répartis, cybersécurité, cryptologie, compilation, cloud computing, intelligence artificielle et robotique.', ['Administrateur systèmes', 'Ingénieur sécurité', 'Ingénieur infrastructure', 'Poursuite en Master'], $core('GI', 'Tronc commun TIC', 'ICT common core', 1, 'Tronc commun GI-GL', 'GI-GL common core')),
+                $p('licence', 'licence-genie-logiciel', 'Licence en Génie logiciel', 'Conception de systèmes (MERISE, UML), données, data mining et développement d’applications.', 'Option du département TIC. Elle partage le tronc commun TIC en Bac I et le tronc commun GI-GL en Bac II avec le Génie informatique. Dès le Bac III : ingénierie des systèmes avec MERISE et UML, entrepôts de données, data mining, programmation mobile et événementielle, traitement d’images.', ['Développeur', 'Analyste-programmeur', 'Ingénieur données', 'Poursuite en Master'], $core('GL', 'Tronc commun TIC', 'ICT common core', 1, 'Tronc commun GI-GL', 'GI-GL common core')),
+                $p('licence', 'licence-reseaux-telecommunications', 'Licence en Réseaux et télécommunications', 'Réseaux WAN, commutation, communications et transmissions numériques.', 'Option du département TIC. Après le tronc commun TIC en Bac I et le tronc commun SE-RT en Bac II (signal numérique, systèmes de communication, réseaux mobiles, antennes et hyperfréquences), l’option aborde dès le Bac III les réseaux WAN et Internet, la commutation, les communications et réseaux de transmission numériques.', ['Technicien réseaux', 'Ingénieur télécoms', 'Administrateur réseau', 'Poursuite en Master'], $core('RT', 'Tronc commun TIC', 'ICT common core', 1, 'Tronc commun SE-RT', 'SE-RT common core')),
+                $p('licence', 'licence-systemes-embarques', 'Licence en Systèmes embarqués', 'Internet des objets, microcontrôleurs, circuits intégrés et applications embarquées.', 'Option du département TIC. Elle partage le tronc commun TIC en Bac I et le tronc commun SE-RT en Bac II avec Réseaux et télécommunications. Dès le Bac III : Internet des objets, semi-conducteurs et circuits intégrés, conception et développement de systèmes embarqués, langages machines.', ['Ingénieur systèmes embarqués', 'Développeur IoT', 'Technicien en électronique', 'Poursuite en Master'], $core('SE', 'Tronc commun TIC', 'ICT common core', 1, 'Tronc commun SE-RT', 'SE-RT common core')),
+                $p('master', 'master-genie-logiciel', 'Master en Génie logiciel', 'Architecture logicielle, qualité, cloud et conduite de projets.', 'Master du département TIC : architectures logicielles, méthodes agiles, qualité et tests, cloud, sécurité applicative et mémoire en lien avec une entreprise ou un laboratoire.', ['Architecte logiciel', 'Chef de projet informatique', 'Ingénieur DevOps', 'Enseignant-chercheur'], ['option_code' => 'GL']),
+                $p('master', 'master-reseaux-telecommunications', 'Master en Réseaux et télécommunications', 'Réseaux avancés, radiocommunications, sécurité et ingénierie des opérateurs.', 'Master du département TIC : réseaux haut débit, radiocommunications, virtualisation des réseaux, sécurité et ingénierie des opérateurs, avec un mémoire appliqué.', ['Ingénieur réseaux', 'Expert télécoms', 'Responsable sécurité', 'Enseignant-chercheur'], ['option_code' => 'RT']),
             ],
             'med' => [
-            [
-                'level' => 'licence',
-                'title' => 'Médecine générale',
-                'slug' => 'medecine-generale',
-                'duration' => '6 ans',
-                'summary' => 'Formation médicale complète alliant sciences fondamentales, clinique et stages hospitaliers.',
-                'description' => 'Le cursus de médecine générale prépare des médecins capables de diagnostiquer, soigner et prévenir. Les années précliniques portent sur l’anatomie, la physiologie et la pathologie ; les années cliniques s’effectuent en stages hospitaliers encadrés dans les structures partenaires.',
-                'admission' => 'Baccalauréat scientifique. Concours d’entrée très sélectif.',
-                'careers' => [
-                    'Médecin généraliste',
-                    'Médecin de santé publique',
-                    'Poursuite en spécialisation',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Sciences infirmières',
-                'slug' => 'sciences-infirmieres',
-                'duration' => '4 ans',
-                'summary' => 'Soins infirmiers, éthique clinique et santé communautaire pour un exercice responsable.',
-                'description' => 'Formation professionnalisante en soins infirmiers, pharmacologie de base, urgences et santé communautaire. Les stages en centres de santé et hôpitaux développent le geste technique et la relation de soin.',
-                'admission' => 'Baccalauréat. Concours et entretien de motivation.',
-                'careers' => [
-                    'Infirmier(ère)',
-                    'Cadre de santé',
-                    'Infirmier communautaire',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Santé publique',
-                'slug' => 'sante-publique',
-                'duration' => '3 ans',
-                'summary' => 'Épidémiologie, politiques de santé et promotion de la santé des populations.',
-                'description' => 'Le programme forme à l’analyse des déterminants de la santé, à la planification sanitaire et à la promotion de la santé. Les étudiants réalisent des enquêtes de terrain et collaborent avec les districts sanitaires.',
-                'admission' => 'Baccalauréat. Dossier académique.',
-                'careers' => [
-                    'Agent de santé publique',
-                    'Chargé de programmes',
-                    'Statisticien sanitaire',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Pharmacie',
-                'slug' => 'pharmacie',
-                'duration' => '5 ans',
-                'summary' => 'Sciences pharmaceutiques, dispensation et assurance qualité des médicaments.',
-                'description' => 'Cursus couvrant la chimie pharmaceutique, la pharmacologie, la galénique et la législation pharmaceutique. Les stages en officine et en hôpital préparent à la dispensation et à la gestion des stocks de médicaments.',
-                'admission' => 'Baccalauréat scientifique. Concours.',
-                'careers' => [
-                    'Pharmacien',
-                    'Responsable pharmacie hospitalière',
-                    'Inspecteur pharmaceutique',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Laboratoire médical',
-                'slug' => 'laboratoire-medical',
-                'duration' => '3 ans',
-                'summary' => 'Biologie médicale, analyses et contrôle qualité en laboratoire de diagnostic.',
-                'description' => 'Les étudiants maîtrisent les techniques d’hématologie, biochimie, microbiologie et immunologie appliquées au diagnostic. Le programme insiste sur la biosécurité et le contrôle qualité.',
-                'admission' => 'Baccalauréat scientifique.',
-                'careers' => [
-                    'Technicien de laboratoire',
-                    'Biologiste junior',
-                    'Assistant de recherche',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Épidémiologie',
-                'slug' => 'master-epidemiologie',
-                'duration' => '2 ans',
-                'summary' => 'Méthodes épidémiologiques, biostatistique et surveillance des maladies.',
-                'description' => 'Spécialisation en conception d’études épidémiologiques, biostatistique et surveillance des maladies transmissibles et non transmissibles. Les mémoires portent sur des enjeux sanitaires nationaux.',
-                'admission' => 'Licence en santé publique, médecine ou sciences biomédicales.',
-                'careers' => [
-                    'Épidémiologiste',
-                    'Analyste surveillance',
-                    'Chercheur en santé',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Santé communautaire',
-                'slug' => 'master-sante-communautaire',
-                'duration' => '2 ans',
-                'summary' => 'Intervention communautaire, nutrition et renforcement des systèmes de santé de proximité.',
-                'description' => 'Le master prépare à concevoir et évaluer des interventions de santé communautaire, avec un accent sur la nutrition, la santé maternelle et infantile et la participation communautaire.',
-                'admission' => 'Licence en santé ou sciences sociales appliquées à la santé.',
-                'careers' => [
-                    'Coordinateur de programmes',
-                    'Conseiller communautaire',
-                    'Cadre ONG santé',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Spécialisation en Pédiatrie',
-                'slug' => 'specialisation-pediatrie',
-                'duration' => '3 à 4 ans',
-                'summary' => 'Formation spécialisée en médecine de l’enfant et de l’adolescent.',
-                'description' => 'Parcours de spécialisation clinique en pédiatrie, avec stages prolongés en services pédiatriques, néonatalogie et urgences pédiatriques. L’éthique et la communication avec les familles sont au cœur de la formation.',
-                'admission' => 'Diplôme de médecine générale. Concours de spécialisation.',
-                'careers' => [
-                    'Pédiatre',
-                    'Médecin hospitalier',
-                    'Enseignant clinicien',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Spécialisation en Chirurgie',
-                'slug' => 'specialisation-chirurgie',
-                'duration' => '4 à 5 ans',
-                'summary' => 'Formation chirurgicale progressive, du geste technique à la responsabilité opératoire.',
-                'description' => 'Spécialisation exigeante combinant anatomie chirurgicale, techniques opératoires et prise en charge péri-opératoire. Les résidents progressent sous supervision dans les blocs opératoires partenaires.',
-                'admission' => 'Diplôme de médecine générale. Sélection sur concours.',
-                'careers' => [
-                    'Chirurgien',
-                    'Médecin hospitalier',
-                    'Formateur clinique',
-                ],
-            ],
-            [
-                'level' => 'doctorat',
-                'title' => 'Doctorat en Sciences médicales',
-                'slug' => 'doctorat-sciences-medicales',
-                'duration' => '3 à 5 ans',
-                'summary' => 'Recherche doctorale en sciences biomédicales ou santé des populations.',
-                'description' => 'Le doctorat conduit à une thèse originale en sciences biomédicales, clinique ou santé des populations, avec publications dans des revues indexées et collaborations internationales.',
-                'admission' => 'Master ou spécialisation médicale. Projet de recherche validé.',
-                'careers' => [
-                    'Enseignant-chercheur',
-                    'Expert OMS/partenaires',
-                    'Directeur de recherche',
-                ],
-            ],
+                $p('licence', 'baccalaureat-medecine', 'Baccalauréat en Médecine', 'Six années : sciences fondamentales, sémiologie, pathologies et stages cliniques au CHUK.', 'Le premier cycle des études médicales dure six ans dans le système BMD. Les premières années couvrent les sciences fondamentales et biomédicales ; les suivantes, la sémiologie, la pathologie et la thérapeutique, avec des stages cliniques au Centre Hospitalo-Universitaire de Kamenge (CHUK) et dans les hôpitaux partenaires. La formation se termine par un mémoire.', ['Médecin généraliste', 'Médecin de district sanitaire', 'Poursuite en spécialisation (DES)'], ['option_code' => 'MED']),
+                $p('master', 'des-medecine-interne', 'DES en Médecine interne', 'Spécialisation en médecine interne au CHUK.', 'Diplôme d’études spécialisées du département de Médecine interne : la première année est commune aux spécialités médicales (pédiatrie et médecine interne) ; viennent ensuite les stages hospitaliers, les gardes et la recherche clinique.', ['Médecin interniste', 'Chef de service hospitalier', 'Enseignant clinicien'], $core('MI', 'Tronc commun des spécialités médicales', 'Medical specialties common core', 1)),
+                $p('master', 'des-pediatrie', 'DES en Pédiatrie', 'Spécialisation en santé de l’enfant et néonatologie.', 'Diplôme d’études spécialisées du département de Pédiatrie, qui partage la première année avec la médecine interne, puis se consacre à la néonatologie, aux urgences pédiatriques et à la santé de l’enfant.', ['Pédiatre', 'Néonatologiste', 'Enseignant clinicien'], $core('PED', 'Tronc commun des spécialités médicales', 'Medical specialties common core', 1)),
+                $p('master', 'des-chirurgie-generale', 'DES en Chirurgie générale', 'Spécialisation chirurgicale : bloc opératoire, traumatologie et urgences.', 'Diplôme d’études spécialisées du département de Chirurgie. La première année est commune aux spécialités chirurgicales (chirurgie, gynécologie-obstétrique, anesthésie-réanimation) ; suivent la chirurgie viscérale, la traumatologie et les urgences.', ['Chirurgien', 'Chef de bloc opératoire', 'Enseignant clinicien'], $core('CHIR', 'Tronc commun des spécialités chirurgicales', 'Surgical specialties common core', 1)),
+                $p('master', 'des-gynecologie-obstetrique', 'DES en Gynécologie-obstétrique', 'Santé de la femme, suivi de grossesse et chirurgie gynécologique.', 'Diplôme d’études spécialisées du département de Gynécologie-obstétrique, qui partage la première année avec les autres spécialités chirurgicales, puis se consacre à l’obstétrique, à la chirurgie gynécologique et à la santé maternelle.', ['Gynécologue-obstétricien', 'Responsable de maternité', 'Enseignant clinicien'], $core('GO', 'Tronc commun des spécialités chirurgicales', 'Surgical specialties common core', 1)),
+                $p('master', 'des-anesthesie-reanimation', 'DES en Anesthésie-réanimation', 'Anesthésie, réanimation et médecine d’urgence.', 'Diplôme d’études spécialisées du département d’Anesthésie-réanimation, qui partage la première année avec les spécialités chirurgicales, puis forme à l’anesthésie, à la réanimation et à la prise en charge des urgences vitales.', ['Anesthésiste-réanimateur', 'Médecin urgentiste', 'Enseignant clinicien'], $core('AR', 'Tronc commun des spécialités chirurgicales', 'Surgical specialties common core', 1)),
+                $p('master', 'master-sante-publique', 'Master en Santé publique', 'Épidémiologie, biostatistique, systèmes et politiques de santé.', 'Master du département de Santé communautaire : épidémiologie, biostatistique, gestion des programmes et des systèmes de santé, promotion de la santé et mémoire de terrain.', ['Épidémiologiste', 'Gestionnaire de programme de santé', 'Médecin de santé publique'], ['option_code' => 'MSP']),
             ],
             'agro' => [
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Agronomie',
-                'slug' => 'licence-agronomie',
-                'duration' => '3 ans',
-                'summary' => 'Productions végétales, sols et systèmes agricoles durables pour le monde rural burundais.',
-                'description' => 'Formation polyvalente en agronomie générale : sols, cultures, protection des plantes et économie agricole. Les sorties de terrain et les stages en exploitations ancrent les connaissances dans les systèmes de production locaux.',
-                'admission' => 'Baccalauréat scientifique ou agricole.',
-                'careers' => [
-                    'Agronome',
-                    'Conseiller agricole',
-                    'Technicien de production',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Environnement',
-                'slug' => 'licence-environnement',
-                'duration' => '3 ans',
-                'summary' => 'Écologie, gestion des ressources naturelles et évaluation environnementale.',
-                'description' => 'Le programme traite de l’écologie, de la gestion des bassins versants, de la biodiversité et de l’évaluation d’impact environnemental. Les étudiants acquièrent des outils de diagnostic et de suivi des milieux naturels.',
-                'admission' => 'Baccalauréat scientifique.',
-                'careers' => [
-                    'Conseiller environnement',
-                    'Agent de suivi écologique',
-                    'Chargé d’études EIA',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Productions végétales',
-                'slug' => 'licence-productions-vegetales',
-                'duration' => '3 ans',
-                'summary' => 'Cultures vivrières et de rente, sélection variétale et itinéraires techniques.',
-                'description' => 'Cursus centré sur les cultures vivrières et de rente (café, thé, cultures maraîchères), la sélection variétale et les itinéraires techniques adaptés aux conditions agroclimatiques du Burundi.',
-                'admission' => 'Baccalauréat scientifique ou agricole.',
-                'careers' => [
-                    'Technicien cultures',
-                    'Conseiller filière',
-                    'Responsable production',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Élevage',
-                'slug' => 'licence-elevage',
-                'duration' => '3 ans',
-                'summary' => 'Productions animales, santé du troupeau et valorisation des produits d’élevage.',
-                'description' => 'Formation sur l’élevage bovin, caprin et avicole, la nutrition animale, la santé du troupeau et la valorisation des produits. Les stages en fermes et centres d’élevage complètent les enseignements.',
-                'admission' => 'Baccalauréat scientifique ou agricole.',
-                'careers' => [
-                    'Technicien élevage',
-                    'Conseiller pastoral',
-                    'Responsable ferme',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Agroécologie',
-                'slug' => 'master-agroecologie',
-                'duration' => '2 ans',
-                'summary' => 'Systèmes agroécologiques, fertilité des sols et résilience climatique.',
-                'description' => 'Le master approfondit les principes de l’agroécologie, la gestion de la fertilité, la diversification des systèmes et l’adaptation au changement climatique. Les projets de terrain impliquent des coopératives et des ONG rurales.',
-                'admission' => 'Licence en agronomie ou environnement.',
-                'careers' => [
-                    'Expert agroécologie',
-                    'Chargé de projet rural',
-                    'Chercheur',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Gestion des ressources naturelles',
-                'slug' => 'master-ressources-naturelles',
-                'duration' => '2 ans',
-                'summary' => 'Gouvernance des ressources, bassins versants et conservation.',
-                'description' => 'Spécialisation en gouvernance des ressources naturelles, restauration des bassins versants et conservation de la biodiversité, avec outils de cartographie et de suivi.',
-                'admission' => 'Licence en environnement ou agronomie.',
-                'careers' => [
-                    'Gestionnaire de ressources',
-                    'Expert conservation',
-                    'Consultant',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Développement rural',
-                'slug' => 'master-developpement-rural',
-                'duration' => '2 ans',
-                'summary' => 'Politiques rurales, filières agricoles et accompagnement des communautés.',
-                'description' => 'Formation interdisciplinaire sur les politiques de développement rural, l’organisation des filières et l’accompagnement des communautés. Les mémoires s’appuient sur des enquêtes de terrain.',
-                'admission' => 'Licence en agronomie, économie ou sciences sociales.',
-                'careers' => [
-                    'Chargé de développement',
-                    'Coordinateur de projets',
-                    'Conseiller filière',
-                ],
-            ],
-            [
-                'level' => 'doctorat',
-                'title' => 'Doctorat en Sciences agronomiques',
-                'slug' => 'doctorat-agronomie',
-                'duration' => '3 à 5 ans',
-                'summary' => 'Recherche doctorale en productions végétales, sols ou systèmes agricoles.',
-                'description' => 'Le doctorat conduit à une thèse originale en productions végétales, science des sols ou systèmes agricoles, avec publications et partenariats de recherche régionaux.',
-                'admission' => 'Master en sciences agronomiques. Projet de thèse.',
-                'careers' => [
-                    'Enseignant-chercheur',
-                    'Expert ISABU/partenaires',
-                    'Directeur de programme',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Sols et fertilité',
-                'slug' => 'master-sols',
-                'duration' => '2 ans',
-                'summary' => 'Pédologie, analyse de sols et stratégies de fertilisation durable.',
-                'description' => 'Parcours spécialisé en pédologie, analyses de laboratoire et stratégies de fertilisation organique et minérale adaptées aux sols tropicaux d’altitude.',
-                'admission' => 'Licence en agronomie.',
-                'careers' => [
-                    'Expert sols',
-                    'Conseiller fertilité',
-                    'Chercheur',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Certificat en Irrigation',
-                'slug' => 'certificat-irrigation',
-                'duration' => '1 an',
-                'summary' => 'Techniques d’irrigation, dimensionnement et gestion de l’eau agricole.',
-                'description' => 'Formation courte sur les techniques d’irrigation, le dimensionnement des réseaux et la gestion collective de l’eau agricole, destinée aux techniciens et agents de terrain.',
-                'admission' => 'Baccalauréat ou expérience en agronomie.',
-                'careers' => [
-                    'Technicien irrigation',
-                    'Agent hydraulique agricole',
-                ],
-            ],
+                $p('licence', 'licence-production-vegetale', 'Licence en Sciences de la production végétale', 'Phytotechnie, amélioration et protection des plantes, cultures vivrières et industrielles.', 'Option du département des Sciences de la production végétale (SPV). Le tronc commun FABI couvre le Bac I et le Bac II (biologie, chimie, mathématiques, pédologie, économie rurale) ; la spécialisation commence au Bac III : phytotechnie, amélioration variétale, défense des cultures et production de semences.', ['Agronome', 'Chef de projet agricole', 'Technicien semencier', 'Poursuite en Master'], $core('SPV', 'Tronc commun FABI', 'FABI common core', 2)),
+                $p('licence', 'licence-production-animale', 'Licence en Sciences de la production animale', 'Zootechnie, nutrition et santé animales, aquaculture.', 'Option du département des Sciences de la production animale (SPA). Après le tronc commun FABI en Bac I et Bac II, les étudiants étudient la zootechnie, l’alimentation et l’amélioration animales, l’aquaculture et la gestion d’élevage.', ['Zootechnicien', 'Gestionnaire d’élevage', 'Conseiller en production animale', 'Poursuite en Master'], $core('SPA', 'Tronc commun FABI', 'FABI common core', 2)),
+                $p('licence', 'licence-technologies-agroalimentaires', 'Licence en Sciences et technologies agroalimentaires', 'Transformation, conservation et qualité des produits agricoles.', 'Option du département des Sciences et technologies agroalimentaires (STA). Après le tronc commun FABI, la formation porte sur la transformation et la conservation des produits, le contrôle de qualité, la sécurité sanitaire des aliments et la nutrition.', ['Technologue agroalimentaire', 'Responsable qualité', 'Entrepreneur agroalimentaire', 'Poursuite en Master'], $core('STA', 'Tronc commun FABI', 'FABI common core', 2)),
+                $p('licence', 'licence-environnement', 'Licence en Sciences et technologies de l’environnement', 'Écologie, gestion des ressources naturelles, eau et changement climatique.', 'Option du département des Sciences et technologies de l’environnement (STE). Après le tronc commun FABI, la formation traite de l’écologie, de la gestion des eaux et des forêts, de l’agroforesterie et de l’adaptation au changement climatique.', ['Environnementaliste', 'Chargé de conservation', 'Consultant en études d’impact', 'Poursuite en Master'], $core('STE', 'Tronc commun FABI', 'FABI common core', 2)),
+                $p('licence', 'licence-socio-economie-rurale', 'Licence en Socio-économie rurale', 'Économie des exploitations, filières, vulgarisation et développement rural.', 'Option du département de Socio-économie rurale (SER). Après le tronc commun FABI, la formation porte sur l’économie des exploitations familiales, les filières agricoles, la vulgarisation, la sociologie rurale et la gestion de projets.', ['Agroéconomiste', 'Vulgarisateur', 'Chargé de développement rural', 'Poursuite en Master'], $core('SER', 'Tronc commun FABI', 'FABI common core', 2)),
+                $p('licence', 'licence-sciences-agro-environnementales', 'Licence en Sciences agro-environnementales', 'Sciences du sol, aptitude des terres, conservation des eaux et des sols.', 'Option du département des Sciences agro-environnementales (SAE). Après le tronc commun FABI, la formation aborde la science du sol, l’évaluation de l’aptitude des terres, la fertilité, la conservation des eaux et des sols et l’aménagement des bassins versants.', ['Pédologue', 'Chargé d’aménagement des terres', 'Conseiller en fertilité des sols', 'Poursuite en Master'], $core('SAE', 'Tronc commun FABI', 'FABI common core', 2)),
+                $p('master', 'master-environnement', 'Master en Sciences et technologies de l’environnement', 'Gestion durable des écosystèmes, évaluation environnementale et climat.', 'Master du département STE : gestion durable des écosystèmes, évaluation environnementale, changement climatique et mémoire de recherche appliquée au Burundi.', ['Expert environnemental', 'Chargé de programmes climat', 'Enseignant-chercheur'], ['option_code' => 'STE']),
+                $p('master', 'master-socio-economie-rurale', 'Master en Socio-économie rurale', 'Politiques agricoles, filières, sécurité alimentaire et évaluation de projets.', 'Master du département SER : politiques agricoles, analyse des filières, sécurité alimentaire, évaluation de projets et méthodes de recherche en sciences sociales.', ['Économiste agricole', 'Chargé de suivi-évaluation', 'Enseignant-chercheur'], ['option_code' => 'SER']),
+                $p('master', 'master-sciences-agro-environnementales', 'Master en Sciences agro-environnementales', 'Fertilité des sols, agroécologie et gestion des terres.', 'Master du département SAE : fertilité et gestion des sols, agroécologie, systèmes d’information géographique et aménagement des terres.', ['Expert en gestion des terres', 'Agroécologue', 'Enseignant-chercheur'], ['option_code' => 'SAE']),
             ],
             'hum' => [
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Lettres modernes',
-                'slug' => 'licence-lettres',
-                'duration' => '3 ans',
-                'summary' => 'Littératures francophones, stylistique et critique littéraire.',
-                'description' => 'Le programme explore les littératures française et francophones, la stylistique et les méthodes de la critique littéraire. Les ateliers d’écriture et les séminaires développent l’expression écrite et orale.',
-                'admission' => 'Baccalauréat littéraire ou équivalent.',
-                'careers' => [
-                    'Enseignant de lettres',
-                    'Rédacteur',
-                    'Critique littéraire',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Histoire',
-                'slug' => 'licence-histoire',
-                'duration' => '3 ans',
-                'summary' => 'Histoire du Burundi, de l’Afrique et du monde, méthodes et sources.',
-                'description' => 'Formation aux méthodes historiques, à l’histoire du Burundi et de la région des Grands Lacs, ainsi qu’à l’histoire contemporaine mondiale. Les étudiants travaillent sur archives et enquêtes orales.',
-                'admission' => 'Baccalauréat. Dossier.',
-                'careers' => [
-                    'Enseignant d’histoire',
-                    'Archiviste',
-                    'Chargé de patrimoine',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Philosophie',
-                'slug' => 'licence-philosophie',
-                'duration' => '3 ans',
-                'summary' => 'Histoire de la philosophie, éthique et esprit critique.',
-                'description' => 'Cursus couvrant l’histoire de la philosophie, la logique, l’éthique et la philosophie politique. L’accent est mis sur la rigueur argumentative et le dialogue interdisciplinaire.',
-                'admission' => 'Baccalauréat.',
-                'careers' => [
-                    'Enseignant de philosophie',
-                    'Conseiller éthique',
-                    'Rédacteur',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Langues',
-                'slug' => 'licence-langues',
-                'duration' => '3 ans',
-                'summary' => 'Langues nationales et étrangères, traduction et interculturalité.',
-                'description' => 'Le programme combine langues nationales (kirundi), français, anglais et initiation à la traduction. Les étudiants développent des compétences interculturelles utiles à l’enseignement, à la médiation et aux organisations internationales.',
-                'admission' => 'Baccalauréat. Tests de langues.',
-                'careers' => [
-                    'Traducteur',
-                    'Enseignant de langues',
-                    'Médiateur culturel',
-                ],
-            ],
-            [
-                'level' => 'licence',
-                'title' => 'Licence en Communication',
-                'slug' => 'licence-communication',
-                'duration' => '3 ans',
-                'summary' => 'Médias, communication institutionnelle et production de contenus.',
-                'description' => 'Formation aux médias, à la communication institutionnelle et à la production de contenus (écrit, radio, numérique). Les ateliers pratiques et les stages en médias locaux préparent à l’insertion professionnelle.',
-                'admission' => 'Baccalauréat. Portfolio ou entretien.',
-                'careers' => [
-                    'Journaliste',
-                    'Chargé de communication',
-                    'Community manager',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Littérature',
-                'slug' => 'master-litterature',
-                'duration' => '2 ans',
-                'summary' => 'Recherche littéraire, littératures africaines et théories critiques.',
-                'description' => 'Le master approfondit la recherche littéraire, les littératures africaines et les théories critiques contemporaines. Les séminaires et le mémoire préparent au doctorat ou à l’édition culturelle.',
-                'admission' => 'Licence en lettres ou équivalent.',
-                'careers' => [
-                    'Chercheur',
-                    'Éditeur',
-                    'Enseignant supérieur',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Sciences de l’éducation',
-                'slug' => 'master-education',
-                'duration' => '2 ans',
-                'summary' => 'Didactique, politiques éducatives et innovation pédagogique.',
-                'description' => 'Spécialisation en didactique, évaluation, politiques éducatives et innovation pédagogique. Destiné aux enseignants et cadres du système éducatif souhaitant renforcer leurs compétences.',
-                'admission' => 'Licence et expérience pédagogique appréciée.',
-                'careers' => [
-                    'Cadre pédagogique',
-                    'Formateur',
-                    'Inspecteur',
-                ],
-            ],
-            [
-                'level' => 'master',
-                'title' => 'Master en Anthropologie',
-                'slug' => 'master-anthropologie',
-                'duration' => '2 ans',
-                'summary' => 'Anthropologie sociale, enquêtes de terrain et dynamiques culturelles.',
-                'description' => 'Le master forme à l’anthropologie sociale et culturelle, aux enquêtes ethnographiques et à l’analyse des dynamiques sociales au Burundi et dans la région.',
-                'admission' => 'Licence en sciences humaines.',
-                'careers' => [
-                    'Anthropologue',
-                    'Chercheur',
-                    'Conseiller social',
-                ],
-            ],
-            [
-                'level' => 'doctorat',
-                'title' => 'Doctorat en Histoire',
-                'slug' => 'doctorat-histoire',
-                'duration' => '3 à 5 ans',
-                'summary' => 'Thèse originale en histoire du Burundi, de l’Afrique ou comparée.',
-                'description' => 'Programme doctoral conduisant à une thèse originale en histoire nationale, régionale ou comparée, avec exigence de publications et de contributions aux archives.',
-                'admission' => 'Master en histoire. Projet de thèse.',
-                'careers' => [
-                    'Enseignant-chercheur',
-                    'Expert patrimonial',
-                    'Historien public',
-                ],
-            ],
-            [
-                'level' => 'doctorat',
-                'title' => 'Doctorat en Lettres',
-                'slug' => 'doctorat-lettres',
-                'duration' => '3 à 5 ans',
-                'summary' => 'Recherche doctorale en littératures et langues.',
-                'description' => 'Le doctorat porte sur les littératures, la linguistique ou les études culturelles, avec une production scientifique reconnue et un ancrage dans les enjeux culturels contemporains.',
-                'admission' => 'Master en lettres ou langues. Projet de recherche.',
-                'careers' => [
-                    'Enseignant-chercheur',
-                    'Critique',
-                    'Expert culturel',
-                ],
-            ],
+                $p('licence', 'licence-etudes-litteratures-africaines', 'Licence en Études et littératures africaines', 'Linguistique africaine, kirundi, littératures et cultures africaines.', 'Option du département de Langues et cultures africaines (LCA). Le Bac I et le Bac II sont communs aux deux options du département : langues et linguistique africaines, littératures orales et écrites, anthropologie culturelle du Burundi. La spécialisation commence au Bac III.', ['Enseignant de kirundi', 'Traducteur', 'Chargé de patrimoine culturel', 'Poursuite en Master'], $core('ELA', 'Tronc commun Langues et cultures africaines', 'African languages and cultures common core', 2)),
+                $p('licence', 'licence-entrepreneuriat-culturel', 'Licence en Entrepreneuriat culturel', 'Industries culturelles, gestion de projets artistiques et valorisation du patrimoine.', 'Filière du département de Langues et cultures africaines, qui partage le tronc commun du département en Bac I et Bac II. Dès le Bac III : industries culturelles et créatives, gestion de projets artistiques, médiation et valorisation du patrimoine burundais.', ['Entrepreneur culturel', 'Gestionnaire de projets artistiques', 'Médiateur culturel', 'Poursuite en Master'], $core('EC', 'Tronc commun Langues et cultures africaines', 'African languages and cultures common core', 2)),
+                $p('licence', 'licence-lettres-francaises', 'Licence en Langue et littérature françaises', 'Littératures francophones, grammaire, linguistique et didactique.', 'Option du département de Langue et littérature françaises (LLF). Le Bac I et le Bac II sont communs aux deux options du département (grammaire, phonétique, histoire littéraire, littératures francophones) ; la spécialisation commence au Bac III.', ['Enseignant de français', 'Journaliste', 'Rédacteur', 'Poursuite en Master'], $core('LF', 'Tronc commun Lettres françaises', 'French studies common core', 2)),
+                $p('licence', 'licence-sciences-langage-creation-litteraire', 'Licence en Sciences du langage et création littéraire', 'Linguistique, analyse du discours, écriture créative et édition.', 'Option du département de Langue et littérature françaises, qui partage le tronc commun du département en Bac I et Bac II. Dès le Bac III : sciences du langage, sociolinguistique, analyse du discours, ateliers d’écriture et édition — en lien avec le prix littéraire Rumuri.', ['Écrivain', 'Éditeur', 'Correcteur', 'Poursuite en Master'], $core('SLCL', 'Tronc commun Lettres françaises', 'French studies common core', 2)),
+                $p('licence', 'licence-anglais', 'Licence en Langue et littérature anglaises', 'English linguistics, literatures in English, translation and teaching.', 'Formation du département de Langue et littérature anglaises (LLA) : phonologie et grammaire de l’anglais, littératures anglophones et africaines d’expression anglaise, traduction et didactique de l’anglais.', ['Enseignant d’anglais', 'Traducteur-interprète', 'Chargé de communication', 'Poursuite en Master'], ['option_code' => 'LLA']),
+                $p('licence', 'licence-histoire-patrimoine', 'Licence en Histoire et patrimoine', 'Histoire du Burundi et de l’Afrique des Grands Lacs, archéologie et patrimoine.', 'Filière du département d’Histoire : histoire ancienne et contemporaine du Burundi et de l’Afrique des Grands Lacs, critique historique, archives, archéologie et valorisation du patrimoine.', ['Enseignant d’histoire', 'Archiviste', 'Guide du patrimoine', 'Poursuite en Master'], ['option_code' => 'HP']),
+                $p('licence', 'licence-geographie', 'Licence en Géographie', 'Géographie physique et humaine, cartographie, SIG et aménagement.', 'Formation du département de Géographie : géographie physique et humaine, cartographie et systèmes d’information géographique, aménagement du territoire et environnement.', ['Enseignant de géographie', 'Cartographe', 'Chargé d’aménagement', 'Poursuite en Master'], ['option_code' => 'GEO']),
+                $p('licence', 'licence-anthropologie', 'Licence en Anthropologie', 'Anthropologie sociale et culturelle, enquêtes de terrain et patrimoine immatériel.', 'Filière du département de Socio-anthropologie. Le Bac I et le Bac II sont communs avec la sociologie ; dès le Bac III : anthropologie sociale et culturelle, parenté, religions, patrimoine immatériel et enquêtes de terrain.', ['Anthropologue', 'Chargé d’études sociales', 'Médiateur culturel', 'Poursuite en Master'], $core('ANT', 'Tronc commun Socio-anthropologie', 'Socio-anthropology common core', 2)),
+                $p('licence', 'licence-sociologie', 'Licence en Sociologie', 'Sociologie générale, méthodes d’enquête, développement et cohésion sociale.', 'Filière du département de Socio-anthropologie, qui partage le tronc commun du département en Bac I et Bac II. Dès le Bac III : sociologie du développement, de la famille et du travail, méthodes quantitatives et qualitatives.', ['Sociologue', 'Chargé de projets sociaux', 'Analyste en suivi-évaluation', 'Poursuite en Master'], $core('SOC', 'Tronc commun Socio-anthropologie', 'Socio-anthropology common core', 2)),
+                $p('master', 'master-societes-pouvoirs-territoires', 'Master Sociétés, pouvoirs, territoires et développement durable', 'Histoire et géographie des sociétés, gouvernance des territoires et développement durable.', 'Master porté par le département d’Histoire avec la Géographie : sociétés et pouvoirs dans l’Afrique des Grands Lacs, dynamiques territoriales, gouvernance et développement durable.', ['Chargé d’études territoriales', 'Expert en gouvernance', 'Enseignant-chercheur'], ['option_code' => 'SPTDD']),
+                $p('master', 'master-socio-anthropologie', 'Master en Socio-anthropologie', 'Recherche en sociologie et anthropologie du Burundi contemporain.', 'Master du département de Socio-anthropologie : théories sociologiques et anthropologiques, méthodes de recherche, développement, conflits et cohésion sociale.', ['Chercheur en sciences sociales', 'Consultant', 'Enseignant-chercheur'], ['option_code' => 'SOA']),
+                $p('master', 'master-communication-interculturelle-traduction', 'Master en Communication interculturelle et traduction', 'Traduction, interprétation et communication entre langues et cultures.', 'Master du département de Langue et littérature anglaises : théorie et pratique de la traduction (anglais, français, kirundi, kiswahili), interprétation et communication interculturelle.', ['Traducteur', 'Interprète', 'Chargé de communication internationale'], ['option_code' => 'CIT']),
+                $p('master', 'master-didactique-francais', 'Master en Didactique du français', 'Enseignement du français langue seconde, ingénierie de formation et évaluation.', 'Master du département de Langue et littérature françaises : didactique du français langue seconde, conception de programmes, évaluation et recherche en éducation.', ['Formateur d’enseignants', 'Conseiller pédagogique', 'Enseignant-chercheur'], ['option_code' => 'DF']),
             ],
         ];
 
-        return $sets[$key] ?? $sets['eco'];
+        $admission = [
+            'eco'  => ['licence' => 'Diplôme d’État (toutes sections) avec les points fixés par le ministère ; orientation par le Bureau des admissions.', 'master' => 'Baccalauréat (licence) en économie ou en gestion et sélection sur dossier.'],
+            'sci'  => ['licence' => 'Diplôme d’État scientifique ou technique avec les points fixés par le ministère ; orientation vers la FSI.', 'master' => 'Baccalauréat (licence) en ingénierie ou en informatique et sélection sur dossier.'],
+            'med'  => ['licence' => 'Diplôme d’État scientifique (biologie-chimie ou mathématiques-physique) avec les points fixés par le ministère.', 'master' => 'Baccalauréat en médecine, inscription à l’Ordre des médecins et concours d’entrée en spécialisation.'],
+            'agro' => ['licence' => 'Diplôme d’État scientifique avec les points fixés par le ministère ; orientation vers la FABI.', 'master' => 'Baccalauréat (licence) en agronomie, environnement ou économie rurale et sélection sur dossier.'],
+            'hum'  => ['licence' => 'Diplôme d’État (toutes sections) avec les points fixés par le ministère ; orientation vers la FLSH.', 'master' => 'Baccalauréat (licence) dans le domaine et sélection sur dossier.'],
+        ];
+        $key = isset($sets[$key]) ? $key : 'eco';
+
+        return array_map(static function (array $row) use ($key, $admission): array {
+            $years = $row['level'] === 'master'
+                ? (str_starts_with($row['slug'], 'des-') ? 4 : 2)
+                : ($key === 'med' ? 6 : 4);
+
+            return $row + ['duration' => $years . ' ans', 'admission' => $admission[$key][$row['level']]];
+        }, $sets[$key]);
     }
 
     /** @return list<array<string, mixed>> */
@@ -1939,9 +1344,9 @@ class FacultyDemoDataService
                 'slug' => 'hakizimana',
                 'grade' => 'Maître de Conférences',
                 'specialty' => 'Finance & Comptabilité',
-                'role' => 'Chef de Département Finance',
+                'role' => 'Cheffe du département de Gestion',
                 'email' => 'mc.hakizimana@ub.edu.bi',
-                'bio' => 'Dr. Marie-Claire Hakizimana est Chef de Département Finance à la FSEG. Spécialisée en Finance & Comptabilité, elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Elle publie régulièrement et accompagne les projets de fin d’études.',
+                'bio' => 'Dr. Marie-Claire Hakizimana est cheffe du département de Gestion à la FSEG. Spécialisée en Finance & Comptabilité, elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Elle publie régulièrement et accompagne les projets de fin d’études.',
             ],
             [
                 'category' => 'enseignant',
@@ -1978,10 +1383,10 @@ class FacultyDemoDataService
                 'name' => 'Dr. Rose Manirakiza',
                 'slug' => 'manirakiza',
                 'grade' => 'Assistante',
-                'specialty' => 'Marketing & Stratégie',
-                'role' => 'Enseignante-Chercheure',
+                'specialty' => 'Économie rurale',
+                'role' => 'Cheffe du département d’Économie rurale et entreprises agroalimentaires',
                 'email' => 'r.manirakiza@ub.edu.bi',
-                'bio' => 'Dr. Rose Manirakiza est Enseignante-Chercheure à la FSEG. Spécialisée en Marketing & Stratégie, elle contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Elle publie régulièrement et accompagne les projets de fin d’études.',
+                'bio' => 'Elle enseigne l’économie des filières agroalimentaires et accompagne les coopératives dans l’évaluation de leurs projets.',
             ],
             [
                 'category' => 'enseignant',
@@ -1989,7 +1394,7 @@ class FacultyDemoDataService
                 'slug' => 'dusabimana',
                 'grade' => 'Maître Assistant',
                 'specialty' => 'Économétrie',
-                'role' => 'Directeur LEA',
+                'role' => 'Chef du département d’Économie politique, directeur LEA',
                 'email' => 'c.dusabimana@ub.edu.bi',
                 'bio' => 'Dr. Cyprien Dusabimana est Directeur LEA à la FSEG. Spécialisé en Économétrie, il contribue à l’enseignement, à l’encadrement des étudiants et à la vie scientifique de la faculté. Il publie régulièrement et accompagne les projets de fin d’études.',
             ],
@@ -2061,7 +1466,7 @@ class FacultyDemoDataService
                 'slug' => 'nadia-baraka',
                 'grade' => 'Maître de conférences',
                 'specialty' => 'Génie logiciel',
-                'role' => 'Chef de département Informatique',
+                'role' => 'Chef du département TIC',
                 'email' => 'nadia.baraka@ub.edu.bi',
                 'bio' => 'Spécialiste du génie logiciel et des architectures distribuées, elle encadre des projets étudiants avec les entreprises technologiques de Bujumbura.',
             ],
@@ -2070,8 +1475,8 @@ class FacultyDemoDataService
                 'name' => 'Dr. Joseph Niyonkuru',
                 'slug' => 'joseph-niyonkuru',
                 'grade' => 'Maître de conférences',
-                'specialty' => 'Data science',
-                'role' => 'Responsable Master Data Science',
+                'specialty' => 'Génie logiciel et données',
+                'role' => 'Responsable du Master Génie logiciel',
                 'email' => 'joseph.niyonkuru@ub.edu.bi',
                 'bio' => 'Ses travaux portent sur l’apprentissage automatique et l’analyse de données publiques. Il collabore avec des administrations pour moderniser leurs systèmes d’information.',
             ],
@@ -2090,8 +1495,8 @@ class FacultyDemoDataService
                 'name' => 'Dr. Aimé Nsabimana',
                 'slug' => 'aime-nsabimana',
                 'grade' => 'Maître-assistant',
-                'specialty' => 'Physique de l’énergie',
-                'role' => 'Responsable laboratoire ENR',
+                'specialty' => 'Électrotechnique et énergie',
+                'role' => 'Chef du département d’Électromécanique',
                 'email' => 'aime.nsabimana@ub.edu.bi',
                 'bio' => 'Ses recherches concernent le solaire photovoltaïque et l’efficacité énergétique dans les bâtiments publics.',
             ],
@@ -2100,8 +1505,8 @@ class FacultyDemoDataService
                 'name' => 'Dr. Linda Muco',
                 'slug' => 'linda-muco',
                 'grade' => 'Professeur',
-                'specialty' => 'Chimie analytique',
-                'role' => 'Chef de département Chimie',
+                'specialty' => 'Génie civil et matériaux',
+                'role' => 'Cheffe du département de Génie civil',
                 'email' => 'linda.muco@ub.edu.bi',
                 'bio' => 'Elle développe des méthodes d’analyse pour le contrôle qualité industriel et environnemental.',
             ],
@@ -2110,7 +1515,7 @@ class FacultyDemoDataService
                 'name' => 'Dr. Kevin Bizimana',
                 'slug' => 'kevin-bizimana',
                 'grade' => 'Chargé de cours',
-                'specialty' => 'Systèmes embarqués',
+                'specialty' => 'Génie électrique et systèmes embarqués',
                 'role' => 'Enseignant-chercheur',
                 'email' => 'kevin.bizimana@ub.edu.bi',
                 'bio' => 'Passionné par l’IoT et l’électronique embarquée, il anime des ateliers de prototypage pour les étudiants.',
@@ -2140,8 +1545,8 @@ class FacultyDemoDataService
                 'name' => 'Dr. Solange Uwimana',
                 'slug' => 'solange-uwimana',
                 'grade' => 'Maître de conférences',
-                'specialty' => 'Statistiques',
-                'role' => 'Enseignante-chercheuse',
+                'specialty' => 'Urbanisme et aménagement',
+                'role' => 'Cheffe du département d’Aménagement et urbanisme',
                 'email' => 'solange.uwimana@ub.edu.bi',
                 'bio' => 'Ses enseignements et publications portent sur les statistiques appliquées et la biostatistique.',
             ],
@@ -2150,10 +1555,10 @@ class FacultyDemoDataService
                 'name' => 'Dr. Thierry Manirakiza',
                 'slug' => 'thierry-manirakiza',
                 'grade' => 'Chargé de cours',
-                'specialty' => 'Cybersécurité',
+                'specialty' => 'Génie hydraulique',
                 'role' => 'Enseignant-chercheur',
                 'email' => 'thierry.mani@ub.edu.bi',
-                'bio' => 'Il sensibilise les étudiants aux enjeux de sécurité des systèmes d’information et anime des challenges Capture-the-Flag pédagogiques.',
+                'bio' => 'Il enseigne l’hydraulique appliquée et les ouvrages hydrauliques, et encadre les projets de fin de cycle de l’option Génie hydraulique.',
             ],
             [
                 'category' => 'administratif',
@@ -2183,7 +1588,7 @@ class FacultyDemoDataService
                 'slug' => 'olga-nibigira',
                 'grade' => 'Maître de conférences',
                 'specialty' => 'Médecine interne',
-                'role' => 'Chef de clinique',
+                'role' => 'Cheffe du département de Médecine interne',
                 'email' => 'olga.nibigira@ub.edu.bi',
                 'bio' => 'Clinicienne expérimentée, elle encadre les stages hospitaliers et publie sur les maladies chroniques non transmissibles.',
             ],
@@ -2193,7 +1598,7 @@ class FacultyDemoDataService
                 'slug' => 'placide-nduwimana',
                 'grade' => 'Maître de conférences',
                 'specialty' => 'Pédiatrie',
-                'role' => 'Responsable spécialisation pédiatrie',
+                'role' => 'Chef du département de Pédiatrie',
                 'email' => 'placide.ndu@ub.edu.bi',
                 'bio' => 'Ses travaux portent sur la nutrition infantile et la néonatalogie dans les contextes à ressources limitées.',
             ],
@@ -2203,7 +1608,7 @@ class FacultyDemoDataService
                 'slug' => 'rachel-bigirimana',
                 'grade' => 'Chargée de cours',
                 'specialty' => 'Épidémiologie',
-                'role' => 'Enseignante-chercheuse',
+                'role' => 'Cheffe du département de Santé communautaire',
                 'email' => 'rachel.bigi@ub.edu.bi',
                 'bio' => 'Elle forme les étudiants aux enquêtes épidémiologiques et collabore avec le ministère de la Santé.',
             ],
@@ -2213,7 +1618,7 @@ class FacultyDemoDataService
                 'slug' => 'serge-niyonkuru',
                 'grade' => 'Maître-assistant',
                 'specialty' => 'Chirurgie',
-                'role' => 'Enseignant clinicien',
+                'role' => 'Chef du département de Chirurgie',
                 'email' => 'serge.niyo@ub.edu.bi',
                 'bio' => 'Chirurgien hospitalier, il assure l’enseignement du geste technique et la simulation chirurgicale.',
             ],
@@ -2222,20 +1627,20 @@ class FacultyDemoDataService
                 'name' => 'Dr. Alice Hakizimana',
                 'slug' => 'alice-hakizimana',
                 'grade' => 'Chargée de cours',
-                'specialty' => 'Sciences infirmières',
-                'role' => 'Responsable sciences infirmières',
+                'specialty' => 'Gynécologie-obstétrique',
+                'role' => 'Cheffe du département de Gynécologie-obstétrique',
                 'email' => 'alice.haki@ub.edu.bi',
-                'bio' => 'Elle développe des modules de soins critiques et de santé communautaire pour les futurs infirmiers.',
+                'bio' => 'Elle coordonne la formation en santé maternelle et les urgences obstétricales au CHUK.',
             ],
             [
                 'category' => 'enseignant',
                 'name' => 'Dr. Yves Manirakiza',
                 'slug' => 'yves-manirakiza',
                 'grade' => 'Professeur',
-                'specialty' => 'Pharmacologie',
-                'role' => 'Chef de département Pharmacie',
+                'specialty' => 'Anesthésie-réanimation',
+                'role' => 'Chef du département d’Anesthésie-réanimation',
                 'email' => 'yves.mani@ub.edu.bi',
-                'bio' => 'Ses recherches concernent l’usage rationnel des médicaments et la pharmacovigilance.',
+                'bio' => 'Il dirige le service de réanimation et la formation des résidents à l’anesthésie et aux urgences vitales.',
             ],
             [
                 'category' => 'administratif',
@@ -2262,8 +1667,8 @@ class FacultyDemoDataService
                 'name' => 'Dr. Esther Ndayishimiye',
                 'slug' => 'esther-ndayi',
                 'grade' => 'Maître de conférences',
-                'specialty' => 'Laboratoire médical',
-                'role' => 'Responsable labo',
+                'specialty' => 'Sciences biomédicales',
+                'role' => 'Cheffe du département des Sciences biomédicales',
                 'email' => 'esther.ndayi@ub.edu.bi',
                 'bio' => 'Biologiste médicale, elle dirige les enseignements pratiques de diagnostic de laboratoire.',
             ],
@@ -2305,7 +1710,7 @@ class FacultyDemoDataService
                 'slug' => 'diane-niyongabo',
                 'grade' => 'Maître de conférences',
                 'specialty' => 'Productions végétales',
-                'role' => 'Chef de département Agronomie',
+                'role' => 'Cheffe du département des Sciences de la production végétale',
                 'email' => 'diane.niyo@ub.edu.bi',
                 'bio' => 'Agronome de terrain, elle travaille sur les itinéraires techniques du café et des cultures vivrières.',
             ],
@@ -2315,7 +1720,7 @@ class FacultyDemoDataService
                 'slug' => 'pacifique-habiya',
                 'grade' => 'Maître de conférences',
                 'specialty' => 'Environnement',
-                'role' => 'Responsable Environnement',
+                'role' => 'Chef du département des Sciences et technologies de l’environnement',
                 'email' => 'p.habiya@ub.edu.bi',
                 'bio' => 'Ses recherches portent sur la restauration des bassins versants et la conservation des sols.',
             ],
@@ -2335,7 +1740,7 @@ class FacultyDemoDataService
                 'slug' => 'claude-nsa-agro',
                 'grade' => 'Maître-assistant',
                 'specialty' => 'Science des sols',
-                'role' => 'Responsable laboratoire sols',
+                'role' => 'Chef du département des Sciences agro-environnementales',
                 'email' => 'c.nsa@ub.edu.bi',
                 'bio' => 'Pédologue, il développe des protocoles d’analyse de fertilité adaptés aux sols d’altitude.',
             ],
@@ -2345,7 +1750,7 @@ class FacultyDemoDataService
                 'slug' => 'solange-uwi-agro',
                 'grade' => 'Chargée de cours',
                 'specialty' => 'Élevage',
-                'role' => 'Enseignante-chercheuse',
+                'role' => 'Cheffe du département des Sciences de la production animale',
                 'email' => 's.uwi@ub.edu.bi',
                 'bio' => 'Spécialiste des productions animales, elle anime les stages en fermes modèles.',
             ],
@@ -2354,8 +1759,8 @@ class FacultyDemoDataService
                 'name' => 'Ir. Thierry Bizimana',
                 'slug' => 'thierry-bizi',
                 'grade' => 'Maître de conférences',
-                'specialty' => 'Ressources naturelles',
-                'role' => 'Enseignant-chercheur',
+                'specialty' => 'Technologies agroalimentaires',
+                'role' => 'Chef du département des Sciences et technologies agroalimentaires',
                 'email' => 't.bizi@ub.edu.bi',
                 'bio' => 'Il travaille sur la gouvernance des ressources naturelles et les projets de bassins versants.',
             ],
@@ -2384,8 +1789,8 @@ class FacultyDemoDataService
                 'name' => 'Ir. Chantal Hakizimana',
                 'slug' => 'chantal-haki-agro',
                 'grade' => 'Chargée de cours',
-                'specialty' => 'Irrigation',
-                'role' => 'Enseignante',
+                'specialty' => 'Socio-économie rurale',
+                'role' => 'Cheffe du département de Socio-économie rurale',
                 'email' => 'c.haki@ub.edu.bi',
                 'bio' => 'Elle forme les étudiants aux techniques d’irrigation et à la gestion de l’eau agricole.',
             ],
@@ -2426,10 +1831,10 @@ class FacultyDemoDataService
                 'name' => 'Dr. Grace Nkurunziza',
                 'slug' => 'grace-nku-hum',
                 'grade' => 'Maître de conférences',
-                'specialty' => 'Communication',
-                'role' => 'Chef de département Communication',
+                'specialty' => 'Linguistique anglaise',
+                'role' => 'Cheffe du département de Langue et littérature anglaises',
                 'email' => 'g.nku@ub.edu.bi',
-                'bio' => 'Journaliste de formation, elle anime les ateliers média et les partenariats avec la presse nationale.',
+                'bio' => 'Elle enseigne la linguistique anglaise et la traduction, et coordonne le master en communication interculturelle et traduction.',
             ],
             [
                 'category' => 'enseignant',
@@ -2437,7 +1842,7 @@ class FacultyDemoDataService
                 'slug' => 'benjamin-haki',
                 'grade' => 'Maître de conférences',
                 'specialty' => 'Lettres modernes',
-                'role' => 'Responsable Licence Lettres',
+                'role' => 'Chef du département de Langue et littérature françaises',
                 'email' => 'b.haki@ub.edu.bi',
                 'bio' => 'Il enseigne la stylistique et accompagne les ateliers d’écriture créative.',
             ],
@@ -2457,7 +1862,7 @@ class FacultyDemoDataService
                 'slug' => 'olivier-mani',
                 'grade' => 'Maître-assistant',
                 'specialty' => 'Histoire',
-                'role' => 'Responsable Histoire',
+                'role' => 'Chef du département d’Histoire',
                 'email' => 'o.mani@ub.edu.bi',
                 'bio' => 'Ses recherches portent sur l’histoire contemporaine du Burundi et les archives orales.',
             ],
@@ -2466,8 +1871,8 @@ class FacultyDemoDataService
                 'name' => 'Dr. Diane Irakoze',
                 'slug' => 'diane-ira-hum',
                 'grade' => 'Chargée de cours',
-                'specialty' => 'Anthropologie',
-                'role' => 'Enseignante-chercheuse',
+                'specialty' => 'Socio-anthropologie',
+                'role' => 'Cheffe du département de Socio-anthropologie',
                 'email' => 'd.ira@ub.edu.bi',
                 'bio' => 'Elle conduit des enquêtes ethnographiques sur les dynamiques sociales urbaines et rurales.',
             ],
@@ -2476,10 +1881,10 @@ class FacultyDemoDataService
                 'name' => 'Dr. Samuel Ndayizeye',
                 'slug' => 'samuel-ndayi',
                 'grade' => 'Professeur',
-                'specialty' => 'Sciences de l’éducation',
-                'role' => 'Chef de département Éducation',
+                'specialty' => 'Géographie',
+                'role' => 'Chef du département de Géographie',
                 'email' => 's.ndayi@ub.edu.bi',
-                'bio' => 'Il forme les cadres pédagogiques et publie sur l’innovation dans l’enseignement secondaire.',
+                'bio' => 'Il enseigne la géographie humaine et les systèmes d’information géographique, avec des terrains dans les provinces du pays.',
             ],
             [
                 'category' => 'administratif',
@@ -2506,10 +1911,10 @@ class FacultyDemoDataService
                 'name' => 'Dr. Linda Muco',
                 'slug' => 'linda-muco-hum',
                 'grade' => 'Maître de conférences',
-                'specialty' => 'Philosophie',
-                'role' => 'Enseignante-chercheuse',
+                'specialty' => 'Langues et cultures africaines',
+                'role' => 'Cheffe du département de Langues et cultures africaines',
                 'email' => 'l.muco@ub.edu.bi',
-                'bio' => 'Elle enseigne l’éthique et la philosophie politique, avec un intérêt pour les débats publics.',
+                'bio' => 'Elle enseigne la littérature orale et les langues nationales, et anime des projets de valorisation du patrimoine immatériel.',
             ],
             [
                 'category' => 'enseignant',
@@ -2588,10 +1993,10 @@ class FacultyDemoDataService
             ],
             [
                 'type' => 'event',
-                'title' => 'Séminaire doctoral — Méthodes de recherche quantitative',
-                'slug' => 'seminaire-doctoral',
-                'excerpt' => 'Un séminaire de deux jours destiné aux doctorants de la FSEG a été organisé sur les méthodes quantitatives avancées en sciences économiques et de gestion. Animé par le Prof. Ndayishimiye et le Dr. Dusabimana.',
-                'body' => '<p>Un séminaire de deux jours destiné aux doctorants de la FSEG a été organisé sur les méthodes quantitatives avancées en sciences économiques et de gestion. Animé par le Prof. Ndayishimiye et le Dr. Dusabimana.</p><p>Cette publication illustre la vie académique de la FSEG : échanges avec les partenaires, mobilisation des enseignants et implication des étudiants. Les détails pratiques (horaires, inscriptions, contacts) sont mis à jour par le secrétariat au fur et à mesure de l’organisation.</p><p>Pour toute question, adressez-vous au secrétariat de la faculté ou consultez les annonces affichées sur le campus.</p>',
+                'title' => 'Séminaire de recherche — Méthodes quantitatives',
+                'slug' => 'seminaire-methodes-quantitatives',
+                'excerpt' => 'Un séminaire de deux jours destiné aux enseignants-chercheurs et aux étudiants de master de la FSEG a été organisé sur les méthodes quantitatives avancées en sciences économiques et de gestion. Animé par le Prof. Ndayishimiye et le Dr. Dusabimana.',
+                'body' => '<p>Un séminaire de deux jours destiné aux enseignants-chercheurs et aux étudiants de master de la FSEG a été organisé sur les méthodes quantitatives avancées en sciences économiques et de gestion. Animé par le Prof. Ndayishimiye et le Dr. Dusabimana.</p><p>Cette publication illustre la vie académique de la FSEG : échanges avec les partenaires, mobilisation des enseignants et implication des étudiants. Les détails pratiques (horaires, inscriptions, contacts) sont mis à jour par le secrétariat au fur et à mesure de l’organisation.</p><p>Pour toute question, adressez-vous au secrétariat de la faculté ou consultez les annonces affichées sur le campus.</p>',
                 'location' => 'Campus Mutanga — Amphithéâtre FSEG',
             ],
             [
@@ -2638,7 +2043,7 @@ class FacultyDemoDataService
                 'title' => 'Hackathon Innovation FSI 2026',
                 'slug' => 'hackathon-fsi-2026',
                 'excerpt' => 'Les étudiants de la FSI s’affrontent 48 heures durant pour prototyper des solutions numériques utiles aux services publics.',
-                'body' => '<p>Le hackathon annuel de la Faculté des Sciences et Ingénierie réunit des équipes pluridisciplinaires autour de défis proposés par des administrations et des PME technologiques.</p><p>Mentorat, ateliers techniques et jury final permettent de valoriser les meilleurs prototypes et d’ouvrir des stages.</p>',
+                'body' => '<p>Le hackathon annuel de la Faculté des Sciences de l’Ingénieur réunit des équipes pluridisciplinaires autour de défis proposés par des administrations et des PME technologiques.</p><p>Mentorat, ateliers techniques et jury final permettent de valoriser les meilleurs prototypes et d’ouvrir des stages.</p>',
             ],
             [
                 'type' => 'news',
@@ -3681,8 +3086,8 @@ class FacultyDemoDataService
             ],
             [
                 'year' => 2010,
-                'title' => 'Programme doctoral et laboratoires',
-                'description' => 'Création des laboratoires de recherche et ouverture du programme de doctorat, consacrant la FSEG comme centre de recherche reconnu. Cette étape marque un jalon dans la construction de l’identité académique de la faculté.',
+                'title' => 'Laboratoires de recherche',
+                'description' => 'Création des laboratoires de recherche LEA, CRGD, LFC et URPP, consacrant la FSEG comme centre de recherche reconnu. Cette étape marque un jalon dans la construction de l’identité académique de la faculté.',
             ],
             [
                 'year' => 2020,
@@ -3714,7 +3119,7 @@ class FacultyDemoDataService
             [
                 'year' => 2014,
                 'title' => 'Alignement LMD',
-                'description' => 'Réorganisation complète des parcours Licence-Master-Doctorat en sciences et ingénierie.',
+                'description' => 'Réorganisation des parcours selon le système Baccalauréat-Master : licence en quatre ans et options à partir du Bac II.',
             ],
             [
                 'year' => 2021,
@@ -3740,8 +3145,8 @@ class FacultyDemoDataService
             ],
             [
                 'year' => 1999,
-                'title' => 'Sciences infirmières et santé publique',
-                'description' => 'Ouverture de filières professionnalisantes en soins et santé des populations.',
+                'title' => 'Spécialisations cliniques et santé publique',
+                'description' => 'Ouverture des premiers diplômes d’études spécialisées et des formations en santé des populations.',
             ],
             [
                 'year' => 2011,
@@ -3799,8 +3204,8 @@ class FacultyDemoDataService
             ],
             [
                 'year' => 1982,
-                'title' => 'Langues et communication',
-                'description' => 'Développement des filières langues et ouverture vers les métiers de l’information.',
+                'title' => 'Langues et littératures',
+                'description' => 'Développement des filières de langues africaines, françaises et anglaises.',
             ],
             [
                 'year' => 1996,
@@ -3810,7 +3215,7 @@ class FacultyDemoDataService
             [
                 'year' => 2008,
                 'title' => 'LMD humanités',
-                'description' => 'Réforme des parcours Licence-Master-Doctorat en sciences humaines.',
+                'description' => 'Réforme des parcours de licence et de master en lettres et sciences humaines.',
             ],
             [
                 'year' => 2017,
@@ -4393,7 +3798,7 @@ class FacultyDemoDataService
                     ],
                 ],
                 'offer_title' => 'Programmes tailored to every ambition',
-                'offer_text' => 'From bachelor to doctorate, FSEG offers complete pathways in economics, management and finance.',
+                'offer_text' => 'Bachelor’s and master’s degrees in management, political economy and rural economics, after a common first year.',
                 'cta_title' => 'Ready to apply?',
                 'cta_text' => 'Contact our admissions office for information on enrolment procedures.',
                 'contact_title' => 'Get in touch',
@@ -4407,13 +3812,13 @@ class FacultyDemoDataService
             'sci' => [
                 'tagline' => 'Science, technology and engineering for Burundi',
                 'about_title' => 'Training responsible scientists and engineers',
-                'about' => 'The Faculty of Science and Engineering prepares graduates to solve complex problems for national development.',
+                'about' => 'The Faculty of Engineering Sciences prepares graduates to solve complex problems for national development.',
                 'hero_title' => 'Science and engineering for the country',
                 'dean_title' => 'Welcome to FSI',
                 'dean_role' => 'Dean of the Faculty',
                 'dean_specialty' => 'Computer Science & Systems',
                 'dean_paragraphs' => [
-                    'Welcome to the Faculty of Science and Engineering.',
+                    'Welcome to the Faculty of Engineering Sciences.',
                     'Here scientific curiosity meets experimental rigor to deliver useful answers for Burundi.',
                 ],
                 'mission_label' => 'Our core values',
@@ -4421,16 +3826,16 @@ class FacultyDemoDataService
                 'mission' => ['icon' => 'bi-bullseye', 'title' => 'Mission', 'paragraphs' => ['Transmit scientific culture and train professionals able to design adapted technological solutions.']],
                 'vision' => ['icon' => 'bi-eye', 'title' => 'Vision', 'paragraphs' => ['Be a recognised science and engineering faculty in the Great Lakes region.']],
                 'offer_title' => 'Scientific and technological pathways',
-                'offer_text' => 'Bachelor, master and doctoral programmes in mathematics, computing, physics and engineering.',
+                'offer_text' => 'Bachelor’s and master’s programmes in electromechanics, civil engineering, planning and ICT.',
                 'cta_title' => 'Ready to apply?',
                 'cta_text' => 'Contact admissions for enrolment information.',
                 'contact_title' => 'Get in touch',
                 'form_title' => 'Contact form',
                 'form_help' => 'All required fields must be completed.',
                 'hours' => 'Mon–Fri, 07:30–16:30',
-                'footer' => 'Faculty of Science and Engineering — University of Burundi.',
+                'footer' => 'Faculty of Engineering Sciences — University of Burundi.',
                 'seo_title' => 'FSI | University of Burundi',
-                'seo_description' => 'Official website of the Faculty of Science and Engineering.',
+                'seo_description' => 'Official website of the Faculty of Engineering Sciences.',
             ],
             'med' => [
                 'tagline' => 'Training competent and humane health professionals',
@@ -4448,7 +3853,7 @@ class FacultyDemoDataService
                 'mission' => ['icon' => 'bi-bullseye', 'title' => 'Mission', 'paragraphs' => ['Train dedicated caregivers from frontline care to biomedical research.']],
                 'vision' => ['icon' => 'bi-eye', 'title' => 'Vision', 'paragraphs' => ['Contribute to a resilient health system through excellent clinical training.']],
                 'offer_title' => 'Medical and paramedical pathways',
-                'offer_text' => 'Medicine, nursing, pharmacy and public health rooted in hospital practice.',
+                'offer_text' => 'General medicine, clinical specialisations and public health rooted in hospital practice.',
                 'cta_title' => 'Ready to apply?',
                 'cta_text' => 'Contact the faculty secretariat for admissions information.',
                 'contact_title' => 'Get in touch',
@@ -4671,6 +4076,11 @@ class FacultyDemoDataService
                 $this->insertTranslation($siteId, 'settings', (int) $setting['id'], 'value', $value);
             }
         }
+    }
+
+    private function informationSeeder(): FacultyDemoInformationSeeder
+    {
+        return new FacultyDemoInformationSeeder($this->db, service('mediaService'));
     }
 
     private function insertTranslation(int $siteId, string $resourceType, int $resourceId, string $field, string $value): void

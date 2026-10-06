@@ -5,11 +5,14 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Models\AlumniProfileModel;
 use App\Models\ContentBlockModel;
+use App\Models\DepartmentModel;
+use App\Models\FaqItemModel;
 use App\Models\HomeContentModel;
 use App\Models\HomeHeroSlideModel;
 use App\Models\HomeHighlightModel;
 use App\Models\LaboratoryModel;
 use App\Models\PageModel;
+use App\Models\PartnerModel;
 use App\Models\ProgrammeModel;
 use App\Models\PublicationModel;
 use App\Models\ResearchProjectModel;
@@ -27,6 +30,14 @@ use Throwable;
 
 class ResourceController extends BaseController
 {
+    private const STUDY_YEARS = ['1' => '1 an', '2' => '2 ans', '3' => '3 ans'];
+
+    private const DEPARTMENT_CYCLES = [
+        'licence' => 'Licence',
+        'master'  => 'Master',
+        'both'    => 'Tous les cycles',
+    ];
+
     public function index(string $resource): string|ResponseInterface
     {
         $config = $this->resource($resource);
@@ -80,6 +91,7 @@ class ResourceController extends BaseController
             'items'       => $model->paginate((int) ($config['perPage'] ?? 12), 'admin_' . str_replace('-', '_', $resource)),
             'pager'       => $model->pager,
             'fieldOptions' => $this->fieldOptions($config),
+            'departmentCycles' => $this->departmentCycles($config),
             'filters'     => [
                 'q'         => $query,
                 'published' => $published,
@@ -175,6 +187,8 @@ class ResourceController extends BaseController
             'translations' => [],
             'translationFields' => $this->translationFields($config),
             'fieldOptions' => $this->fieldOptions($config),
+            'pageOptions' => $this->linkPageOptions($config),
+            'departmentCycles' => $this->departmentCycles($config),
             'action'      => site_url('admin/' . $resource),
             'isNew'       => true,
         ]);
@@ -237,6 +251,8 @@ class ResourceController extends BaseController
             'translations' => service('contentTranslationService')->values($this->translationResourceType($resource, $config), $id, 'en'),
             'translationFields' => $this->translationFields($config),
             'fieldOptions' => $this->fieldOptions($config),
+            'pageOptions' => $this->linkPageOptions($config),
+            'departmentCycles' => $this->departmentCycles($config),
             'action'      => site_url('admin/' . $resource . '/' . $id),
             'isNew'       => false,
         ]);
@@ -298,7 +314,7 @@ class ResourceController extends BaseController
 
         if (! $this->modelUsesSoftDeletes($model)) {
             foreach ($config['fields'] as $field) {
-                if (($field['type'] ?? null) === 'image') {
+                if ($this->isUploadField($field)) {
                     service('mediaService')->deletePublicPath($this->itemData($item)[$field['name']] ?? null);
                 }
             }
@@ -372,7 +388,7 @@ class ResourceController extends BaseController
         }
 
         foreach ($config['fields'] as $field) {
-            if (($field['type'] ?? null) === 'image') {
+            if ($this->isUploadField($field)) {
                 service('mediaService')->deletePublicPath($this->itemData($item)[$field['name']] ?? null);
             }
         }
@@ -441,7 +457,7 @@ class ResourceController extends BaseController
             if (! $supportsTrash) {
                 foreach ($owned as $row) {
                     foreach ($config['fields'] as $field) {
-                        if (($field['type'] ?? null) === 'image') {
+                        if ($this->isUploadField($field)) {
                             service('mediaService')->deletePublicPath($this->itemData($row['item'])[$field['name']] ?? null);
                         }
                     }
@@ -729,7 +745,7 @@ class ResourceController extends BaseController
         $oldImages = [];
 
         foreach ($config['fields'] as $field) {
-            if (($field['type'] ?? null) !== 'image') {
+            if (! $this->isUploadField($field)) {
                 continue;
             }
 
@@ -751,10 +767,13 @@ class ResourceController extends BaseController
             }
 
             $error = null;
-            $path = service('mediaService')->storePublicImage($file, (string) ($field['folder'] ?? $resource), $error);
+            $folder = (string) ($field['folder'] ?? $resource);
+            $path = ($field['type'] ?? null) === 'file'
+                ? service('mediaService')->storeDocument($file, $folder, $error)
+                : service('mediaService')->storePublicImage($file, $folder, $error);
 
             if ($path === null) {
-                $errors[$name] = $error ?? 'L’image téléversée est invalide.';
+                $errors[$name] = $error ?? 'Le fichier téléversé est invalide.';
                 continue;
             }
 
@@ -870,7 +889,7 @@ class ResourceController extends BaseController
             $name = (string) $field['name'];
             $type = (string) ($field['type'] ?? 'text');
 
-            if ($type === 'image') {
+            if ($type === 'image' || $type === 'file') {
                 continue;
             }
 
@@ -970,6 +989,46 @@ class ResourceController extends BaseController
     }
 
     /**
+     * A trunk needs a department, a branch trunk needs a first trunk, and
+     * both must end before the last year of the programme.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, string>
+     */
+    private function studyPathErrors(array $data): array
+    {
+        $errors = [];
+        $hasCore = trim((string) ($data['common_core'] ?? '')) !== '';
+        $hasBranch = trim((string) ($data['branch_core'] ?? '')) !== '';
+
+        if ($hasCore && empty($data['department_id'])) {
+            $errors['common_core'] = 'Choisissez le département de l’option pour indiquer son tronc commun.';
+        }
+
+        if (! $hasCore && ! empty($data['common_core_years'])) {
+            $errors['common_core_years'] = 'Indiquez d’abord le nom du tronc commun.';
+        }
+
+        if ($hasBranch && ! $hasCore) {
+            $errors['branch_core'] = 'Un tronc commun de filière suit toujours un premier tronc commun : remplissez d’abord « Tronc commun ».';
+        } elseif (! $hasBranch && ! empty($data['branch_core_years'])) {
+            $errors['branch_core_years'] = 'Indiquez d’abord le nom du tronc commun de filière.';
+        }
+
+        $programme = (object) $data;
+        $years = ProgrammeModel::studyYears($programme);
+        if ($hasCore && $errors === [] && $years !== null) {
+            $shared = ProgrammeModel::coreYears($programme) + ($hasBranch ? ProgrammeModel::branchYears($programme) : 0);
+            if ($shared >= $years) {
+                $errors[$hasBranch ? 'branch_core_years' : 'common_core_years'] = 'Les années de tronc commun (' . $shared . ') doivent se terminer avant la fin de la formation (' . $years . ' ans) pour laisser place à l’option.';
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
      * @param array<string, mixed> $config
      * @param array<string, mixed> $data
      * @param array<string, mixed> $raw
@@ -981,7 +1040,7 @@ class ResourceController extends BaseController
         $errors = [];
 
         foreach ($config['fields'] as $field) {
-            if (($field['type'] ?? null) === 'image') {
+            if ($this->isUploadField($field)) {
                 continue;
             }
 
@@ -1024,6 +1083,17 @@ class ResourceController extends BaseController
                 $errors[$name] = $label . ' doit être une URL HTTP ou HTTPS valide.';
             }
 
+            if ($type === 'link' && ! $this->isSiteLink((string) $rawValue)) {
+                $errors[$name] = $label . ' : choisissez une page du site dans la liste, ou collez une adresse complète commençant par « https:// ».';
+            }
+
+            if ($type === 'date') {
+                $date = \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $rawValue);
+                if ($date === false || $date->format('Y-m-d') !== (string) $rawValue) {
+                    $errors[$name] = $label . ' doit être une date valide.';
+                }
+            }
+
             if ($type === 'slug' && preg_match('/^[a-z0-9-]+$/', (string) $value) !== 1) {
                 $errors[$name] = $label . ' doit contenir uniquement des lettres minuscules, chiffres et tirets.';
             }
@@ -1045,10 +1115,17 @@ class ResourceController extends BaseController
                     $relationModel->forSite();
                 }
 
-                if ($relationModel->find((int) $value) === null) {
+                $related = $relationModel->find((int) $value);
+                if ($related === null) {
                     $errors[$name] = $label . ' fait référence à un contenu introuvable.';
+                } elseif ($relationModel instanceof DepartmentModel && isset($data['level']) && ! DepartmentModel::cycleAccepts($related->cycle ?? null, (string) $data['level'])) {
+                    $errors[$name] = 'Ce département n’accueille pas les formations de ce niveau (' . (self::DEPARTMENT_CYCLES[(string) $related->cycle] ?? '') . ').';
                 }
             }
+        }
+
+        if ($model instanceof ProgrammeModel) {
+            $errors += $this->studyPathErrors($data);
         }
 
         foreach ($config['unique'] ?? [] as $field) {
@@ -1233,7 +1310,10 @@ class ResourceController extends BaseController
             'home-hero-slides' => ['alt_text', 'badge', 'title', 'text', 'primary_cta_label', 'secondary_cta_label'],
             'home-highlights' => ['title', 'description'],
             'site-stats' => ['label', 'suffix'],
-            'programmes' => ['title', 'duration', 'summary', 'description', 'admission_conditions'],
+            'programmes' => ['title', 'duration', 'language', 'entry_requirement', 'common_core', 'branch_core', 'summary', 'description', 'admission_conditions'],
+            'departments' => ['name', 'description', 'maquette_title'],
+            'partners' => ['name', 'description'],
+            'faq-items' => ['question', 'answer'],
             'staff' => ['grade', 'specialty', 'role', 'biography'],
             'laboratories' => ['name', 'description'],
             'publications' => ['title', 'authors', 'journal'],
@@ -1331,6 +1411,22 @@ class ResourceController extends BaseController
     }
 
     /**
+     * @param array<string, mixed> $config
+     *
+     * @return list<array{group: string, label: string, url: string}>
+     */
+    private function linkPageOptions(array $config): array
+    {
+        foreach ($config['fields'] ?? [] as $field) {
+            if (($field['type'] ?? '') === 'link') {
+                return service('sitePageCatalog')->options();
+            }
+        }
+
+        return [];
+    }
+
+    /**
      * @return array<string, string>
      */
     private function heroCtaTargetOptions(): array
@@ -1342,13 +1438,21 @@ class ResourceController extends BaseController
             'news'            => 'Actualités',
             'about'           => 'Présentation (accueil)',
             'faculty_profile' => 'Présentation & mot du doyen',
-            'custom'          => 'Lien personnalisé',
+            'custom'          => 'Autre page ou lien externe',
         ];
     }
 
     /**
      * @param array<string, mixed> $config
      */
+    /**
+     * @param array<string, mixed> $field
+     */
+    private function isUploadField(array $field): bool
+    {
+        return in_array($field['type'] ?? null, ['image', 'file'], true);
+    }
+
     private function model(array $config): Model
     {
         /** @var Model $model */
@@ -1402,10 +1506,36 @@ class ResourceController extends BaseController
 
         foreach ($model->orderBy($labelField, 'ASC')->findAll() as $item) {
             $data = $this->itemData($item);
-            $options[(string) $data['id']] = (string) ($data[$labelField] ?? ('#' . $data['id']));
+            $label = (string) ($data[$labelField] ?? ('#' . $data['id']));
+            if ($model instanceof DepartmentModel) {
+                $label .= ' — ' . (self::DEPARTMENT_CYCLES[(string) ($data['cycle'] ?? 'both')] ?? self::DEPARTMENT_CYCLES['both']);
+            }
+            $options[(string) $data['id']] = $label;
         }
 
         return $options;
+    }
+
+    /**
+     * Department id => cycle, for resources that pick a department.
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, string>
+     */
+    private function departmentCycles(array $config): array
+    {
+        $picksDepartment = array_filter($config['fields'], static fn (array $field): bool => ($field['model'] ?? null) === DepartmentModel::class);
+        if ($picksDepartment === []) {
+            return [];
+        }
+
+        $cycles = [];
+        foreach (model(DepartmentModel::class, false)->forSite()->select('id, cycle')->findAll() as $department) {
+            $cycles[(string) $department->id] = (string) ($department->cycle ?: 'both');
+        }
+
+        return $cycles;
     }
 
     /**
@@ -1420,10 +1550,35 @@ class ResourceController extends BaseController
         foreach ($config['fields'] as $field) {
             if (in_array($field['type'] ?? '', ['select', 'readonly_select', 'relation', 'icon'], true)) {
                 $options[(string) $field['name']] = $this->optionsForField($field);
+            } elseif (! empty($field['suggest'])) {
+                $options[(string) $field['name']] = $this->existingValues((string) $config['model'], (string) $field['name']);
             }
         }
 
         return $options;
+    }
+
+    /**
+     * Distinct values already used on the current site, offered as suggestions.
+     *
+     * @return array<string, string>
+     */
+    private function existingValues(string $modelClass, string $column): array
+    {
+        $model = model($modelClass, false);
+        if (method_exists($model, 'forSite')) {
+            $model->forSite();
+        }
+
+        $values = [];
+        foreach ($model->select($column)->where($column . ' IS NOT NULL')->where($column . ' !=', '')->groupBy($column)->orderBy($column, 'ASC')->findAll() as $row) {
+            $value = (string) (is_array($row) ? ($row[$column] ?? '') : ($row->{$column} ?? ''));
+            if ($value !== '') {
+                $values[$value] = $value;
+            }
+        }
+
+        return $values;
     }
 
     /**
@@ -1542,6 +1697,32 @@ class ResourceController extends BaseController
             'posts'      => 'Actualités et événements',
             'alumni'     => 'Alumni',
             'contact'    => 'Contact',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function partnerTypeOptions(): array
+    {
+        return [
+            'academic'    => 'Université ou école',
+            'industry'    => 'Entreprise',
+            'institution' => 'Institution publique',
+            'ngo'         => 'ONG ou association',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function faqCategoryOptions(): array
+    {
+        return [
+            'admissions' => 'Admissions',
+            'fees'       => 'Frais et gratuité',
+            'studies'    => 'Études',
+            'other'      => 'Autres questions',
         ];
     }
 
@@ -1761,6 +1942,16 @@ class ResourceController extends BaseController
             ->setBody(view('errors/html/error_404', ['message' => $message]));
     }
 
+    private function isSiteLink(string $url): bool
+    {
+        $url = trim($url);
+        if (preg_match('/\s/', $url) === 1) {
+            return false;
+        }
+
+        return (str_starts_with($url, '/') && ! str_starts_with($url, '//')) || str_starts_with($url, '#') || $this->isHttpUrl($url);
+    }
+
     private function isHttpUrl(string $url): bool
     {
         if (filter_var($url, FILTER_VALIDATE_URL) === false) {
@@ -1917,10 +2108,10 @@ class ResourceController extends BaseController
                     ['name' => 'text', 'label' => 'Texte', 'type' => 'textarea', 'required' => true],
                     ['name' => 'primary_cta_target', 'label' => 'Lien du bouton principal', 'type' => 'select', 'required' => true, 'options' => $this->heroCtaTargetOptions(), 'list' => true],
                     ['name' => 'primary_cta_label', 'label' => 'Libellé du bouton principal', 'type' => 'text', 'nullable' => true, 'max' => 255, 'showWhen' => ['primary_cta_target' => '!none']],
-                    ['name' => 'primary_cta_url', 'label' => 'URL personnalisée (principal)', 'type' => 'text', 'nullable' => true, 'max' => 500, 'showWhen' => ['primary_cta_target' => 'custom']],
+                    ['name' => 'primary_cta_url', 'label' => 'Page ou lien du bouton principal', 'type' => 'link', 'nullable' => true, 'max' => 500, 'showWhen' => ['primary_cta_target' => 'custom']],
                     ['name' => 'secondary_cta_target', 'label' => 'Lien du bouton secondaire', 'type' => 'select', 'required' => true, 'options' => $this->heroCtaTargetOptions()],
                     ['name' => 'secondary_cta_label', 'label' => 'Libellé du bouton secondaire', 'type' => 'text', 'nullable' => true, 'max' => 255, 'showWhen' => ['secondary_cta_target' => '!none']],
-                    ['name' => 'secondary_cta_url', 'label' => 'URL personnalisée (secondaire)', 'type' => 'text', 'nullable' => true, 'max' => 500, 'showWhen' => ['secondary_cta_target' => 'custom']],
+                    ['name' => 'secondary_cta_url', 'label' => 'Page ou lien du bouton secondaire', 'type' => 'link', 'nullable' => true, 'max' => 500, 'showWhen' => ['secondary_cta_target' => 'custom']],
                 ]),
             ],
             'home-highlights' => [
@@ -1948,17 +2139,95 @@ class ResourceController extends BaseController
                 'search'         => ['title', 'summary', 'description'],
                 'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
                 'previewField'   => ['name' => 'summary', 'label' => 'Résumé'],
+                'sections'       => [
+                    ['title' => 'Identification', 'fields' => ['level', 'department_id', 'title', 'slug', 'option_code']],
+                    ['title' => 'Parcours d’études', 'fields' => ['common_core', 'common_core_years', 'branch_core', 'branch_core_years']],
+                    ['title' => 'Chiffres clés', 'fields' => ['duration', 'credits', 'language', 'entry_requirement', 'application_deadline']],
+                    ['title' => 'Présentation', 'fields' => ['summary', 'description', 'career_outcomes']],
+                    ['title' => 'Programme des cours', 'fields' => ['curriculum']],
+                    ['title' => 'Admission et candidature', 'fields' => ['admission_conditions', 'apply_url', 'coordinator_staff_id', 'brochure_path']],
+                ],
                 'fields'         => [
-                    ['name' => 'level', 'label' => 'Niveau', 'type' => 'select', 'required' => true, 'options' => ['licence' => 'Licence', 'master' => 'Master', 'doctorat' => 'Doctorat'], 'list' => true],
+                    ['name' => 'level', 'label' => 'Niveau', 'type' => 'select', 'required' => true, 'options' => ['licence' => 'Licence (baccalauréat)', 'master' => 'Master'], 'list' => true, 'help' => 'Les études doctorales sont gérées par un autre site : elles ne figurent pas dans la liste des formations.'],
+                    ['name' => 'department_id', 'label' => 'Département', 'type' => 'relation', 'model' => DepartmentModel::class, 'labelField' => 'name', 'nullable' => true],
                     ['name' => 'title', 'label' => 'Titre', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
                     ['name' => 'slug', 'label' => 'Slug', 'type' => 'slug', 'source' => 'title', 'required' => true, 'max' => 180, 'list' => true],
+                    ['name' => 'option_code', 'label' => 'Sigle de l’option', 'type' => 'text', 'nullable' => true, 'max' => 20, 'help' => 'Par exemple GI, GL, RT ou SE. Chaque option d’un département est une formation à part.'],
+                    ['name' => 'common_core', 'label' => 'Tronc commun', 'type' => 'text', 'nullable' => true, 'max' => 120, 'suggest' => true, 'help' => 'Même nom, au caractère près, pour toutes les options qui suivent les mêmes cours au début, même si elles relèvent de départements différents. Exemple à la FSI : « Tronc commun FSI » en Bac I pour Électromécanique, Génie civil et Aménagement et urbanisme. Laissez vide si l’option n’a pas de tronc commun.'],
+                    ['name' => 'common_core_years', 'label' => 'Durée du tronc commun', 'type' => 'select', 'nullable' => true, 'options' => self::STUDY_YEARS, 'help' => 'Sans choix : Bac I et Bac II en licence, première année en master.'],
+                    ['name' => 'branch_core', 'label' => 'Tronc commun de filière (facultatif)', 'type' => 'text', 'nullable' => true, 'max' => 120, 'suggest' => true, 'help' => 'Deuxième tronc commun, plus étroit, qui suit le premier. Exemple : après le « Tronc commun TIC » en Bac I, GI et GL suivent le « Tronc commun GI-GL » en Bac II, et SE et RT le « Tronc commun SE-RT ».'],
+                    ['name' => 'branch_core_years', 'label' => 'Durée du tronc commun de filière', 'type' => 'select', 'nullable' => true, 'options' => self::STUDY_YEARS, 'help' => 'Sans choix : une année.'],
                     ['name' => 'duration', 'label' => 'Durée', 'type' => 'text', 'required' => true, 'max' => 80],
+                    ['name' => 'credits', 'label' => 'Crédits (ECTS)', 'type' => 'integer', 'nullable' => true],
+                    ['name' => 'language', 'label' => 'Langue d’enseignement', 'type' => 'text', 'nullable' => true, 'max' => 120],
+                    ['name' => 'entry_requirement', 'label' => 'Conditions d’accès (points à l’Examen d’État, diplôme requis…)', 'type' => 'text', 'nullable' => true, 'max' => 255],
+                    ['name' => 'application_deadline', 'label' => 'Date limite de candidature', 'type' => 'date', 'nullable' => true],
                     ['name' => 'summary', 'label' => 'Résumé', 'type' => 'textarea', 'required' => true],
                     ['name' => 'description', 'label' => 'Description', 'type' => 'textarea', 'required' => true],
                     ['name' => 'admission_conditions', 'label' => 'Conditions d’admission', 'type' => 'textarea', 'required' => true],
                     ['name' => 'career_outcomes', 'label' => 'Débouchés', 'type' => 'json_list', 'required' => true],
+                    ['name' => 'curriculum', 'label' => 'Cours (une ligne par cours : « Année ou semestre | Intitulé | Crédits »)', 'type' => 'json_list', 'nullable' => true],
+                    ['name' => 'apply_url', 'label' => 'Lien pour candidater', 'type' => 'external_url', 'nullable' => true, 'max' => 500],
+                    ['name' => 'coordinator_staff_id', 'label' => 'Coordinateur ou coordinatrice', 'type' => 'relation', 'model' => StaffModel::class, 'labelField' => 'name', 'nullable' => true],
+                    ['name' => 'brochure_path', 'label' => 'Brochure (PDF)', 'type' => 'file', 'folder' => 'brochures', 'nullable' => true],
                     ...$this->homeFeaturedFields(),
                 ],
+            ],
+            'departments' => [
+                'title'          => 'Départements',
+                'singular'       => 'département',
+                'model'          => DepartmentModel::class,
+                'permission'     => 'pages.manage',
+                'publishedField' => 'is_published',
+                'unique'         => ['slug'],
+                'search'         => ['name', 'abbreviation', 'description'],
+                'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'description', 'label' => 'Description'],
+                'fields'         => $this->orderedPublishedFields([
+                    ['name' => 'name', 'label' => 'Nom', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
+                    ['name' => 'slug', 'label' => 'Slug', 'type' => 'slug', 'source' => 'name', 'required' => true, 'max' => 180, 'list' => true],
+                    ['name' => 'abbreviation', 'label' => 'Sigle', 'type' => 'text', 'nullable' => true, 'max' => 40, 'list' => true],
+                    ['name' => 'cycle', 'label' => 'Cycle', 'type' => 'select', 'required' => true, 'default' => 'both', 'options' => self::DEPARTMENT_CYCLES, 'list' => true, 'help' => 'Les départements de licence sont souvent différents de ceux de master. Une formation ne peut être rattachée qu’à un département de son cycle.'],
+                    ['name' => 'description', 'label' => 'Présentation', 'type' => 'textarea', 'nullable' => true],
+                    ['name' => 'head_staff_id', 'label' => 'Chef ou cheffe de département', 'type' => 'relation', 'model' => StaffModel::class, 'labelField' => 'name', 'nullable' => true],
+                    ['name' => 'email', 'label' => 'Adresse électronique', 'type' => 'email', 'nullable' => true, 'max' => 255],
+                    ['name' => 'phone', 'label' => 'Téléphone', 'type' => 'text', 'nullable' => true, 'max' => 80],
+                    ['name' => 'maquette_path', 'label' => 'Maquette des cours (PDF)', 'type' => 'file', 'folder' => 'maquettes', 'nullable' => true, 'help' => 'Le document officiel qui détaille les unités d’enseignement, crédits et volumes horaires de chaque année. Il est proposé au téléchargement dans « Organisation des études » sur la page du département.'],
+                    ['name' => 'maquette_title', 'label' => 'Titre de la maquette', 'type' => 'text', 'nullable' => true, 'max' => 255, 'help' => 'Par exemple « Maquettes 2024-2025 ». Sans titre, « Maquette des cours » est affiché.'],
+                ]),
+            ],
+            'partners' => [
+                'title'          => 'Partenaires',
+                'singular'       => 'partenaire',
+                'model'          => PartnerModel::class,
+                'permission'     => 'pages.manage',
+                'publishedField' => 'is_published',
+                'search'         => ['name', 'country', 'description'],
+                'orderBy'        => ['display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'description', 'label' => 'Description'],
+                'fields'         => $this->orderedPublishedFields([
+                    ['name' => 'name', 'label' => 'Nom', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
+                    ['name' => 'type', 'label' => 'Type de partenaire', 'type' => 'select', 'required' => true, 'options' => $this->partnerTypeOptions(), 'list' => true],
+                    ['name' => 'logo', 'label' => 'Logo', 'type' => 'image', 'folder' => 'partners', 'nullable' => true],
+                    ['name' => 'country', 'label' => 'Pays', 'type' => 'text', 'nullable' => true, 'max' => 120, 'list' => true],
+                    ['name' => 'url', 'label' => 'Site web', 'type' => 'external_url', 'nullable' => true, 'max' => 500],
+                    ['name' => 'description', 'label' => 'Nature du partenariat', 'type' => 'textarea', 'nullable' => true],
+                ]),
+            ],
+            'faq-items' => [
+                'title'          => 'Questions fréquentes',
+                'singular'       => 'question',
+                'model'          => FaqItemModel::class,
+                'permission'     => 'pages.manage',
+                'publishedField' => 'is_published',
+                'search'         => ['question', 'answer'],
+                'orderBy'        => ['category' => 'ASC', 'display_order' => 'ASC', 'id' => 'ASC'],
+                'previewField'   => ['name' => 'answer', 'label' => 'Réponse'],
+                'fields'         => $this->orderedPublishedFields([
+                    ['name' => 'category', 'label' => 'Thème', 'type' => 'select', 'required' => true, 'options' => $this->faqCategoryOptions(), 'list' => true],
+                    ['name' => 'question', 'label' => 'Question', 'type' => 'text', 'required' => true, 'max' => 500, 'list' => true],
+                    ['name' => 'answer', 'label' => 'Réponse', 'type' => 'textarea', 'required' => true],
+                ]),
             ],
             'staff' => [
                 'title'          => 'Personnel',
@@ -1972,6 +2241,7 @@ class ResourceController extends BaseController
                 'previewField'   => ['name' => 'biography', 'label' => 'Biographie'],
                 'fields'         => [
                     ['name' => 'category', 'label' => 'Catégorie', 'type' => 'select', 'required' => true, 'options' => ['enseignant' => 'Enseignant-chercheur', 'administratif' => 'Personnel administratif'], 'list' => true],
+                    ['name' => 'department_id', 'label' => 'Département', 'type' => 'relation', 'model' => DepartmentModel::class, 'labelField' => 'name', 'nullable' => true],
                     ['name' => 'name', 'label' => 'Nom', 'type' => 'text', 'required' => true, 'max' => 255, 'list' => true],
                     ['name' => 'slug', 'label' => 'Slug', 'type' => 'slug', 'source' => 'name', 'required' => true, 'max' => 180, 'list' => true],
                     ['name' => 'photo', 'label' => 'Photo', 'type' => 'image', 'folder' => 'staff', 'nullable' => true],

@@ -93,4 +93,43 @@
         </div>
     </div>
 </section>
+
+<?php if (($partners ?? []) !== []): ?>
+    <section id="partenaires" class="section-pad-sm section-alt" aria-labelledby="faculty-partners-title">
+        <div class="container">
+            <div class="text-center mb-4">
+                <span class="section-label"><?= esc(lang('Site.partners.stripLabel')) ?></span>
+                <h2 class="section-title mb-0" id="faculty-partners-title"><?= esc(lang('Site.partners.stripTitle')) ?></h2>
+            </div>
+            <div class="partner-marquee" data-marquee>
+                <ul class="partner-marquee-track list-unstyled">
+                    <?php foreach ($partners as $partner): ?>
+                        <?php
+                        $partnerLogo = trim((string) ($partner->logo ?? ''));
+                        $partnerUrl = trim((string) ($partner->url ?? ''));
+                        $partnerUrl = preg_match('#^https?://#i', $partnerUrl) === 1 ? $partnerUrl : '';
+                        $partnerMeta = trim(lang('Site.partners.type.' . $partner->type) . ' · ' . (string) ($partner->country ?? ''), ' ·');
+                        $partnerTag = $partnerUrl !== '' ? 'a' : 'div';
+                        ?>
+                        <li class="partner-tile">
+                            <<?= $partnerTag ?> class="partner-tile-link"<?= $partnerUrl !== '' ? ' href="' . esc($partnerUrl, 'attr') . '" target="_blank" rel="noopener" title="' . esc(lang('Site.partners.visit') . ' — ' . $partner->name, 'attr') . '"' : '' ?>>
+                                <span class="partner-tile-logo">
+                                    <?php if ($partnerLogo !== ''): ?>
+                                        <img src="<?= esc(site_media_url($partnerLogo), 'attr') ?>" alt="<?= esc(lang('Site.partners.logoAlt', [$partner->name]), 'attr') ?>" loading="lazy">
+                                    <?php else: ?>
+                                        <span class="partner-tile-initials" aria-hidden="true"><?= esc(site_initials($partner->name)) ?></span>
+                                    <?php endif ?>
+                                </span>
+                                <span class="partner-tile-name"><?= esc($partner->name) ?></span>
+                                <?php if ($partnerMeta !== ''): ?>
+                                    <span class="partner-tile-meta"><?= esc($partnerMeta) ?></span>
+                                <?php endif ?>
+                            </<?= $partnerTag ?>>
+                        </li>
+                    <?php endforeach ?>
+                </ul>
+            </div>
+        </div>
+    </section>
+<?php endif ?>
 <?= $this->endSection() ?>

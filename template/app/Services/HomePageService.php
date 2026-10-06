@@ -16,6 +16,8 @@ use App\Models\StaffModel;
 
 class HomePageService
 {
+    private const RAIL_LIMIT = 8;
+
     /**
      * @return array<string, mixed>
      */
@@ -46,7 +48,8 @@ class HomePageService
             'programmeGroups'      => $this->programmeGroups($featuredProgrammes),
             'featuredLaboratories' => $this->featuredLaboratories(),
             'featuredStaff'        => $this->featuredStaff(),
-            'featuredPosts'        => $this->featuredPosts(),
+            'featuredNews'         => $this->featuredNews(),
+            'featuredEvents'       => $this->featuredEvents(),
             'deanMessage'          => $this->deanMessage(),
             'contentBlocks'        => $this->contentBlocks('home'),
         ];
@@ -112,13 +115,6 @@ class HomePageService
                 'orientation' => lang('Home.programmeOrientation.master'),
                 'programmes'  => [],
             ],
-            'doctorat' => [
-                'level'       => 'doctorat',
-                'label'       => site_level_label('doctorat'),
-                'icon'        => 'bi-journals',
-                'orientation' => lang('Home.programmeOrientation.doctorat'),
-                'programmes'  => [],
-            ],
         ];
 
         foreach ($programmes as $programme) {
@@ -153,37 +149,60 @@ class HomePageService
     }
 
     /**
-     * One mixed stream of upcoming events and featured news, closest to today first.
+     * Featured news first (home order), then the latest published news.
      *
      * @return list<object>
      */
-    private function featuredPosts(): array
+    private function featuredNews(): array
     {
-        $now = time();
-        $translator = service('contentTranslationService');
-        $events = $translator->records('posts', $this->visiblePosts()
-            ->where('type', 'event')
-            ->where('event_starts_at >=', date('Y-m-d H:i:s', $now))
-            ->orderBy('event_starts_at', 'ASC')
-            ->findAll(3));
-        $news = $translator->records('posts', $this->visiblePosts()
-            ->where('featured', 1)
+        $featured = $this->visiblePosts()
             ->where('type', 'news')
+            ->where('featured', 1)
+            ->orderBy('home_order IS NULL', 'ASC', false)
             ->orderBy('home_order', 'ASC')
             ->orderBy('published_at', 'DESC')
-            ->findAll(3));
+            ->findAll(self::RAIL_LIMIT);
 
-        $distance = static function (object $post) use ($now): int {
-            $date = ($post->type ?? '') === 'event' ? ($post->event_starts_at ?? $post->published_at) : $post->published_at;
-            $timestamp = strtotime((string) $date);
+        $latest = $this->fillRail($featured, $this->visiblePosts()
+            ->where('type', 'news')
+            ->orderBy('published_at', 'DESC')
+            ->orderBy('id', 'DESC'));
 
-            return $timestamp === false ? PHP_INT_MAX : abs($timestamp - $now);
-        };
+        return service('contentTranslationService')->records('posts', array_merge($featured, $latest));
+    }
 
-        $posts = array_merge($events, $news);
-        usort($posts, static fn (object $a, object $b): int => $distance($a) <=> $distance($b));
+    /**
+     * Upcoming events only, soonest first; past events stay on the news page.
+     *
+     * @return list<object>
+     */
+    private function featuredEvents(): array
+    {
+        return service('contentTranslationService')->records('posts', $this->visiblePosts()
+            ->where('type', 'event')
+            ->where('event_starts_at >=', date('Y-m-d H:i:s'))
+            ->orderBy('event_starts_at', 'ASC')
+            ->findAll(self::RAIL_LIMIT));
+    }
 
-        return $posts;
+    /**
+     * @param list<object> $already
+     *
+     * @return list<object>
+     */
+    private function fillRail(array $already, PostModel $query): array
+    {
+        $missing = self::RAIL_LIMIT - count($already);
+        if ($missing <= 0) {
+            return [];
+        }
+
+        $ids = array_map(static fn (object $post): int => (int) $post->id, $already);
+        if ($ids !== []) {
+            $query->whereNotIn('id', $ids);
+        }
+
+        return $query->findAll($missing);
     }
 
     /**

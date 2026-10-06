@@ -160,6 +160,153 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         $this->assertSame(0, $this->db->table('programmes')->where('id', $programme['id'])->countAllResults());
     }
 
+    public function testProgrammeCommonCoreRequiresADepartment(): void
+    {
+        $this->actingAs($this->superAdminUser('options-programmes@example.test', 'optionsprogrammes'));
+
+        $fields = [
+            'level'                => 'licence',
+            'title'                => 'Licence Option Tronc',
+            'slug'                 => '',
+            'option_code'          => 'GI',
+            'common_core'          => 'Tronc commun Informatique',
+            'duration'             => '3 ans',
+            'summary'              => 'Résumé de l’option.',
+            'description'          => 'Description de l’option.',
+            'admission_conditions' => 'Diplôme d’État.',
+            'career_outcomes'      => 'Administrateur systèmes',
+            'display_order'        => '5',
+            'is_published'         => '1',
+        ];
+
+        $rejected = $this->post('/admin/programmes', $this->withCsrf($fields + ['department_id' => '']));
+        $rejected->assertRedirect();
+        $rejected->assertSessionHas('errors');
+        $this->assertArrayHasKey('common_core', $_SESSION['errors']);
+        $this->assertSame(0, $this->db->table('programmes')->where('title', 'Licence Option Tronc')->countAllResults());
+
+        $this->db->table('departments')->insert([
+            'site_id' => 1, 'name' => 'Département TIC test', 'slug' => 'tic-options-test', 'abbreviation' => 'TIC',
+            'cycle' => 'both', 'display_order' => 1, 'is_published' => 1,
+            'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        $departmentId = (int) $this->db->insertID();
+
+        $this->post('/admin/programmes', $this->withCsrf($fields + ['department_id' => (string) $departmentId]))->assertRedirect();
+
+        $saved = $this->db->table('programmes')->where('title', 'Licence Option Tronc')->get()->getRowArray();
+        $this->assertIsArray($saved);
+        $this->assertSame('GI', $saved['option_code']);
+        $this->assertSame('Tronc commun Informatique', $saved['common_core']);
+        $this->assertSame($departmentId, (int) $saved['department_id']);
+
+        $edit = $this->get('/admin/programmes/' . $saved['id'] . '/edit');
+        $edit->assertOK();
+        $edit->assertSee('Sigle de l’option');
+        $edit->assertSee('common_core_suggestions');
+        $edit->assertSee('<option value="Tronc commun Informatique">');
+    }
+
+    public function testProgrammeStudyPathFieldsAreValidated(): void
+    {
+        $this->actingAs($this->superAdminUser('study-paths@example.test', 'studypaths'));
+
+        $this->db->table('departments')->insert([
+            'site_id' => 1, 'name' => 'Département Parcours test', 'slug' => 'parcours-test', 'abbreviation' => 'PRC',
+            'cycle' => 'both', 'display_order' => 1, 'is_published' => 1,
+            'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        $departmentId = (string) $this->db->insertID();
+
+        $fields = [
+            'level'                => 'licence',
+            'title'                => 'Licence Parcours Test',
+            'slug'                 => '',
+            'department_id'        => $departmentId,
+            'option_code'          => 'GL',
+            'duration'             => '4 ans',
+            'summary'              => 'Résumé.',
+            'description'          => 'Description.',
+            'admission_conditions' => 'Diplôme d’État.',
+            'career_outcomes'      => 'Développeur',
+            'display_order'        => '5',
+            'is_published'         => '1',
+        ];
+        $rejects = function (array $extra, string $field) use ($fields): void {
+            $_SESSION = [];
+            $result = $this->post('/admin/programmes', $this->withCsrf($extra + $fields));
+            $result->assertRedirect();
+            $result->assertSessionHas('errors');
+            $this->assertArrayHasKey($field, $_SESSION['errors']);
+            $this->assertSame(0, $this->db->table('programmes')->where('title', 'Licence Parcours Test')->countAllResults());
+        };
+
+        $rejects(['branch_core' => 'Tronc commun GI-GL'], 'branch_core');
+        $rejects(['common_core_years' => '1'], 'common_core_years');
+        $rejects(['common_core' => 'Tronc commun TIC', 'branch_core_years' => '1'], 'branch_core_years');
+        $rejects(['common_core' => 'Tronc commun TIC', 'common_core_years' => '3', 'branch_core' => 'Tronc commun GI-GL'], 'branch_core_years');
+        $rejects(['common_core' => 'Tronc commun TIC', 'common_core_years' => '9'], 'common_core_years');
+        $rejects(['level' => 'doctorat'], 'level');
+
+        $_SESSION = [];
+        $this->post('/admin/programmes', $this->withCsrf([
+            'common_core'       => 'Tronc commun TIC',
+            'common_core_years' => '1',
+            'branch_core'       => 'Tronc commun GI-GL',
+            'branch_core_years' => '1',
+        ] + $fields))->assertRedirect();
+
+        $saved = $this->db->table('programmes')->where('title', 'Licence Parcours Test')->get()->getRowArray();
+        $this->assertIsArray($saved);
+        $this->assertSame(1, (int) $saved['common_core_years']);
+        $this->assertSame('Tronc commun GI-GL', $saved['branch_core']);
+        $this->assertSame(1, (int) $saved['branch_core_years']);
+
+        $form = $this->get('/admin/programmes/new');
+        $form->assertOK();
+        $form->assertSee('Parcours d’études');
+        $form->assertSee('branch_core_suggestions');
+        $form->assertDontSee('<option value="doctorat"');
+    }
+
+    public function testDepartmentMaquetteUploadAcceptsOnlyPdf(): void
+    {
+        $this->actingAs($this->superAdminUser('maquette-upload@example.test', 'maquetteupload'));
+
+        $fields = ['name' => 'Département Maquette Upload', 'slug' => 'maquette-upload', 'cycle' => 'licence', 'maquette_title' => 'Maquettes 2024-2025', 'display_order' => '1', 'is_published' => '1'];
+
+        $fake = tempnam(sys_get_temp_dir(), 'maquette_bad_');
+        file_put_contents($fake, '<?php echo "not a pdf";');
+        $this->withUploadedFile('maquette_path', $fake, 'maquette.pdf', 'application/pdf');
+        $rejected = $this->post('/admin/departments', $this->withCsrf($fields));
+        $rejected->assertRedirect();
+        $rejected->assertSessionHas('errors');
+        $this->assertArrayHasKey('maquette_path', $_SESSION['errors']);
+        $this->assertSame(0, $this->db->table('departments')->where('slug', 'maquette-upload')->countAllResults());
+
+        $_SESSION = [];
+        $pdf = tempnam(sys_get_temp_dir(), 'maquette_ok_');
+        file_put_contents($pdf, "%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n");
+        $this->withUploadedFile('maquette_path', $pdf, 'maquette.pdf', 'application/pdf');
+        $this->post('/admin/departments', $this->withCsrf($fields))->assertRedirect();
+        service('superglobals')->setFilesArray([]);
+
+        $saved = $this->db->table('departments')->where('slug', 'maquette-upload')->get()->getRowArray();
+        $this->assertIsArray($saved);
+        $this->assertStringStartsWith('uploads/sites/', (string) $saved['maquette_path']);
+        $this->assertStringContainsString('/maquettes/', (string) $saved['maquette_path']);
+        $this->assertStringEndsWith('.pdf', (string) $saved['maquette_path']);
+        $this->assertFileExists(FCPATH . $saved['maquette_path']);
+        $this->assertSame('Maquettes 2024-2025', $saved['maquette_title']);
+
+        $edit = $this->get('/admin/departments/' . $saved['id'] . '/edit');
+        $edit->assertOK();
+        $edit->assertSee('Maquette des cours (PDF)');
+        $edit->assertSee('remove_maquette_path');
+
+        @unlink(FCPATH . $saved['maquette_path']);
+    }
+
     public function testResearchProjectCrudKeepsModuleIndependentFromLaboratories(): void
     {
         $this->actingAs($this->superAdminUser('phase5-research@example.test', 'phase5research'));
@@ -365,6 +512,19 @@ final class AdminResourceCrudTest extends CIUnitTestCase
         $this->assertNotContains('Personne hors accueil', $names);
     }
 
+    private function withUploadedFile(string $field, string $path, string $name, string $type): void
+    {
+        service('superglobals')->setFilesArray([
+            $field => [
+                'name'     => $name,
+                'type'     => $type,
+                'tmp_name' => $path,
+                'error'    => UPLOAD_ERR_OK,
+                'size'     => filesize($path),
+            ],
+        ]);
+    }
+
     private function resetAuthState(): void
     {
         try {
@@ -374,6 +534,7 @@ final class AdminResourceCrudTest extends CIUnitTestCase
 
         $_SESSION = [];
         $this->withSession([]);
+        service('superglobals')->setFilesArray([]);
     }
 
     private function superAdminUser(string $email = 'phase5-super@example.test', string $username = 'phase5super'): User

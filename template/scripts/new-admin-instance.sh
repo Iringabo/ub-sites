@@ -10,7 +10,7 @@
 # Example:
 #   ./scripts/new-admin-instance.sh ../admin
 #
-# See docs/MULTI_FOLDER_DEPLOYMENT.md for the full picture.
+# See docs/CREER_UN_SITE.md for the full picture.
 set -euo pipefail
 CALLER_CWD="$(pwd -P)"
 cd "$(dirname "${BASH_SOURCE[0]}")"

@@ -47,6 +47,42 @@ final class AccessibilityResponsiveTest extends CIUnitTestCase
         $this->assertStringNotContainsString('querySelector(\'.hero-video\')', $js);
     }
 
+    public function testStudyPathStepperIsStyledWithTouchFriendlyTargets(): void
+    {
+        $css = (string) file_get_contents(ROOTPATH . 'public/assets/css/style.css');
+
+        foreach (['.study-path-steps', '.study-step-years', '.study-step-branch', '.study-stages', '.maquette-card', '.doctoral-callout'] as $selector) {
+            $this->assertStringContainsString($selector, $css);
+        }
+        $this->assertMatchesRegularExpression('/\.maquette-actions \.btn \{[^}]*min-height: 44px/', $css);
+        $this->assertMatchesRegularExpression('/\.dept-chip \{[^}]*min-height: 32px/', $css);
+        $this->assertDoesNotMatchRegularExpression('/\.common-core-group/', $css);
+
+        $partial = (string) file_get_contents(ROOTPATH . 'app/Views/partials/study_path.php');
+        $this->assertStringContainsString('<ol class="study-path-steps">', $partial);
+        $this->assertStringNotContainsString('style=', $partial);
+    }
+
+    public function testLinkPickerIsAnAccessibleComboboxWithTouchTargets(): void
+    {
+        $partial = (string) file_get_contents(ROOTPATH . 'app/Views/admin/partials/link_picker.php');
+        $this->assertStringContainsString('role="listbox"', $partial);
+        $this->assertStringContainsString('role="option"', $partial);
+        $this->assertStringContainsString('aria-label="Pages du site"', $partial);
+        $this->assertStringNotContainsString('style=', $partial);
+        $this->assertStringNotContainsString('<script', $partial);
+
+        $js = (string) file_get_contents(ROOTPATH . 'public/assets/js/admin.js');
+        $this->assertStringContainsString("setAttribute('role', 'combobox')", $js);
+        $this->assertStringContainsString("setAttribute('aria-autocomplete', 'list')", $js);
+        $this->assertStringContainsString('aria-activedescendant', $js);
+
+        $css = (string) file_get_contents(ROOTPATH . 'public/assets/css/style.css');
+        foreach (['link-picker-button', 'link-picker-input', 'link-picker-option'] as $class) {
+            $this->assertMatchesRegularExpression('/\.' . $class . ' \{[^}]*min-height: 44px/', $css);
+        }
+    }
+
     public function testPublicStylesheetUsesBrandTokensInsteadOfHardCodedGreen(): void
     {
         $css    = file_get_contents(ROOTPATH . 'public/assets/css/style.css');

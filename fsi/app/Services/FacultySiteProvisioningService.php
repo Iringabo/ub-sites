@@ -294,7 +294,6 @@ class FacultySiteProvisioningService
         foreach ([
             ['licence', 'Licence exemple à modifier', 'licence-exemple', 1],
             ['master', 'Master exemple à modifier', 'master-exemple', 2],
-            ['doctorat', 'Doctorat exemple à modifier', 'doctorat-exemple', 3],
         ] as [$level, $title, $slug, $order]) {
             $this->insertIfMissing('programmes', $siteId, ['slug' => $slug], [
                 'level' => $level,
@@ -604,6 +603,30 @@ class FacultySiteProvisioningService
                     'map_url' => '',
                 ],
             ],
+            'admissions' => [
+                'title' => 'Admissions',
+                'slug' => 'admissions',
+                'content' => [
+                    'banner_title'    => '',
+                    'banner_subtitle' => 'Procédure d’admission à compléter.',
+                    'intro_label' => 'Candidater',
+                    'intro_title' => 'Comment candidater',
+                    'intro_text' => '',
+                    'steps' => [],
+                    'documents_title' => 'Pièces à fournir',
+                    'documents' => [],
+                    'fees_title' => 'Gratuité des études',
+                    'fees_text' => '',
+                    'portal_title' => 'Prêt à candidater ?',
+                    'portal_text' => '',
+                    'portal_label' => 'Contacter la faculté',
+                    'portal_url' => '',
+                ],
+            ],
+            'departments' => ['title' => 'Départements', 'slug' => 'departements', 'content' => ['banner_title' => '', 'banner_subtitle' => 'Départements à compléter.', 'intro_label' => '', 'intro_title' => 'Nos départements', 'intro_text' => '']],
+            'faq' => ['title' => 'Questions fréquentes', 'slug' => 'faq', 'content' => ['banner_title' => '', 'banner_subtitle' => 'Questions fréquentes à compléter.', 'intro_label' => '', 'intro_title' => 'Vos questions, nos réponses', 'intro_text' => '']],
+            // Empty paragraphs let the public page fall back to generic, accurate legal texts.
+            'legal' => ['title' => 'Mentions légales', 'slug' => 'mentions-legales', 'content' => []],
         ];
     }
 

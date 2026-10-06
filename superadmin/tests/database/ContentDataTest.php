@@ -46,7 +46,7 @@ final class ContentDataTest extends CIUnitTestCase
         $this->assertSame(3, $this->countRows('home_hero_slides'));
         $this->assertSame(3, $this->countRows('home_highlights'));
         $this->assertSame(2, $this->countRows('posts'));
-        $this->assertSame(3, $this->countRows('programmes'));
+        $this->assertSame(2, $this->countRows('programmes'));
         $this->assertSame(2, $this->countRows('staff'));
         $this->assertSame(1, $this->countRows('laboratories'));
         $this->assertSame(1, $this->countRows('publications'));
@@ -144,7 +144,7 @@ final class ContentDataTest extends CIUnitTestCase
         $this->assertSame('Voir les formations', $home['programmes_button_label']);
         $this->assertSame('Actualités', $home['posts_label']);
         $this->assertSame('Actualités et événements', $home['posts_title']);
-        $this->assertSame('Voir tout', $home['posts_button_label']);
+        $this->assertSame('Toutes les actualités', $home['posts_button_label']);
         $this->assertSame('image', $home['hero_media_type']);
         $this->assertSame('assets/images/logo-placeholder.png', $home['hero_media_path']);
         $this->assertStringContainsString('à compléter', $home['seo_description']);

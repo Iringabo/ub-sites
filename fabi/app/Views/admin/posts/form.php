@@ -60,8 +60,18 @@ $translationValue = static function (array $translations, string $name): string 
             <div class="mb-3">
                 <label for="body" class="form-label fw-semibold">Contenu</label>
                 <textarea class="form-control<?= isset($errors['body']) ? ' is-invalid' : '' ?>" id="body" name="body" rows="10" required<?= isset($errors['body']) ? ' aria-describedby="body-error"' : '' ?>><?= esc(old('body', $post->body ?? '')) ?></textarea>
+                <p class="form-text">Séparez les paragraphes par une ligne vide. Pas de balises HTML : le texte est mis en forme automatiquement.</p>
                 <?php if (isset($errors['body'])): ?>
                     <div class="invalid-feedback d-block" id="body-error"><?= esc($errors['body']) ?></div>
+                <?php endif ?>
+            </div>
+
+            <div class="mb-3">
+                <label for="author_name" class="form-label fw-semibold">Auteur</label>
+                <input type="text" class="form-control<?= isset($errors['author_name']) ? ' is-invalid' : '' ?>" id="author_name" name="author_name" maxlength="160" value="<?= esc(old('author_name', $post->author_name ?? ''), 'attr') ?>"<?= isset($errors['author_name']) ? ' aria-describedby="author-name-error"' : ' aria-describedby="author-name-help"' ?>>
+                <p class="form-text" id="author-name-help">Affiché sur la carte et la page de l’article (« Par … »). Laissez vide pour ne rien afficher.</p>
+                <?php if (isset($errors['author_name'])): ?>
+                    <div class="invalid-feedback d-block" id="author-name-error"><?= esc($errors['author_name']) ?></div>
                 <?php endif ?>
             </div>
 
@@ -202,6 +212,22 @@ $translationValue = static function (array $translations, string $name): string 
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="1" id="remove_cover" name="remove_cover">
                         <label class="form-check-label" for="remove_cover">Retirer l’image actuelle</label>
+                    </div>
+                <?php endif ?>
+            </div>
+
+            <div class="mb-3">
+                <label for="attachment" class="form-label fw-semibold">Document joint (PDF)</label>
+                <input type="file" class="form-control<?= isset($errors['attachment']) ? ' is-invalid' : '' ?>" id="attachment" name="attachment" accept=".pdf,application/pdf"<?= isset($errors['attachment']) ? ' aria-describedby="attachment-error"' : '' ?>>
+                <p class="form-text">Programme, affiche, communiqué… PDF uniquement, 10 Mo maximum. Les visiteurs pourront le télécharger.</p>
+                <?php if (isset($errors['attachment'])): ?>
+                    <div class="invalid-feedback d-block" id="attachment-error"><?= esc($errors['attachment']) ?></div>
+                <?php endif ?>
+                <?php if (! empty($post->attachment_path)): ?>
+                    <p class="small mb-2"><i class="bi bi-file-earmark-pdf me-1 text-danger" aria-hidden="true"></i><a href="<?= esc(site_media_url($post->attachment_path), 'attr') ?>" target="_blank" rel="noopener"><?= esc($post->attachment_name ?: 'document.pdf') ?></a></p>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="remove_attachment" name="remove_attachment">
+                        <label class="form-check-label" for="remove_attachment">Retirer le document actuel</label>
                     </div>
                 <?php endif ?>
             </div>

@@ -295,6 +295,70 @@ final class PostManagementTest extends CIUnitTestCase
         $this->assertSame('archived', $post['status']);
     }
 
+    public function testAdminPostFormPrefillsAuthorAndStoresPlainBody(): void
+    {
+        $this->actingAs($this->adminUser());
+
+        $form = html_entity_decode((string) $this->get('/admin/posts/new')->response()->getBody(), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $this->assertMatchesRegularExpression('#name="author_name"[^>]*value="phase4admin"#', $form);
+        $this->assertStringContainsString('name="attachment"', $form);
+
+        $this->post('/admin/posts', $this->withCsrf([
+            'type'         => 'news',
+            'title'        => 'Actualité avec auteur',
+            'slug'         => '',
+            'excerpt'      => 'Résumé avec auteur.',
+            'body'         => '<p>Premier paragraphe.</p><p>Second&nbsp;paragraphe.<br>Suite.</p>',
+            'author_name'  => 'Service de communication',
+            'status'       => 'draft',
+            'published_at' => '',
+        ]))->assertRedirect();
+
+        $post = $this->db->table('posts')->where('title', 'Actualité avec auteur')->get()->getRowArray();
+        $this->assertIsArray($post);
+        $this->assertSame('Service de communication', $post['author_name']);
+        $this->assertSame("Premier paragraphe.\n\nSecond\u{a0}paragraphe.\nSuite.", $post['body']);
+    }
+
+    public function testAdminCanRemovePostAttachment(): void
+    {
+        $this->actingAs($this->adminUser());
+        $media = service('mediaService');
+        $slug = (string) $this->db->table('sites')->where('id', 1)->get()->getRow()->slug;
+        $path = $media->storeBinaryForSite($slug, 'posts-files', "%PDF-1.4\n% test\n", 'pdf');
+        $this->assertNotNull($media->publicFileSize($path));
+
+        $model = model(PostModel::class);
+        $model->skipValidation(true);
+        $id = $model->insert($this->postData([
+            'title'           => 'Actualité avec document',
+            'slug'            => 'actualite-avec-document',
+            'status'          => 'published',
+            'published_at'    => date('Y-m-d H:i:s', strtotime('-1 hour')),
+            'attachment_path' => $path,
+            'attachment_name' => 'document-test.pdf',
+        ]));
+        $model->skipValidation(false);
+
+        $this->get('/actualites/actualite-avec-document')->assertSee('document-test.pdf');
+
+        $this->post('/admin/posts/' . $id, $this->withCsrf([
+            'type'              => 'news',
+            'title'             => 'Actualité avec document',
+            'slug'              => 'actualite-avec-document',
+            'excerpt'           => 'Résumé.',
+            'body'              => 'Contenu.',
+            'status'            => 'published',
+            'published_at'      => date('Y-m-d\TH:i', strtotime('-1 hour')),
+            'remove_attachment' => '1',
+        ]))->assertRedirect();
+
+        $post = $this->db->table('posts')->where('id', $id)->get()->getRowArray();
+        $this->assertNull($post['attachment_path']);
+        $this->assertNull($media->publicFileSize($path));
+        $this->get('/actualites/actualite-avec-document')->assertDontSee('document-test.pdf');
+    }
+
     public function testAdminCreateGeneratesUniqueSlugs(): void
     {
         $this->actingAs($this->adminUser('slug-admin@example.test', 'slugadmin'));
