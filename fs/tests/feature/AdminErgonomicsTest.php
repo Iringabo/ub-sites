@@ -1,0 +1,428 @@
+<?php
+
+use App\Database\Seeds\TemplateStarterSeeder;
+use App\Entities\Setting;
+use App\Models\SettingModel;
+use CodeIgniter\Config\Factories;
+use CodeIgniter\Shield\Entities\User;
+use CodeIgniter\Shield\Models\UserModel;
+use CodeIgniter\Shield\Test\AuthenticationTesting;
+use CodeIgniter\Test\CIUnitTestCase;
+use CodeIgniter\Test\DatabaseTestTrait;
+use CodeIgniter\Test\FeatureTestTrait;
+
+/**
+ * @internal
+ */
+final class AdminErgonomicsTest extends CIUnitTestCase
+{
+    use AuthenticationTesting;
+    use DatabaseTestTrait;
+    use FeatureTestTrait;
+
+    protected $namespace   = null;
+    protected $basePath    = APPPATH . 'Database';
+    protected $seed        = TemplateStarterSeeder::class;
+    protected $migrateOnce = true;
+    protected $seedOnce    = true;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->resetAuthState();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resetAuthState();
+        parent::tearDown();
+    }
+
+    public function testSettingsAreSplitIntoOnePagePerTheme(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $this->get('/admin/settings/global')->assertRedirectTo(site_url('admin/settings/identity'));
+
+        $identity = $this->get('/admin/settings/identity');
+        $identity->assertOK();
+        $identity->assertSee('Identité &amp; logo');
+        $identity->assertSee('name="setting_institution_faculty_name"');
+        $identity->assertSee('name="setting_file_assets_logo"');
+        $identity->assertDontSee('name="setting_seo_default_title"');
+        $identity->assertDontSee('name="setting_home_hero_indicator_size"');
+
+        $contact = $this->get('/admin/settings/contact');
+        $contact->assertOK();
+        $contact->assertSee('name="setting_contact_phone"');
+        $contact->assertSee(site_url('admin/textes/contact/bloc-coordonnees'));
+        $contact->assertDontSee('name="setting_institution_faculty_name"');
+
+        $seo = $this->get('/admin/settings/seo');
+        $seo->assertOK();
+        $seo->assertSee('name="setting_seo_default_title"');
+        $seo->assertSee('name="setting_file_seo_og_image"');
+        $seo->assertDontSee('name="setting_contact_phone"');
+
+        $this->get('/admin/settings/inconnu')->assertRedirectTo(site_url('admin/settings/identity'));
+    }
+
+    public function testSettingsUpdatePersistsOnlyTheCurrentPage(): void
+    {
+        $this->actingAs($this->superAdminUser());
+        $siteId = (int) service('siteResolver')->activeSiteId();
+        $phoneBefore = $this->db->table('settings')->where('site_id', $siteId)->where('key', 'contact.phone')->get()->getRowArray()['value'] ?? null;
+
+        $this->post('/admin/settings/identity', $this->withCsrf([
+            'setting_institution_faculty_name' => 'Faculté de test des coordonnées',
+            'setting_institution_short_name'   => 'FT',
+            'setting_institution_university'   => 'Université du Burundi',
+            'setting_contact_phone'            => '+257 99 99 99 99',
+        ]))->assertRedirectTo(site_url('admin/settings/identity'));
+
+        $row = $this->db->table('settings')
+            ->where('site_id', $siteId)
+            ->where('key', 'institution.faculty_name')
+            ->get()
+            ->getRowArray();
+        $this->assertIsArray($row);
+        $this->assertSame('Faculté de test des coordonnées', $row['value']);
+
+        $phoneAfter = $this->db->table('settings')->where('site_id', $siteId)->where('key', 'contact.phone')->get()->getRowArray()['value'] ?? null;
+        $this->assertSame($phoneBefore, $phoneAfter, 'Identité & logo must not touch Coordonnées.');
+    }
+
+    public function testSettingsUpsertFailureFlashesError(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $mock = new class () extends SettingModel {
+            public function forSite(?int $siteId = null): static
+            {
+                return $this;
+            }
+
+            public function where($key = null, $value = null, ?bool $escape = null)
+            {
+                return $this;
+            }
+
+            public function first()
+            {
+                return new Setting(['id' => 1, 'key' => 'institution.faculty_name']);
+            }
+
+            public function skipValidation(bool $skip = true)
+            {
+                return $this;
+            }
+
+            public function update($id = null, $row = null): bool
+            {
+                throw new RuntimeException('forced settings failure');
+            }
+        };
+
+        Factories::injectMock('models', SettingModel::class, $mock);
+
+        try {
+            $response = $this->post('/admin/settings/identity', $this->withCsrf([
+                'setting_institution_faculty_name' => 'Faculté de test des coordonnées',
+                'setting_institution_short_name'   => 'FT',
+                'setting_institution_university'   => 'Université du Burundi',
+            ]));
+
+            $response->assertRedirect();
+            $response->assertSessionHas('errors');
+            $response->assertSessionMissing('message');
+        } finally {
+            Factories::reset('models');
+        }
+    }
+
+    public function testBulkPublishUpdatesAllSelectedProgrammes(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $ids = array_map('intval', array_column(
+            $this->db->table('programmes')->select('id')->orderBy('id', 'ASC')->limit(3)->get()->getResultArray(),
+            'id',
+        ));
+        $this->assertNotEmpty($ids);
+
+        $this->db->table('programmes')->whereIn('id', $ids)->update(['is_published' => 0]);
+
+        $this->post('/admin/programmes/bulk', $this->withCsrf([
+            'bulk_action' => 'publish',
+            'ids'         => $ids,
+        ]))->assertRedirect();
+
+        foreach ($ids as $id) {
+            $row = $this->db->table('programmes')->where('id', $id)->get()->getRowArray();
+            $this->assertSame('1', (string) $row['is_published']);
+        }
+    }
+
+    public function testBulkArchiveWithoutUpdateKeepsRowsRestorable(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $ids = array_map('intval', array_column(
+            $this->db->table('programmes')->select('id')->orderBy('id', 'ASC')->limit(2)->get()->getResultArray(),
+            'id',
+        ));
+        $this->assertNotEmpty($ids);
+
+        $this->post('/admin/programmes/bulk', $this->withCsrf([
+            'bulk_action' => 'delete',
+            'ids'         => $ids,
+        ]))->assertRedirect();
+
+        foreach ($ids as $id) {
+            $row = $this->db->table('programmes')->where('id', $id)->get()->getRowArray();
+            $this->assertNotEmpty($row['deleted_at']);
+        }
+
+        $this->db->table('programmes')->whereIn('id', $ids)->update(['deleted_at' => null]);
+    }
+
+    public function testDuplicateCreatesUnpublishedCopyWithUniqueSlug(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $ids = array_map('intval', array_column(
+            $this->db->table('programmes')
+                ->select('id')
+                ->where('deleted_at', null)
+                ->orderBy('id', 'ASC')
+                ->limit(1)
+                ->get()
+                ->getResultArray(),
+            'id',
+        ));
+        $this->assertNotEmpty($ids);
+        $sourceId = $ids[0];
+        $source = $this->db->table('programmes')->where('id', $sourceId)->get()->getRowArray();
+
+        $this->post('/admin/programmes/' . $sourceId . '/duplicate', $this->withCsrf())->assertRedirect();
+
+        $copies = $this->db->table('programmes')
+            ->where('title', $source['title'])
+            ->where('id !=', $sourceId)
+            ->where('deleted_at', null)
+            ->get()
+            ->getResultArray();
+        $this->assertNotEmpty($copies);
+        $copy = $copies[0];
+
+        $this->assertSame('0', (string) $copy['is_published']);
+        $this->assertNotSame($source['slug'], $copy['slug']);
+    }
+
+    public function testReorderUpdatesDisplayOrderFromSequence(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $rows = $this->db->table('site_stats')->select('id')->orderBy('display_order', 'ASC')->limit(3)->get()->getResultArray();
+        $ids = array_map('intval', array_column($rows, 'id'));
+        $this->assertCount(3, $ids);
+
+        $reversed = array_reverse($ids);
+        $result = $this->post('/admin/site-stats/reorder', $this->withCsrf(['ids' => $reversed]));
+        $result->assertJSONExact(['ok' => true]);
+
+        foreach ($reversed as $index => $id) {
+            $row = $this->db->table('site_stats')->where('id', $id)->get()->getRowArray();
+            $this->assertSame((string) ($index + 1), (string) $row['display_order']);
+        }
+    }
+
+    public function testOrderableIndexExposesBulkFormAttributeAndSortableBody(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $result = $this->get('/admin/programmes');
+
+        $result->assertOK();
+        $body = (string) $result->response()->getBody();
+        $this->assertStringContainsString('id="adminBulkForm"', $body);
+        $this->assertStringContainsString('form="adminBulkForm"', $body);
+        $this->assertStringContainsString('data-sortable', $body);
+        $this->assertStringContainsString('data-sortable-url', $body);
+        $this->assertStringContainsString('data-order-cell', $body);
+        $this->assertStringContainsString('Glissez les lignes', $body);
+    }
+
+    public function testSiteStatsIndexIsDragOrderable(): void
+    {
+        $this->actingAs($this->superAdminUser());
+
+        $result = $this->get('/admin/site-stats');
+        $result->assertOK();
+        $body = html_entity_decode((string) $result->response()->getBody(), ENT_QUOTES | ENT_HTML5);
+        $this->assertStringContainsString('data-sortable', $body);
+        $this->assertStringContainsString('admin/site-stats/reorder', $body);
+        $this->assertStringContainsString('data-order-cell', $body);
+    }
+
+    public function testSettingsOverviewRequiresPermission(): void
+    {
+        $this->actingAs($this->directPermissionUser(
+            'ergo-limited@example.test',
+            'ergolimited',
+            ['admin.access'],
+        ));
+
+        $this->get('/admin/settings/identity')->assertRedirect();
+        $this->post('/admin/settings/contact', $this->withCsrf(['setting_contact_phone' => '+257 11 11 11 11']))->assertRedirect();
+        $this->assertSame(0, $this->db->table('settings')->where('value', '+257 11 11 11 11')->countAllResults());
+    }
+
+    public function testEditorDoesNotSeeAdministrationZone(): void
+    {
+        $this->actingAs($this->groupedUser('ergo-editor@example.test', 'ergoeditor', 'editor', 'editor'));
+
+        $result = $this->get('/admin');
+        $result->assertOK();
+        $result->assertSee('Au quotidien');
+        $result->assertSee('Pages du site');
+        $result->assertSee('Mot du doyen');
+        $result->assertDontSee('Messages reçus');
+        $result->assertDontSee('Paramètres du site');
+        $result->assertDontSee('Comptes &amp; rôles');
+        $result->assertDontSee('>Administration</h2>');
+        $result->assertDontSee('Pages institutionnelles');
+        $result->assertDontSee('Blocs de page');
+    }
+
+    public function testFacultyAdminCanOpenSettingsAndSeesAdministration(): void
+    {
+        $this->actingAs($this->groupedUser('ergo-admin@example.test', 'ergofacadmin', 'admin', 'site_admin'));
+
+        $nav = $this->get('/admin');
+        $nav->assertOK();
+        $body = (string) $nav->response()->getBody();
+        $this->assertStringContainsString('>Administration</h2>', $body);
+        $this->assertStringContainsString('>Paramètres du site</h2>', $body);
+        foreach (['identity', 'contact', 'social', 'footer', 'seo'] as $page) {
+            $this->assertStringContainsString('href="' . site_url('admin/settings/' . $page) . '"', $body);
+        }
+
+        $settings = $this->get('/admin/settings/contact');
+        $settings->assertOK();
+        $settings->assertSee('Coordonnées');
+    }
+
+    private function groupedUser(string $email, string $username, string $group, string $siteRole): User
+    {
+        /** @var UserModel $users */
+        $users = model(UserModel::class);
+        $existing = $users->where('username', $username)->first();
+        if ($existing instanceof User) {
+            return $existing;
+        }
+
+        $user = new User([
+            'username' => $username,
+            'email'    => $email,
+            'password' => 'MotDePasseErgo!2026',
+            'active'   => 1,
+        ]);
+        $users->save($user);
+
+        /** @var User $created */
+        $created = $users->findById($users->getInsertID());
+        $created->removeGroup('editor', 'admin', 'superadmin');
+        $created->addGroup($group);
+        $created->activate();
+        service('siteResolver')->syncUserSites((int) $created->id, [1], $siteRole);
+
+        return $created;
+    }
+
+    private function resetAuthState(): void
+    {
+        try {
+            auth('session')->getAuthenticator()->logout();
+        } catch (Throwable) {
+        }
+
+        $_SESSION = [];
+        $this->withSession([]);
+    }
+
+    private function superAdminUser(string $email = 'ergo-super@example.test', string $username = 'ergosuper'): User
+    {
+        /** @var UserModel $users */
+        $users = model(UserModel::class);
+        $existing = $users->where('username', $username)->first();
+
+        if ($existing instanceof User) {
+            return $existing;
+        }
+
+        $user = new User([
+            'username' => $username,
+            'email'    => $email,
+            'password' => 'MotDePasseErgo!2026',
+            'active'   => 1,
+        ]);
+
+        $users->save($user);
+
+        /** @var User $created */
+        $created = $users->findById($users->getInsertID());
+        $created->addGroup('superadmin');
+        $created->activate();
+
+        return $created;
+    }
+
+    /**
+     * @param list<string> $permissions
+     */
+    private function directPermissionUser(string $email, string $username, array $permissions): User
+    {
+        /** @var UserModel $users */
+        $users = model(UserModel::class);
+        $existing = $users->where('username', $username)->first();
+
+        if ($existing instanceof User) {
+            return $existing;
+        }
+
+        $user = new User([
+            'username' => $username,
+            'email'    => $email,
+            'password' => 'MotDePasseErgo!2026',
+            'active'   => 1,
+        ]);
+
+        $users->save($user);
+
+        /** @var User $created */
+        $created = $users->findById($users->getInsertID());
+        $created->removeGroup('editor', 'admin', 'superadmin');
+        $created->addPermission(...$permissions);
+        $created->activate();
+        service('siteResolver')->syncUserSites((int) $created->id, [1], 'site_admin');
+
+        return $created;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, mixed>
+     */
+    private function withCsrf(array $data = []): array
+    {
+        $security = service('security');
+        $token = $security->getTokenName();
+        $hash = $security->generateHash();
+
+        $this->withSession(array_replace($_SESSION, [$token => $hash]));
+
+        return array_replace([$token => $hash], $data);
+    }
+}

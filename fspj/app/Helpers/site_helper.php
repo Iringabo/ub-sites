@@ -1,0 +1,404 @@
+<?php
+
+use CodeIgniter\I18n\Time;
+
+if (! function_exists('site_current_locale')) {
+    function site_current_locale(): string
+    {
+        $locale = service('contentTranslationService')->locale(service('request')->getLocale());
+
+        return $locale !== '' ? $locale : 'fr';
+    }
+}
+
+if (! function_exists('site_current_site')) {
+    function site_current_site(): object
+    {
+        return service('siteResolver')->activeSite();
+    }
+}
+
+if (! function_exists('site_current_site_id')) {
+    function site_current_site_id(): int
+    {
+        return service('siteResolver')->activeSiteId();
+    }
+}
+
+if (! function_exists('site_og_locale')) {
+    function site_og_locale(): string
+    {
+        return site_current_locale() === 'en' ? 'en_US' : 'fr_FR';
+    }
+}
+
+if (! function_exists('site_current_url_for_redirect')) {
+    function site_current_url_for_redirect(): string
+    {
+        $uri = uri_string();
+        $url = $uri === '' ? site_url('/') : site_url($uri);
+        $query = trim((string) service('request')->getServer('QUERY_STRING'));
+
+        return $query === '' ? $url : $url . '?' . $query;
+    }
+}
+
+if (! function_exists('site_media_url')) {
+    function site_media_url(?string $path, string $fallback = 'assets/images/logo-placeholder.png'): string
+    {
+        $path = trim((string) $path);
+
+        if ($path === '') {
+            $path = $fallback;
+        }
+
+        if (preg_match('#^(https?:)?//#', $path) === 1) {
+            return $path;
+        }
+
+        return base_url(ltrim($path, '/'));
+    }
+}
+
+if (! function_exists('site_public_url')) {
+    function site_public_url(?string $url, string $fallback = '/'): string
+    {
+        $url = trim((string) $url);
+
+        if ($url === '') {
+            $url = $fallback;
+        }
+
+        if (
+            str_starts_with($url, 'http://')
+            || str_starts_with($url, 'https://')
+            || str_starts_with($url, 'mailto:')
+            || str_starts_with($url, 'tel:')
+            || str_starts_with($url, '#')
+        ) {
+            return $url;
+        }
+
+        return site_url(ltrim($url, '/'));
+    }
+}
+
+if (! function_exists('site_css_url')) {
+    function site_css_url(?string $path, string $fallback = 'assets/images/logo-placeholder.png'): string
+    {
+        $url = site_media_url($path, $fallback);
+
+        return str_replace(
+            ["\\", "'", "\n", "\r", "\f"],
+            ["\\\\", "\\'", ' ', ' ', ' '],
+            $url,
+        );
+    }
+}
+
+if (! function_exists('site_person_media')) {
+    /**
+     * Portrait or news cover. Campus heroes, banners, and the crest are not people or article art.
+     */
+    function site_person_media(?string $path): ?string
+    {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return null;
+        }
+
+        $lower = strtolower($path);
+        if (
+            str_contains($lower, 'logo-placeholder')
+            || str_contains($lower, '/hero/')
+            || str_contains($lower, '/banners/')
+        ) {
+            return null;
+        }
+
+        return $path;
+    }
+}
+
+if (! function_exists('site_initials')) {
+    function site_initials(?string $name): string
+    {
+        $parts = preg_split('/\s+/u', trim((string) $name)) ?: [];
+        $letters = '';
+        foreach ($parts as $part) {
+            if ($part === '') {
+                continue;
+            }
+            $letters .= mb_strtoupper(mb_substr($part, 0, 1));
+            if (mb_strlen($letters) >= 2) {
+                break;
+            }
+        }
+
+        return $letters !== '' ? $letters : '?';
+    }
+}
+
+if (! function_exists('site_paragraphs')) {
+    /**
+     * @return list<string>
+     */
+    function site_paragraphs(?string $text): array
+    {
+        $text = site_plain_paragraphs($text);
+
+        if ($text === '') {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map('trim', preg_split('/\R{2,}/u', $text) ?: []),
+            static fn (string $paragraph): bool => $paragraph !== '',
+        ));
+    }
+}
+
+if (! function_exists('site_plain_paragraphs')) {
+    /**
+     * Plain text with paragraphs separated by a blank line; HTML markup pasted
+     * into the editor (<p>, <br>, stray tags, entities) never reaches the page.
+     */
+    function site_plain_paragraphs(?string $text): string
+    {
+        $text = (string) $text;
+
+        if (trim($text) === '') {
+            return '';
+        }
+
+        if (str_contains($text, '<') || str_contains($text, '&')) {
+            $text = preg_replace('~<\s*br\s*/?\s*>~iu', "\n", $text) ?? $text;
+            $text = preg_replace('~<\s*/?\s*(p|div|h[1-6]|li|ul|ol|blockquote)(\s[^>]*)?>~iu', "\n\n", $text) ?? $text;
+            $text = preg_replace('~<\s*/?\s*p\s*/\s*p\s*>~iu', "\n\n", $text) ?? $text;
+            $text = strip_tags($text);
+            $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        $text = str_replace(["\r\n", "\r"], "\n", $text);
+        $text = preg_replace('/[ \t]+\n/u', "\n", $text) ?? $text;
+        $text = preg_replace('/\n{3,}/u', "\n\n", $text) ?? $text;
+
+        return trim($text);
+    }
+}
+
+if (! function_exists('site_format_date')) {
+    function site_format_date(mixed $value, bool $withTime = false): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        if ($value instanceof Time) {
+            $timestamp = $value->getTimestamp();
+        } elseif ($value instanceof DateTimeInterface) {
+            $timestamp = $value->getTimestamp();
+        } else {
+            $timestamp = strtotime((string) $value);
+        }
+
+        if ($timestamp === false) {
+            return '';
+        }
+
+        $locale = site_current_locale();
+        $pattern = $withTime
+            ? ($locale === 'en' ? 'd MMMM yyyy HH:mm' : 'd MMMM yyyy à HH:mm')
+            : 'd MMMM yyyy';
+        $format  = new IntlDateFormatter($locale === 'en' ? 'en_US' : 'fr_FR', IntlDateFormatter::LONG, IntlDateFormatter::SHORT);
+        $format->setPattern($pattern);
+        $format->setTimeZone(app_timezone());
+
+        return (string) $format->format($timestamp);
+    }
+}
+
+if (! function_exists('site_format_pattern')) {
+    /**
+     * Localized date with an ICU pattern (e.g. "MMMM yyyy", "EEE").
+     */
+    function site_format_pattern(DateTimeInterface $value, string $pattern): string
+    {
+        $locale = site_current_locale();
+        $format = new IntlDateFormatter($locale === 'en' ? 'en_US' : 'fr_FR', IntlDateFormatter::LONG, IntlDateFormatter::NONE);
+        $format->setPattern($pattern);
+        $format->setTimeZone($value->getTimezone());
+
+        return (string) $format->format($value);
+    }
+}
+
+if (! function_exists('site_date_parts')) {
+    /**
+     * Day number and short localized month for event date blocks.
+     *
+     * @return array{day:string,month:string,iso:string}|null
+     */
+    function site_date_parts(mixed $value): ?array
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof Time || $value instanceof DateTimeInterface) {
+            $timestamp = $value->getTimestamp();
+        } else {
+            $timestamp = strtotime((string) $value);
+        }
+
+        if ($timestamp === false) {
+            return null;
+        }
+
+        $locale = site_current_locale();
+        $format = new IntlDateFormatter($locale === 'en' ? 'en_US' : 'fr_FR', IntlDateFormatter::SHORT, IntlDateFormatter::NONE);
+        $format->setTimeZone(app_timezone());
+        $format->setPattern('MMM');
+        $month = rtrim((string) $format->format($timestamp), '.');
+
+        $format->setPattern('dd');
+        $day = (string) $format->format($timestamp);
+
+        $format->setPattern('yyyy-MM-dd');
+
+        return ['day' => $day, 'month' => $month, 'iso' => (string) $format->format($timestamp)];
+    }
+}
+
+if (! function_exists('site_level_label')) {
+    function site_level_label(?string $level): string
+    {
+        return lang('Site.programmes.levelLabels.' . (in_array($level, ['licence', 'master'], true) ? $level : 'default'));
+    }
+}
+
+if (! function_exists('site_staff_category_label')) {
+    function site_staff_category_label(?string $category): string
+    {
+        return lang('Site.staff.categoryLabels.' . ($category ?: 'default'));
+    }
+}
+
+if (! function_exists('site_post_type_label')) {
+    function site_post_type_label(?string $type): string
+    {
+        return $type === 'event' ? lang('Site.posts.eventSingular') : lang('Site.posts.newsSingular');
+    }
+}
+
+if (! function_exists('site_post_category')) {
+    function site_post_category(?string $type): string
+    {
+        return $type === 'event' ? 'evenement' : 'actualite';
+    }
+}
+
+if (! function_exists('site_post_status_label')) {
+    function site_post_status_label(?string $status): string
+    {
+        return lang('Site.status.' . ($status ?: 'unknown'));
+    }
+}
+
+if (! function_exists('site_message_status_label')) {
+    function site_message_status_label(?string $status): string
+    {
+        return lang('Site.status.' . ($status ?: 'unknown'));
+    }
+}
+
+if (! function_exists('site_message_status_badge_class')) {
+    function site_message_status_badge_class(?string $status): string
+    {
+        return match ($status) {
+            'new'      => 'text-bg-primary',
+            'read'     => 'text-bg-info',
+            'handled'  => 'text-bg-success',
+            'archived' => 'text-bg-secondary',
+            default    => 'text-bg-light',
+        };
+    }
+}
+
+if (! function_exists('site_datetime_input')) {
+    function site_datetime_input(mixed $value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d\TH:i');
+        }
+
+        $timestamp = strtotime((string) $value);
+
+        return $timestamp === false ? '' : date('Y-m-d\TH:i', $timestamp);
+    }
+}
+
+if (! function_exists('site_decode_page_content')) {
+    /**
+     * @return array<string, mixed>
+     */
+    function site_decode_page_content(?string $content): array
+    {
+        $decoded = json_decode((string) $content, true);
+
+        return is_array($decoded) ? $decoded : ['body' => $content];
+    }
+}
+
+if (! function_exists('site_contact_address')) {
+    /**
+     * Build a display address from segmented contact settings (with legacy fallback).
+     *
+     * @param array<string, mixed> $settings
+     */
+    function site_contact_address(array $settings): string
+    {
+        $parts = array_values(array_filter([
+            trim((string) ($settings['contact.address_line'] ?? '')),
+            trim((string) ($settings['contact.address_commune'] ?? '')),
+            trim((string) ($settings['contact.address_province'] ?? '')),
+            trim((string) ($settings['contact.address_country'] ?? '')),
+        ], static fn (string $part): bool => $part !== ''));
+
+        if ($parts !== []) {
+            return implode(', ', $parts);
+        }
+
+        return trim((string) ($settings['contact.address'] ?? ''));
+    }
+}
+
+if (! function_exists('site_text_or_placeholder')) {
+    function site_text_or_placeholder(?string $value, ?string $placeholder = null): string
+    {
+        $value = trim((string) $value);
+
+        if ($value !== '') {
+            return $value;
+        }
+
+        return $placeholder !== null ? $placeholder : lang('Home.configurationMissing');
+    }
+}
+
+if (! function_exists('site_asset_url')) {
+    /**
+     * URL publique d'un actif local, versionnée par sa date de modification
+     * (cache-navigateur invalidé automatiquement après chaque mise à jour).
+     */
+    function site_asset_url(string $path): string
+    {
+        $full = FCPATH . ltrim($path, '/');
+
+        return base_url($path) . (is_file($full) ? '?v=' . filemtime($full) : '');
+    }
+}

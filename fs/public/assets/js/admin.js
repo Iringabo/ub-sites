@@ -1,0 +1,794 @@
+let formIsSubmitting = false;
+
+document.querySelectorAll('form[data-confirm]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+        const message = form.getAttribute('data-confirm') || 'Confirmer cette action ?';
+
+        if (!window.confirm(message)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    });
+});
+
+document.querySelectorAll('form[data-unsaved-guard]').forEach((form) => {
+    let changed = false;
+
+    form.addEventListener('input', () => {
+        changed = true;
+    });
+
+    form.addEventListener('change', () => {
+        changed = true;
+    });
+
+    form.addEventListener('submit', (event) => {
+        if (event.defaultPrevented || !form.checkValidity()) {
+            return;
+        }
+
+        formIsSubmitting = true;
+        form.querySelectorAll('button[type="submit"]').forEach((button) => {
+            button.disabled = true;
+            button.dataset.originalText = button.innerHTML;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Enregistrement...';
+        });
+    });
+
+    window.addEventListener('beforeunload', (event) => {
+        if (!changed || formIsSubmitting) {
+            return;
+        }
+
+        event.preventDefault();
+        event.returnValue = '';
+    });
+});
+
+window.addEventListener('pageshow', () => {
+    formIsSubmitting = false;
+    document.querySelectorAll('form button[type="submit"]').forEach((button) => {
+        button.disabled = false;
+        if (button.dataset.originalText) {
+            button.innerHTML = button.dataset.originalText;
+        }
+    });
+});
+
+document.querySelectorAll('[data-character-counter]').forEach((field) => {
+    const counter = document.getElementById(field.getAttribute('data-character-counter'));
+    const max = Number.parseInt(field.getAttribute('maxlength') || field.dataset.maxlength || '0', 10);
+
+    if (!counter || !max) {
+        return;
+    }
+
+    const update = () => {
+        counter.textContent = `${field.value.length}/${max}`;
+    };
+
+    field.addEventListener('input', update);
+    update();
+});
+
+document.querySelectorAll('[data-range-output]').forEach((field) => {
+    const output = document.getElementById(field.getAttribute('data-range-output'));
+
+    if (!output) {
+        return;
+    }
+
+    const update = () => {
+        output.textContent = `${Math.round(Number.parseFloat(field.value) * 100)} %`;
+    };
+
+    field.addEventListener('input', update);
+    update();
+});
+
+document.querySelectorAll('input[type="color"][id]').forEach((field) => {
+    const hex = document.querySelector(`[data-color-hex-for="${field.id}"]`);
+    if (!hex) {
+        return;
+    }
+
+    const update = () => {
+        hex.textContent = field.value.toUpperCase();
+    };
+
+    field.addEventListener('input', update);
+    update();
+});
+
+document.querySelectorAll('input[data-icon-input][id]').forEach((field) => {
+    const preview = document.querySelector(`[data-icon-preview="${field.id}"]`);
+    if (!preview) {
+        return;
+    }
+
+    const update = () => {
+        const value = field.value.trim();
+        preview.className = `bi ${/^bi-[a-z0-9-]+$/.test(value) ? value : 'bi-star'}`;
+    };
+
+    field.addEventListener('input', update);
+    update();
+});
+
+document.querySelectorAll('.admin-preview-toggle').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+        const row = document.getElementById(toggle.getAttribute('data-target'));
+        if (!row) {
+            return;
+        }
+        const expanded = row.classList.toggle('d-none') === false;
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        toggle.innerHTML = expanded
+            ? '<i class="bi bi-eye-slash me-1" aria-hidden="true"></i>Masquer'
+            : '<i class="bi bi-eye me-1" aria-hidden="true"></i>Aperçu';
+    });
+});
+
+const bulkToggle = document.getElementById('adminBulkToggle');
+const bulkChecks = document.querySelectorAll('.admin-bulk-check');
+const bulkBar = document.querySelector('.admin-bulk-bar');
+const bulkCount = document.querySelector('.admin-bulk-count');
+
+if (bulkToggle && bulkChecks.length) {
+    const updateBulkCount = () => {
+        const selected = Array.from(bulkChecks).filter((check) => check.checked).length;
+        if (bulkCount) {
+            bulkCount.textContent = String(selected);
+        }
+    };
+
+    bulkToggle.addEventListener('change', () => {
+        bulkChecks.forEach((check) => {
+            check.checked = bulkToggle.checked;
+        });
+        updateBulkCount();
+    });
+
+    bulkChecks.forEach((check) => {
+        check.addEventListener('change', () => {
+            const allChecked = Array.from(bulkChecks).every((c) => c.checked);
+            bulkToggle.checked = allChecked;
+            updateBulkCount();
+        });
+    });
+}
+
+if (bulkBar && bulkChecks.length) {
+    document.querySelectorAll('.admin-bulk-bar select').forEach((select) => {
+        const apply = select.nextElementSibling;
+        if (!apply) {
+            return;
+        }
+        const message = select.options[select.selectedIndex] && select.options[select.selectedIndex].text
+            ? `Appliquer « ${select.options[select.selectedIndex].text} » à ${bulkChecks.length ? '' : '0'} contenu(s) sélectionné(s) ?`
+            : 'Confirmer cette action groupée ?';
+        apply.addEventListener('click', (event) => {
+            const selected = Array.from(bulkChecks).filter((check) => check.checked).length;
+            if (selected === 0) {
+                event.preventDefault();
+                window.alert('Sélectionnez au moins un contenu.');
+                return;
+            }
+            const label = select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : 'effectuer cette action';
+            if (!window.confirm(`Appliquer « ${label} » à ${selected} contenu(s) sélectionné(s) ?`)) {
+                event.preventDefault();
+            }
+        });
+    });
+}
+
+document.querySelectorAll('tbody[data-sortable], table[data-sortable]').forEach((table) => {
+    if (!window.Sortable) {
+        return;
+    }
+
+    const tbody = table;
+    const url = tbody.getAttribute('data-sortable-url');
+    const form = document.getElementById('adminReorderForm');
+    let saving = false;
+
+    const renumberOrderCells = () => {
+        const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        rows.forEach((row, index) => {
+            const cell = row.querySelector('[data-order-cell]');
+            if (cell) {
+                cell.textContent = String(index + 1);
+            }
+        });
+    };
+
+    new window.Sortable(tbody, {
+        handle: '.admin-drag-handle',
+        animation: 150,
+        ghostClass: 'admin-drag-ghost',
+        onEnd: () => {
+            if (saving || !form) {
+                return;
+            }
+            saving = true;
+            renumberOrderCells();
+            const ids = Array.from(tbody.querySelectorAll('tr[data-id]'))
+                .map((row) => row.getAttribute('data-id'))
+                .join(',');
+
+            const body = new URLSearchParams(new FormData(form));
+            body.set('ids', ids);
+
+            fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: body.toString(),
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('network');
+                    }
+                    return response.json();
+                })
+                .then(() => {
+                    saving = false;
+                })
+                .catch(() => {
+                    saving = false;
+                    window.alert("Impossible d'enregistrer le nouvel ordre. Rechargez la page.");
+                });
+        },
+    });
+});
+
+(() => {
+    const overlay = document.getElementById('adminSiteLoading');
+    const switcher = document.querySelector('[data-admin-site-switcher]');
+
+    if (!overlay || !switcher) {
+        return;
+    }
+
+    const select = switcher.querySelector('select[name="site_id"]');
+
+    const showLoading = () => {
+        overlay.hidden = false;
+        overlay.setAttribute('aria-busy', 'true');
+        document.body.classList.add('admin-site-loading-active');
+        if (select) {
+            select.disabled = true;
+        }
+    };
+
+    const hideLoading = () => {
+        overlay.hidden = true;
+        overlay.setAttribute('aria-busy', 'false');
+        document.body.classList.remove('admin-site-loading-active');
+        if (select) {
+            select.disabled = false;
+        }
+    };
+
+    // CSP script-src-attr is 'none': never use inline onchange= handlers.
+    if (select) {
+        select.addEventListener('change', () => {
+            if (typeof switcher.requestSubmit === 'function') {
+                switcher.requestSubmit();
+            } else {
+                switcher.submit();
+            }
+        });
+    }
+
+    switcher.addEventListener('htmx:beforeRequest', showLoading);
+    switcher.addEventListener('htmx:responseError', hideLoading);
+    switcher.addEventListener('htmx:sendError', hideLoading);
+    switcher.addEventListener('htmx:timeout', hideLoading);
+
+    // Full-page HX-Redirect keeps the overlay visible until navigation completes.
+    switcher.addEventListener('submit', () => {
+        if (!window.htmx) {
+            showLoading();
+        }
+    });
+})();
+
+(() => {
+    const openPalette = () => {
+        const input = document.getElementById('adminPaletteInput');
+        if (input) {
+            input.value = '';
+            const results = document.getElementById('adminPaletteResults');
+            if (results) {
+                results.replaceChildren();
+            }
+            input.focus();
+        }
+    };
+
+    const items = [];
+
+    const normalize = (value) => value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[’']/g, ' ')
+        .toLowerCase();
+
+    const collect = () => {
+        items.length = 0;
+        document.querySelectorAll('.admin-nav a.admin-nav-link[href]').forEach((link) => {
+            const label = link.querySelector('.admin-nav-label');
+            const title = (label ? label.textContent : link.textContent).trim();
+            const group = link.dataset.navGroup || 'Navigation';
+            items.push({
+                title,
+                group,
+                href: link.getAttribute('href'),
+                titleKey: normalize(title),
+                haystack: normalize(`${title} ${group} ${link.dataset.keywords || ''}`),
+            });
+        });
+    };
+
+    const renderResults = (query) => {
+        const list = document.getElementById('adminPaletteResults');
+        if (!list) {
+            return;
+        }
+        const terms = normalize(query).split(/\s+/).filter(Boolean);
+        const titleHits = (item) => terms.filter((term) => item.titleKey.includes(term)).length;
+        const matches = terms.length
+            ? items
+                .filter((item) => terms.every((term) => item.haystack.includes(term)))
+                .sort((a, b) => titleHits(b) - titleHits(a))
+            : items;
+
+        list.replaceChildren();
+        matches.slice(0, 12).forEach((item) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'd-flex w-100 align-items-center justify-content-between gap-2 px-3 py-2 text-start';
+
+            const title = document.createElement('span');
+            title.className = 'text-truncate';
+            title.textContent = item.title;
+
+            const group = document.createElement('span');
+            group.className = 'small text-muted text-nowrap ms-auto';
+            group.textContent = item.group;
+
+            button.append(title, group);
+            button.addEventListener('click', () => {
+                window.location.href = item.href;
+            });
+            button.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    window.location.href = item.href;
+                }
+            });
+            list.appendChild(button);
+        });
+
+        if (matches.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'px-3 py-2 text-muted small';
+            empty.textContent = 'Aucun résultat.';
+            list.appendChild(empty);
+        }
+    };
+
+    const ensureDom = () => {
+        if (document.getElementById('adminPalette')) {
+            return;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.id = 'adminPalette';
+        overlay.className = 'admin-palette';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', 'Palette de commandes');
+        overlay.style.display = 'none';
+        overlay.innerHTML = `
+            <div class="admin-palette-inner" role="search">
+                <div class="d-flex align-items-center gap-2 border-bottom px-3 py-2">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="adminPaletteInput" type="text" class="form-control border-0 shadow-none" placeholder="Rechercher un texte ou un module… (Ctrl+K)" aria-label="Recherche">
+                </div>
+                <div id="adminPaletteResults" class="admin-palette-results"></div>
+            </div>`;
+
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                closePalette();
+            }
+        });
+
+        document.body.appendChild(overlay);
+
+        const input = document.getElementById('adminPaletteInput');
+        input.addEventListener('input', () => renderResults(input.value));
+        input.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') {
+                return;
+            }
+            const first = document.querySelector('#adminPaletteResults button');
+            if (first) {
+                event.preventDefault();
+                first.click();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowDown') {
+                const buttons = Array.from(document.querySelectorAll('#adminPaletteResults button'));
+                if (!buttons.length) {
+                    return;
+                }
+                event.preventDefault();
+                const current = document.activeElement;
+                const idx = buttons.indexOf(current);
+                const next = buttons[(idx + 1) % buttons.length];
+                next.focus();
+            }
+            if (event.key === 'ArrowUp') {
+                const buttons = Array.from(document.querySelectorAll('#adminPaletteResults button'));
+                if (!buttons.length) {
+                    return;
+                }
+                event.preventDefault();
+                const current = document.activeElement;
+                const idx = buttons.indexOf(current);
+                const prev = buttons[((idx === -1 ? 0 : idx) - 1 + buttons.length) % buttons.length];
+                prev.focus();
+            }
+        });
+    };
+
+    const openPaletteFull = () => {
+        ensureDom();
+        const overlay = document.getElementById('adminPalette');
+        collect();
+        overlay.style.display = 'flex';
+        openPalette();
+    };
+
+    const closePalette = () => {
+        const overlay = document.getElementById('adminPalette');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    };
+
+    document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+            event.preventDefault();
+            const overlay = document.getElementById('adminPalette');
+            if (overlay && overlay.style.display !== 'none') {
+                closePalette();
+            } else {
+                openPaletteFull();
+            }
+        }
+        if (event.key === 'Escape') {
+            closePalette();
+        }
+    });
+
+    document.querySelectorAll('[data-admin-palette-open]').forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            openPaletteFull();
+        });
+    });
+})();
+
+document.querySelectorAll('select[data-level-filter]').forEach((select) => {
+    const form = select.closest('form');
+    const level = form ? form.querySelector(`select[name="${select.dataset.levelFilter}"]`) : null;
+
+    if (!level) {
+        return;
+    }
+
+    const accepts = (cycle, value) => {
+        if (cycle === 'licence') {
+            return value === 'licence';
+        }
+        if (cycle === 'master') {
+            return value === 'master';
+        }
+        return true;
+    };
+
+    const apply = () => {
+        select.querySelectorAll('option[data-cycle]').forEach((option) => {
+            const allowed = accepts(option.dataset.cycle, level.value);
+            option.hidden = !allowed;
+            option.disabled = !allowed;
+            if (!allowed && option.selected) {
+                select.value = '';
+            }
+        });
+    };
+
+    level.addEventListener('change', apply);
+    apply();
+});
+
+document.querySelectorAll('[data-link-picker]').forEach((picker) => {
+    const input = picker.querySelector('[data-link-picker-input]');
+    const list = picker.querySelector('[role="listbox"]');
+    const toggle = picker.querySelector('[data-link-picker-toggle]');
+    const clear = picker.querySelector('[data-link-picker-clear]');
+    const address = picker.querySelector('[data-link-picker-address]');
+
+    if (!input || !list || !input.name) {
+        return;
+    }
+
+    const normalize = (value) => value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[’']/g, ' ')
+        .toLowerCase()
+        .trim();
+    const words = (value) => normalize(value).split(/[^a-z0-9]+/).filter(Boolean);
+    const isAddress = (value) => /^(https?:\/\/|\/|#)/i.test(value.trim());
+    const trimSlash = (value) => (value.length > 1 ? value.replace(/\/+$/, '') : value);
+    const sameUrl = (a, b) => trimSlash(a.replace(/^\/#/, '#')) === trimSlash(b.replace(/^\/#/, '#'));
+
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = input.name;
+    hidden.value = input.value.trim();
+    input.removeAttribute('name');
+    picker.appendChild(hidden);
+
+    const options = Array.from(list.querySelectorAll('[role="option"]')).map((element) => ({
+        element,
+        value: element.dataset.value || '',
+        label: element.dataset.label || '',
+        group: element.dataset.group || '',
+        words: words(`${element.dataset.label || ''} ${element.dataset.group || ''}`),
+    }));
+    const groups = Array.from(list.querySelectorAll('[data-link-picker-group]'));
+
+    const freeOption = document.createElement('li');
+    freeOption.className = 'link-picker-option link-picker-free';
+    freeOption.id = `${input.id}-option-free`;
+    freeOption.setAttribute('role', 'option');
+    freeOption.setAttribute('aria-selected', 'false');
+    freeOption.hidden = true;
+    list.prepend(freeOption);
+
+    const empty = document.createElement('li');
+    empty.className = 'link-picker-empty';
+    empty.setAttribute('role', 'presentation');
+    empty.textContent = 'Aucune page ne correspond. Pour un site externe, collez son adresse complète (https://…).';
+    empty.hidden = true;
+    list.appendChild(empty);
+
+    let visible = [];
+    let active = -1;
+
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', list.id);
+    if (toggle) {
+        toggle.hidden = false;
+    }
+
+    const optionFor = (value) => (value === '' ? undefined : options.find((option) => sameUrl(option.value, value)));
+
+    const updateAddress = () => {
+        const value = hidden.value;
+        if (clear) {
+            clear.hidden = value === '' && input.value === '';
+        }
+        if (!address) {
+            return;
+        }
+        address.hidden = value === '';
+        if (value === '') {
+            address.textContent = '';
+        } else if (optionFor(value)) {
+            address.textContent = `Adresse : ${value}`;
+        } else if (isAddress(value)) {
+            address.textContent = `Lien saisi : ${value}`;
+        } else {
+            address.textContent = `Aucune page ne s’appelle « ${value} ». Choisissez dans la liste ou collez une adresse complète.`;
+        }
+    };
+
+    const setActive = (index) => {
+        visible.forEach((element) => {
+            element.classList.remove('active');
+            element.setAttribute('aria-selected', 'false');
+        });
+        active = index;
+        const element = visible[index];
+        if (element) {
+            element.classList.add('active');
+            element.setAttribute('aria-selected', 'true');
+            input.setAttribute('aria-activedescendant', element.id);
+            element.scrollIntoView({ block: 'nearest' });
+        } else {
+            input.removeAttribute('aria-activedescendant');
+        }
+    };
+
+    const setExpanded = (expanded) => {
+        list.hidden = !expanded;
+        input.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        }
+        if (!expanded) {
+            setActive(-1);
+        }
+    };
+
+    const filter = (query) => {
+        const text = query.trim();
+        const typedAddress = isAddress(text);
+        const terms = words(text);
+        visible = [];
+
+        if (typedAddress && !optionFor(text)) {
+            freeOption.dataset.value = text;
+            freeOption.textContent = `Utiliser cette adresse : ${text}`;
+            freeOption.hidden = false;
+            visible.push(freeOption);
+        } else {
+            freeOption.hidden = true;
+        }
+
+        options.forEach((option) => {
+            const match = typedAddress
+                ? option.value.toLowerCase().startsWith(text.toLowerCase())
+                : terms.every((term) => option.words.some((word) => word.startsWith(term)));
+            option.element.hidden = !match;
+            if (match) {
+                visible.push(option.element);
+            }
+        });
+
+        groups.forEach((group) => {
+            const name = group.dataset.linkPickerGroup;
+            group.hidden = !options.some((option) => option.group === name && !option.element.hidden);
+        });
+
+        empty.hidden = visible.length > 0;
+        setActive(text !== '' && visible.length ? 0 : -1);
+    };
+
+    const showAll = () => {
+        filter('');
+        setExpanded(true);
+    };
+
+    const choose = (element) => {
+        const value = element.dataset.value || '';
+        hidden.value = value;
+        input.value = element === freeOption ? value : (element.dataset.label || value);
+        setExpanded(false);
+        updateAddress();
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const commitTyped = () => {
+        const text = input.value.trim();
+        if (text === '') {
+            hidden.value = '';
+            updateAddress();
+            return;
+        }
+
+        const current = optionFor(hidden.value);
+        if ((current && normalize(current.label) === normalize(text)) || (!current && text === hidden.value)) {
+            return;
+        }
+
+        const exact = options.find((option) => normalize(option.label) === normalize(text))
+            || (isAddress(text) ? optionFor(text) : undefined);
+        if (exact) {
+            hidden.value = exact.value;
+            input.value = exact.label;
+        } else {
+            hidden.value = text;
+        }
+        updateAddress();
+    };
+
+    const initial = optionFor(hidden.value);
+    input.value = picker.dataset.currentLabel || (initial ? initial.label : hidden.value);
+    updateAddress();
+
+    input.addEventListener('focus', showAll);
+    input.addEventListener('click', () => {
+        if (list.hidden) {
+            showAll();
+        }
+    });
+    input.addEventListener('input', () => {
+        filter(input.value);
+        setExpanded(true);
+        if (clear) {
+            clear.hidden = input.value === '' && hidden.value === '';
+        }
+    });
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (list.hidden) {
+                showAll();
+            }
+            if (!visible.length) {
+                return;
+            }
+            const step = event.key === 'ArrowDown' ? 1 : -1;
+            setActive(active === -1 ? (step === 1 ? 0 : visible.length - 1) : (active + step + visible.length) % visible.length);
+        } else if (event.key === 'Enter' && !list.hidden && visible[active]) {
+            event.preventDefault();
+            choose(visible[active]);
+        } else if (event.key === 'Escape' && !list.hidden) {
+            event.preventDefault();
+            event.stopPropagation();
+            setExpanded(false);
+        } else if (event.key === 'Tab') {
+            setExpanded(false);
+        }
+    });
+    input.addEventListener('blur', () => {
+        commitTyped();
+        setExpanded(false);
+    });
+
+    list.addEventListener('mousedown', (event) => event.preventDefault());
+    list.addEventListener('click', (event) => {
+        const element = event.target.closest('[role="option"]');
+        if (element) {
+            choose(element);
+        }
+    });
+
+    if (toggle) {
+        toggle.addEventListener('mousedown', (event) => event.preventDefault());
+        toggle.addEventListener('click', () => {
+            if (list.hidden) {
+                input.focus();
+                showAll();
+            } else {
+                setExpanded(false);
+            }
+        });
+    }
+
+    if (clear) {
+        clear.addEventListener('mousedown', (event) => event.preventDefault());
+        clear.addEventListener('click', () => {
+            input.value = '';
+            hidden.value = '';
+            updateAddress();
+            input.focus();
+            showAll();
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        if (!picker.contains(event.target)) {
+            setExpanded(false);
+        }
+    });
+
+    if (input.form) {
+        input.form.addEventListener('submit', () => {
+            commitTyped();
+            hidden.disabled = input.disabled;
+        });
+    }
+});

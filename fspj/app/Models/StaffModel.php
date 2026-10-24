@@ -1,0 +1,52 @@
+<?php
+
+namespace App\Models;
+
+use App\Entities\StaffMember;
+
+class StaffModel extends SiteScopedModel
+{
+    public const CATEGORIES = ['enseignant', 'administratif'];
+
+    protected $table            = 'staff';
+    protected $primaryKey       = 'id';
+    protected $returnType       = StaffMember::class;
+    protected $useTimestamps    = true;
+    protected $useSoftDeletes   = true;
+    protected $protectFields    = true;
+    protected $allowedFields    = [
+        'site_id',
+        'category',
+        'department_id',
+        'name',
+        'slug',
+        'photo',
+        'grade',
+        'specialty',
+        'role',
+        'email',
+        'biography',
+        'display_order',
+        'featured_on_home',
+        'home_order',
+        'is_published',
+    ];
+    protected array $casts      = [
+        'id'               => 'integer',
+        'department_id'    => '?integer',
+        'display_order'    => 'integer',
+        'featured_on_home' => 'boolean',
+        'home_order'       => '?integer',
+        'is_published'     => 'boolean',
+    ];
+    protected $validationRules  = [
+        'category'         => 'required|in_list[enseignant,administratif]',
+        'name'             => 'required|max_length[255]',
+        'slug'             => 'required|max_length[180]|regex_match[/^[a-z0-9-]+$/]',
+        'email'            => 'permit_empty|valid_email|max_length[255]',
+        'display_order'    => 'required|integer',
+        'featured_on_home' => 'required|in_list[0,1]',
+        'home_order'       => 'permit_empty|integer',
+        'is_published'     => 'required|in_list[0,1]',
+    ];
+}
